@@ -21,13 +21,13 @@ export function detectLanguage(text: string): Exclude<OutputLanguage, 'auto'> {
     return 'ja';
   }
 
-  // CJK漢字のみ（日本語の仮名なし）の場合は中国語
+  // CJK漢字のみ（日本語の仮名なし）の場合も日本語として扱う
   // 漢字範囲: U+4E00-U+9FFF
   const hasCJK = /[\u4E00-\u9FFF]/.test(trimmed);
   const hasAlpha = /[a-zA-Z]/.test(trimmed);
 
   if (hasCJK && !hasAlpha) {
-    return 'zh';
+    return 'ja';
   }
 
   // アルファベットが主な場合は英語
