@@ -110,3 +110,70 @@ private struct MockSearchService: LocationSearchServiceProtocol {
         return mockResults
     }
 }
+
+// MARK: - Look Around Tests
+
+struct MockLookAroundService: LookAroundServiceProtocol {
+    var mockScene: MKLookAroundScene?
+    var shouldThrowError: Bool = false
+
+    func fetchScene(for coordinate: CLLocationCoordinate2D) async throws -> MKLookAroundScene? {
+        if shouldThrowError {
+            throw NSError(domain: "MockError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Mock error"])
+        }
+        return mockScene
+    }
+}
+
+struct LookAroundViewModelTests {
+    @Test func initialLookAroundState() {
+        let viewModel = LocationSearchViewModel()
+        #expect(viewModel.destinationLookAroundScene == nil)
+        #expect(viewModel.nextStepLookAroundScene == nil)
+        #expect(viewModel.isLoadingLookAround == false)
+        #expect(viewModel.showLookAround == false)
+        #expect(viewModel.showLookAroundSheet == false)
+        #expect(viewModel.lookAroundTarget == .destination)
+    }
+
+    @Test func hasLookAroundAvailableWhenNoScenes() {
+        let viewModel = LocationSearchViewModel()
+        #expect(viewModel.hasLookAroundAvailable == false)
+    }
+
+    @Test func dismissLookAround() {
+        let viewModel = LocationSearchViewModel()
+        viewModel.showLookAround = true
+        viewModel.dismissLookAround()
+        #expect(viewModel.showLookAround == false)
+    }
+
+    @Test func openLookAroundSheet() {
+        let viewModel = LocationSearchViewModel()
+        viewModel.openLookAroundSheet()
+        #expect(viewModel.showLookAroundSheet == true)
+    }
+
+    @Test func showLookAroundCardWhenNotAvailable() {
+        let viewModel = LocationSearchViewModel()
+        viewModel.showLookAroundCard()
+        #expect(viewModel.showLookAround == false)
+    }
+
+    @Test func lookAroundLocationNameForDestination() {
+        let viewModel = LocationSearchViewModel()
+        viewModel.lookAroundTarget = .destination
+        #expect(viewModel.lookAroundLocationName == "目的地")
+    }
+
+    @Test func lookAroundLocationNameForNextStep() {
+        let viewModel = LocationSearchViewModel()
+        viewModel.lookAroundTarget = .nextStep
+        #expect(viewModel.lookAroundLocationName == "次の曲がり角")
+    }
+
+    @Test func hasNextStepWhenNoRoute() {
+        let viewModel = LocationSearchViewModel()
+        #expect(viewModel.hasNextStep == false)
+    }
+}

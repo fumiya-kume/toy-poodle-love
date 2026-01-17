@@ -3,6 +3,13 @@ import MapKit
 import Observation
 import SwiftUI
 
+enum LookAroundTarget: String, CaseIterable, Identifiable {
+    case destination = "目的地"
+    case nextStep = "次の曲がり角"
+
+    var id: String { rawValue }
+}
+
 @Observable
 final class LocationSearchViewModel {
     var searchQuery: String = ""
@@ -17,22 +24,33 @@ final class LocationSearchViewModel {
     var isSuggesting: Bool = false
     var showSuggestions: Bool = false
 
+    // Look Around関連
+    var destinationLookAroundScene: MKLookAroundScene?
+    var nextStepLookAroundScene: MKLookAroundScene?
+    var isLoadingLookAround: Bool = false
+    var showLookAround: Bool = false
+    var showLookAroundSheet: Bool = false
+    var lookAroundTarget: LookAroundTarget = .destination
+
     let locationManager = LocationManager()
 
     private let searchService: LocationSearchServiceProtocol
     private let directionsService: DirectionsServiceProtocol
     private let completerService: LocationCompleterServiceProtocol
+    private let lookAroundService: LookAroundServiceProtocol
     private var debounceTask: Task<Void, Never>?
     private let debounceInterval: Duration = .milliseconds(300)
 
     init(
         searchService: LocationSearchServiceProtocol = LocationSearchService(),
         directionsService: DirectionsServiceProtocol = DirectionsService(),
-        completerService: LocationCompleterServiceProtocol? = nil
+        completerService: LocationCompleterServiceProtocol? = nil,
+        lookAroundService: LookAroundServiceProtocol = LookAroundService()
     ) {
         self.searchService = searchService
         self.directionsService = directionsService
         self.completerService = completerService ?? LocationCompleterService()
+        self.lookAroundService = lookAroundService
         setupCompleterCallback()
     }
 
@@ -113,9 +131,94 @@ final class LocationSearchViewModel {
                     )
                 )
                 mapCameraPosition = .region(paddedRegion)
+
+                // Look Aroundを取得
+                await fetchLookAroundScenes()
             }
         } catch {
             errorMessage = "経路の計算に失敗しました: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Look Around
+
+    var hasLookAroundAvailable: Bool {
+        destinationLookAroundScene != nil || nextStepLookAroundScene != nil
+    }
+
+    var hasNextStep: Bool {
+        guard let route = route else { return false }
+        return !route.steps.isEmpty
+    }
+
+    var currentLookAroundScene: MKLookAroundScene? {
+        switch lookAroundTarget {
+        case .destination:
+            return destinationLookAroundScene
+        case .nextStep:
+            return nextStepLookAroundScene
+        }
+    }
+
+    var lookAroundLocationName: String {
+        switch lookAroundTarget {
+        case .destination:
+            return selectedPlace?.name ?? "目的地"
+        case .nextStep:
+            return "次の曲がり角"
+        }
+    }
+
+    @MainActor
+    func fetchLookAroundScenes() async {
+        isLoadingLookAround = true
+        destinationLookAroundScene = nil
+        nextStepLookAroundScene = nil
+
+        // 目的地のLook Aroundを取得
+        if let destination = selectedPlace?.coordinate {
+            do {
+                destinationLookAroundScene = try await lookAroundService.fetchScene(for: destination)
+            } catch {
+                print("Look Around fetch failed for destination: \(error.localizedDescription)")
+            }
+        }
+
+        // 次の曲がり角のLook Aroundを取得
+        if let firstStep = route?.steps.first {
+            let stepCoordinate = firstStep.polyline.coordinate
+            do {
+                nextStepLookAroundScene = try await lookAroundService.fetchScene(for: stepCoordinate)
+            } catch {
+                print("Look Around fetch failed for next step: \(error.localizedDescription)")
+            }
+        }
+
+        isLoadingLookAround = false
+
+        // どちらかが利用可能なら表示
+        if hasLookAroundAvailable {
+            // 利用可能な方を選択
+            if destinationLookAroundScene != nil {
+                lookAroundTarget = .destination
+            } else if nextStepLookAroundScene != nil {
+                lookAroundTarget = .nextStep
+            }
+            showLookAround = true
+        }
+    }
+
+    func dismissLookAround() {
+        showLookAround = false
+    }
+
+    func openLookAroundSheet() {
+        showLookAroundSheet = true
+    }
+
+    func showLookAroundCard() {
+        if hasLookAroundAvailable {
+            showLookAround = true
         }
     }
 

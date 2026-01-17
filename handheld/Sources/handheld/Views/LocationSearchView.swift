@@ -33,11 +33,42 @@ struct LocationSearchView: View {
                 }
             }
 
+            // Look Aroundプレビューカード
+            if viewModel.showLookAround || viewModel.isLoadingLookAround {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        LookAroundPreviewCard(
+                            scene: viewModel.currentLookAroundScene,
+                            locationName: viewModel.lookAroundLocationName,
+                            isLoading: viewModel.isLoadingLookAround,
+                            onTap: {
+                                viewModel.openLookAroundSheet()
+                            },
+                            onClose: {
+                                viewModel.dismissLookAround()
+                            }
+                        )
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
+                    .padding(.trailing, 16)
+                    .padding(.bottom, viewModel.route != nil ? 100 : 16)
+                }
+                .animation(.spring(response: 0.3), value: viewModel.showLookAround)
+            }
+
             if let route = viewModel.route {
                 VStack {
                     Spacer()
-                    RouteInfoView(route: route)
-                        .padding()
+                    RouteInfoView(
+                        route: route,
+                        hasLookAroundAvailable: viewModel.hasLookAroundAvailable,
+                        onLookAroundTap: {
+                            viewModel.showLookAroundCard()
+                        }
+                    )
+                    .padding()
                 }
             }
         }
@@ -45,6 +76,17 @@ struct LocationSearchView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showSearchResults) {
             searchResultsSheet
+        }
+        .sheet(isPresented: $viewModel.showLookAroundSheet) {
+            LookAroundSheetView(
+                selectedTarget: $viewModel.lookAroundTarget,
+                destinationScene: viewModel.destinationLookAroundScene,
+                nextStepScene: viewModel.nextStepLookAroundScene,
+                destinationName: viewModel.selectedPlace?.name ?? "目的地",
+                hasNextStep: viewModel.hasNextStep
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
         }
         .onAppear {
             viewModel.requestLocationPermission()

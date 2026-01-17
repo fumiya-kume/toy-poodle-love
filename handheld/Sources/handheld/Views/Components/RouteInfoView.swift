@@ -2,6 +2,8 @@ import SwiftUI
 
 struct RouteInfoView: View {
     let route: Route
+    var hasLookAroundAvailable: Bool = false
+    var onLookAroundTap: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 24) {
@@ -9,7 +11,7 @@ struct RouteInfoView: View {
                 Text(route.formattedDistance)
                     .font(.headline)
             } icon: {
-                Image(systemName: "car.fill")
+                Image(systemName: "figure.walk")
                     .foregroundColor(.blue)
             }
 
@@ -22,6 +24,16 @@ struct RouteInfoView: View {
             }
 
             Spacer()
+
+            if let onLookAroundTap = onLookAroundTap {
+                Button(action: onLookAroundTap) {
+                    Image(systemName: "binoculars.fill")
+                        .font(.title2)
+                        .foregroundColor(hasLookAroundAvailable ? .blue : .gray)
+                }
+                .disabled(!hasLookAroundAvailable)
+                .accessibilityLabel("Look Aroundを表示")
+            }
         }
         .padding()
         .background(Color(.systemBackground))
