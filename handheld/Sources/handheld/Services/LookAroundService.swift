@@ -1,5 +1,6 @@
 import Foundation
 import MapKit
+import os
 
 protocol LookAroundServiceProtocol {
     func fetchScene(for coordinate: CLLocationCoordinate2D) async throws -> MKLookAroundScene?
@@ -11,6 +12,7 @@ protocol LookAroundServiceProtocol {
 
 final class LookAroundService: LookAroundServiceProtocol {
     func fetchScene(for coordinate: CLLocationCoordinate2D) async throws -> MKLookAroundScene? {
+        AppLogger.lookAround.debug("Look Aroundシーン取得を開始します: (\(coordinate.latitude), \(coordinate.longitude))")
         let request = MKLookAroundSceneRequest(coordinate: coordinate)
         return try await request.scene
     }
@@ -20,23 +22,43 @@ final class LookAroundService: LookAroundServiceProtocol {
         onSceneFetched: @escaping @MainActor (Int, MKLookAroundScene?) -> Void
     ) async {
         let prioritySteps = Array(steps.prefix(3))
+        var successCount = 0
+        let totalCount = steps.count
 
         await withTaskGroup(of: (Int, MKLookAroundScene?).self) { group in
             for step in prioritySteps {
                 group.addTask {
-                    let scene = try? await self.fetchScene(for: step.coordinate)
-                    return (step.stepIndex, scene)
+                    do {
+                        let scene = try await self.fetchScene(for: step.coordinate)
+                        return (step.stepIndex, scene)
+                    } catch {
+                        AppLogger.lookAround.warning("Look Aroundシーン取得失敗: (\(step.coordinate.latitude), \(step.coordinate.longitude))")
+                        return (step.stepIndex, nil)
+                    }
                 }
             }
             for await (index, scene) in group {
+                if scene != nil { successCount += 1 }
                 await onSceneFetched(index, scene)
             }
         }
 
         for step in steps.dropFirst(3) {
-            let scene = try? await fetchScene(for: step.coordinate)
-            await onSceneFetched(step.stepIndex, scene)
-            try? await Task.sleep(for: .milliseconds(200))
+            do {
+                let scene = try await fetchScene(for: step.coordinate)
+                if scene != nil { successCount += 1 }
+                await onSceneFetched(step.stepIndex, scene)
+            } catch {
+                AppLogger.lookAround.warning("Look Aroundシーン取得失敗: (\(step.coordinate.latitude), \(step.coordinate.longitude))")
+                await onSceneFetched(step.stepIndex, nil)
+            }
+            do {
+                try await Task.sleep(for: .milliseconds(200))
+            } catch {
+                AppLogger.lookAround.warning("スリープが中断されました")
+            }
         }
+
+        AppLogger.lookAround.info("Look Aroundシーン取得完了: \(totalCount)件中\(successCount)件成功")
     }
 }

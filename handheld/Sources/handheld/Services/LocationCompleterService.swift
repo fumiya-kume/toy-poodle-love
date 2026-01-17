@@ -1,5 +1,6 @@
 import Foundation
 import MapKit
+import os
 
 protocol LocationCompleterServiceProtocol: AnyObject {
     var suggestions: [SearchSuggestion] { get }
@@ -52,6 +53,7 @@ final class LocationCompleterService: NSObject, LocationCompleterServiceProtocol
 extension LocationCompleterService: MKLocalSearchCompleterDelegate {
     nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
         let newSuggestions = completer.results.map { SearchSuggestion(completion: $0) }
+        AppLogger.search.debug("サジェスト更新: \(newSuggestions.count)件")
         Task { @MainActor in
             self.suggestions = newSuggestions
             self.onSuggestionsUpdated?(newSuggestions)
@@ -59,6 +61,7 @@ extension LocationCompleterService: MKLocalSearchCompleterDelegate {
     }
 
     nonisolated func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        AppLogger.search.warning("サジェスト取得に失敗しました: \(error.localizedDescription)")
         Task { @MainActor in
             self.suggestions = []
             self.onSuggestionsUpdated?([])

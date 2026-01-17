@@ -41,7 +41,7 @@ struct LocationSearchViewModelTests {
         #expect(viewModel.selectedPlace == nil)
         #expect(viewModel.route == nil)
         #expect(viewModel.isSearching == false)
-        #expect(viewModel.errorMessage == nil)
+        #expect(viewModel.alertError == nil)
     }
 
     @Test func searchWithEmptyQuery() async {
@@ -66,7 +66,7 @@ struct LocationSearchViewModelTests {
         #expect(viewModel.searchResults.count == 1)
         #expect(viewModel.searchResults.first?.name == "東京駅")
         #expect(viewModel.isSearching == false)
-        #expect(viewModel.errorMessage == nil)
+        #expect(viewModel.alertError == nil)
     }
 
     @Test @MainActor func searchWithError() async {
@@ -81,7 +81,7 @@ struct LocationSearchViewModelTests {
         await viewModel.search()
 
         #expect(viewModel.searchResults.isEmpty)
-        #expect(viewModel.errorMessage != nil)
+        #expect(viewModel.alertError != nil)
         #expect(viewModel.isSearching == false)
     }
 
@@ -94,7 +94,7 @@ struct LocationSearchViewModelTests {
         #expect(viewModel.searchResults.isEmpty)
         #expect(viewModel.selectedPlace == nil)
         #expect(viewModel.route == nil)
-        #expect(viewModel.errorMessage == nil)
+        #expect(viewModel.alertError == nil)
     }
 
     private func createMockPlace(name: String) -> Place {

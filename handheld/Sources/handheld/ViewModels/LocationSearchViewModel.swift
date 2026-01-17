@@ -1,6 +1,7 @@
 import Foundation
 import MapKit
 import Observation
+import os
 import SwiftUI
 
 enum LookAroundTarget: String, CaseIterable, Identifiable {
@@ -17,7 +18,7 @@ final class LocationSearchViewModel {
     var selectedPlace: Place?
     var route: Route?
     var isSearching: Bool = false
-    var errorMessage: String?
+    var alertError: AppError?
     var mapCameraPosition: MapCameraPosition = .automatic
 
     var suggestions: [SearchSuggestion] = []
@@ -128,6 +129,7 @@ final class LocationSearchViewModel {
             let places = try await completerService.search(suggestion: suggestion)
             return places.first?.coordinate
         } catch {
+            AppLogger.search.warning("サジェストの座標取得に失敗しました: \(error.localizedDescription)")
             return nil
         }
     }
@@ -148,7 +150,8 @@ final class LocationSearchViewModel {
         }
 
         isSearching = true
-        errorMessage = nil
+        alertError = nil
+        AppLogger.search.info("検索を実行します: \(self.searchQuery)")
 
         do {
             let region: MKCoordinateRegion? = currentLocation.map {
@@ -158,8 +161,11 @@ final class LocationSearchViewModel {
                 )
             }
             searchResults = try await searchService.search(query: searchQuery, region: region)
+        } catch let error as AppError {
+            alertError = error
+            searchResults = []
         } catch {
-            errorMessage = "検索に失敗しました: \(error.localizedDescription)"
+            alertError = .searchFailed(underlying: error)
             searchResults = []
         }
 
@@ -168,6 +174,7 @@ final class LocationSearchViewModel {
 
     @MainActor
     func selectPlace(_ place: Place) async {
+        AppLogger.search.info("場所を選択しました: \(place.name)")
         selectedPlace = place
         route = nil
 
@@ -182,7 +189,7 @@ final class LocationSearchViewModel {
     @MainActor
     func calculateRoute(to destination: Place) async {
         guard let source = currentLocation else {
-            errorMessage = "現在地を取得できません"
+            alertError = .locationUnavailable
             return
         }
 
@@ -207,8 +214,10 @@ final class LocationSearchViewModel {
                 // Look Aroundを取得
                 await fetchLookAroundScenes()
             }
+        } catch let error as AppError {
+            alertError = error
         } catch {
-            errorMessage = "経路の計算に失敗しました: \(error.localizedDescription)"
+            alertError = .routeCalculationFailed(underlying: error)
         }
     }
 
@@ -252,7 +261,7 @@ final class LocationSearchViewModel {
             do {
                 destinationLookAroundScene = try await lookAroundService.fetchScene(for: destination)
             } catch {
-                print("Look Around fetch failed for destination: \(error.localizedDescription)")
+                AppLogger.lookAround.warning("目的地のLook Around取得に失敗しました: \(error.localizedDescription)")
             }
         }
 
@@ -262,7 +271,7 @@ final class LocationSearchViewModel {
             do {
                 nextStepLookAroundScene = try await lookAroundService.fetchScene(for: stepCoordinate)
             } catch {
-                print("Look Around fetch failed for next step: \(error.localizedDescription)")
+                AppLogger.lookAround.warning("次の曲がり角のLook Around取得に失敗しました: \(error.localizedDescription)")
             }
         }
 
@@ -303,7 +312,7 @@ final class LocationSearchViewModel {
         searchResults = []
         selectedPlace = nil
         route = nil
-        errorMessage = nil
+        alertError = nil
         suggestions = []
         showSuggestions = false
         debounceTask?.cancel()
@@ -340,7 +349,8 @@ final class LocationSearchViewModel {
     func selectSuggestion(_ suggestion: SearchSuggestion) async {
         showSuggestions = false
         isSearching = true
-        errorMessage = nil
+        alertError = nil
+        AppLogger.search.info("サジェストを選択しました: \(suggestion.title)")
 
         do {
             let places = try await completerService.search(suggestion: suggestion)
@@ -350,7 +360,8 @@ final class LocationSearchViewModel {
                 await selectPlace(firstPlace)
             }
         } catch {
-            errorMessage = "検索に失敗しました: \(error.localizedDescription)"
+            AppLogger.search.error("サジェストからの検索に失敗しました: \(error.localizedDescription)")
+            alertError = .searchFailed(underlying: error)
             searchResults = []
         }
 
@@ -381,6 +392,7 @@ final class LocationSearchViewModel {
     func startNavigation() async {
         guard let route = route else { return }
 
+        AppLogger.navigation.info("ナビゲーションを開始しました")
         isNavigationMode = true
         currentNavigationStepIndex = 0
         shouldShowNavigationLookAround = false
@@ -397,6 +409,7 @@ final class LocationSearchViewModel {
 
     @MainActor
     func stopNavigation() {
+        AppLogger.navigation.info("ナビゲーションを終了しました")
         isNavigationMode = false
         locationManager.stopContinuousTracking()
         navigationSteps = []
@@ -442,10 +455,14 @@ final class LocationSearchViewModel {
     @MainActor
     func recalculateRouteWithTransportType() async {
         guard let destination = selectedPlace else { return }
+        guard let source = currentLocation else {
+            alertError = .locationUnavailable
+            return
+        }
 
         do {
             route = try await directionsService.calculateRoute(
-                from: currentLocation!,
+                from: source,
                 to: destination.coordinate,
                 transportType: transportType
             )
@@ -464,8 +481,10 @@ final class LocationSearchViewModel {
 
                 await fetchLookAroundScenes()
             }
+        } catch let error as AppError {
+            alertError = error
         } catch {
-            errorMessage = "経路の計算に失敗しました: \(error.localizedDescription)"
+            alertError = .routeCalculationFailed(underlying: error)
         }
     }
 

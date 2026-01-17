@@ -40,8 +40,8 @@ struct LocationSearchView: View {
                         suggestionsList
                     }
 
-                    if let errorMessage = viewModel.errorMessage ?? viewModel.locationErrorMessage {
-                        errorBanner(message: errorMessage)
+                    if let locationErrorMessage = viewModel.locationErrorMessage {
+                        errorBanner(message: locationErrorMessage)
                     }
                 }
             }
@@ -177,6 +177,20 @@ struct LocationSearchView: View {
             AutoDriveSheetView(viewModel: viewModel)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+        }
+        .alert(
+            "エラー",
+            isPresented: Binding(
+                get: { viewModel.alertError != nil },
+                set: { if !$0 { viewModel.alertError = nil } }
+            ),
+            presenting: viewModel.alertError
+        ) { _ in
+            Button("OK") {
+                viewModel.alertError = nil
+            }
+        } message: { error in
+            Text(error.localizedDescription)
         }
         .onAppear {
             viewModel.requestLocationPermission()

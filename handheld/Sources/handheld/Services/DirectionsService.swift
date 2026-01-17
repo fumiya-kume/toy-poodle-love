@@ -1,5 +1,6 @@
 import Foundation
 import MapKit
+import os
 
 enum TransportType: String, CaseIterable, Identifiable {
     case walking
@@ -40,6 +41,8 @@ final class DirectionsService: DirectionsServiceProtocol {
     }
 
     func calculateRoute(from source: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D, transportType: TransportType) async throws -> Route? {
+        AppLogger.directions.info("ルート計算を開始します")
+
         let sourcePlacemark = MKPlacemark(coordinate: source)
         let destinationPlacemark = MKPlacemark(coordinate: destination)
 
@@ -49,12 +52,23 @@ final class DirectionsService: DirectionsServiceProtocol {
         request.transportType = transportType.mkTransportType
 
         let directions = MKDirections(request: request)
-        let response = try await directions.calculate()
 
-        guard let mkRoute = response.routes.first else {
-            return nil
+        do {
+            let response = try await directions.calculate()
+
+            guard let mkRoute = response.routes.first else {
+                AppLogger.directions.warning("経路が見つかりませんでした")
+                return nil
+            }
+
+            let route = Route(mkRoute: mkRoute)
+            let distanceKm = route.distance / 1000
+            let timeMinutes = route.expectedTravelTime / 60
+            AppLogger.directions.info("ルート計算完了: 距離 \(String(format: "%.1f", distanceKm))km、所要時間 \(Int(timeMinutes))分")
+            return route
+        } catch {
+            AppLogger.directions.error("ルート計算に失敗しました: \(error.localizedDescription)")
+            throw AppError.routeCalculationFailed(underlying: error)
         }
-
-        return Route(mkRoute: mkRoute)
     }
 }

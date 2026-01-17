@@ -1,5 +1,6 @@
 import Foundation
 import MapKit
+import os
 
 protocol AutoDriveServiceProtocol {
     func extractDrivePoints(from polyline: MKPolyline, interval: CLLocationDistance) -> [RouteCoordinatePoint]
@@ -22,7 +23,10 @@ final class AutoDriveService: AutoDriveServiceProtocol {
         interval: CLLocationDistance = 30
     ) -> [RouteCoordinatePoint] {
         let allCoordinates = polyline.coordinates
-        guard !allCoordinates.isEmpty else { return [] }
+        guard !allCoordinates.isEmpty else {
+            AppLogger.autoDrive.warning("ドライブポイントの抽出: 座標が空です")
+            return []
+        }
 
         var drivePoints: [RouteCoordinatePoint] = []
         var accumulatedDistance: CLLocationDistance = 0
@@ -54,6 +58,7 @@ final class AutoDriveService: AutoDriveServiceProtocol {
             ))
         }
 
+        AppLogger.autoDrive.info("ドライブポイントを抽出しました: \(drivePoints.count)件")
         return drivePoints
     }
 
@@ -63,6 +68,8 @@ final class AutoDriveService: AutoDriveServiceProtocol {
     ) async -> (successCount: Int, totalCount: Int) {
         var successCount = 0
         let totalCount = points.count
+
+        AppLogger.autoDrive.info("Look Aroundシーンの一括取得を開始します: \(totalCount)件")
 
         let batchSize = 5
 
@@ -74,8 +81,13 @@ final class AutoDriveService: AutoDriveServiceProtocol {
                 for index in batch {
                     let coordinate = points[index].coordinate
                     group.addTask {
-                        let scene = try? await self.lookAroundService.fetchScene(for: coordinate)
-                        return (index, scene)
+                        do {
+                            let scene = try await self.lookAroundService.fetchScene(for: coordinate)
+                            return (index, scene)
+                        } catch {
+                            AppLogger.autoDrive.warning("Look Aroundシーン取得失敗: インデックス \(index)")
+                            return (index, nil)
+                        }
                     }
                 }
 
@@ -89,6 +101,7 @@ final class AutoDriveService: AutoDriveServiceProtocol {
             }
         }
 
+        AppLogger.autoDrive.info("Look Aroundシーン取得完了: \(totalCount)件中\(successCount)件成功")
         return (successCount, totalCount)
     }
 }

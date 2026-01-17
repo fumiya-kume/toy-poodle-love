@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 import Observation
+import os
 
 enum LocationError: LocalizedError {
     case locationUnknown      // Code 0: 一時的に取得不可
@@ -76,6 +77,7 @@ final class LocationManager: NSObject {
 
     func startContinuousTracking() {
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
+            AppLogger.location.info("位置情報の権限がないためトラッキングを開始できません")
             requestLocationPermission()
             return
         }
@@ -83,12 +85,14 @@ final class LocationManager: NSObject {
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.startUpdatingLocation()
         isTracking = true
+        AppLogger.location.info("位置情報のトラッキングを開始しました")
     }
 
     func stopContinuousTracking() {
         locationManager.stopUpdatingLocation()
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         isTracking = false
+        AppLogger.location.info("位置情報のトラッキングを停止しました")
     }
 
     func requestLocationPermission() {
@@ -116,9 +120,11 @@ extension LocationManager: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         let locationErr = LocationError.from(error)
         locationError = locationErr
+        AppLogger.location.error("位置情報の取得に失敗しました: \(locationErr.errorDescription ?? "不明なエラー")")
 
         if locationErr.isRetryable && retryCount < maxRetryCount {
             retryCount += 1
+            AppLogger.location.info("位置情報の取得をリトライします (\(self.retryCount)/\(self.maxRetryCount))")
             DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) { [weak self] in
                 self?.locationManager.requestLocation()
             }
@@ -127,6 +133,7 @@ extension LocationManager: CLLocationManagerDelegate {
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationStatus = manager.authorizationStatus
+        AppLogger.location.info("位置情報の権限が変更されました: \(String(describing: manager.authorizationStatus))")
         if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
             retryCount = 0
             locationError = nil
