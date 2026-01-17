@@ -37,23 +37,27 @@ struct ContentView: View {
                         }
                         .buttonStyle(.plain)
 
-                        FeatureCard(
-                            icon: "heart.fill",
-                            title: "お気に入り",
-                            description: "保存した場所を確認"
-                        )
-                        .opacity(0.5)
-                        .overlay(alignment: .topTrailing) {
-                            Text("Coming Soon")
-                                .font(.caption2)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(AppTheme.primaryColor)
-                                .clipShape(Capsule())
-                                .padding(8)
+                        NavigationLink {
+                            PlanGeneratorView()
+                        } label: {
+                            FeatureCard(
+                                icon: "wand.and.stars",
+                                title: "プラン作成",
+                                description: "AIが観光プランを提案"
+                            )
                         }
+                        .buttonStyle(.plain)
+
+                        NavigationLink {
+                            FavoritesView()
+                        } label: {
+                            FeatureCard(
+                                icon: "heart.fill",
+                                title: "お気に入り",
+                                description: "保存した場所を確認"
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 20)
                     .opacity(hasAppeared ? 1 : 0)

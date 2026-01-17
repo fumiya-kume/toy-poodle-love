@@ -11,4 +11,6 @@ enum AppLogger {
     static let autoDrive = Logger(subsystem: subsystem, category: "AutoDrive")
     static let navigation = Logger(subsystem: subsystem, category: "Navigation")
     static let cache = Logger(subsystem: subsystem, category: "Cache")
+    static let ai = Logger(subsystem: subsystem, category: "AI")
+    static let data = Logger(subsystem: subsystem, category: "Data")
 }
