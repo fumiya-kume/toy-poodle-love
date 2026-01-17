@@ -10,4 +10,5 @@ enum AppLogger {
     static let lookAround = Logger(subsystem: subsystem, category: "LookAround")
     static let autoDrive = Logger(subsystem: subsystem, category: "AutoDrive")
     static let navigation = Logger(subsystem: subsystem, category: "Navigation")
+    static let cache = Logger(subsystem: subsystem, category: "Cache")
 }

@@ -59,6 +59,8 @@ final class LocationSearchViewModel {
     private let directionsService: DirectionsServiceProtocol
     private let completerService: LocationCompleterServiceProtocol
     private let lookAroundService: LookAroundServiceProtocol
+    private let geocodingCacheService: GeocodingCacheService
+    private let rateLimiter: RateLimiter
     private var debounceTask: Task<Void, Never>?
     private let debounceInterval: Duration = .milliseconds(300)
 
@@ -66,12 +68,16 @@ final class LocationSearchViewModel {
         searchService: LocationSearchServiceProtocol = LocationSearchService(),
         directionsService: DirectionsServiceProtocol = DirectionsService(),
         completerService: LocationCompleterServiceProtocol? = nil,
-        lookAroundService: LookAroundServiceProtocol = LookAroundService()
+        lookAroundService: LookAroundServiceProtocol = LookAroundService(),
+        geocodingCacheService: GeocodingCacheService = GeocodingCacheService(),
+        rateLimiter: RateLimiter = RateLimiter()
     ) {
         self.searchService = searchService
         self.directionsService = directionsService
         self.completerService = completerService ?? LocationCompleterService()
         self.lookAroundService = lookAroundService
+        self.geocodingCacheService = geocodingCacheService
+        self.rateLimiter = rateLimiter
         setupCompleterCallback()
     }
 
@@ -125,9 +131,33 @@ final class LocationSearchViewModel {
     }
 
     private func fetchCoordinate(for suggestion: SearchSuggestion) async -> CLLocationCoordinate2D? {
+        // 1. キャッシュ確認
+        if let cached = await geocodingCacheService.coordinate(
+            for: suggestion.title,
+            subtitle: suggestion.subtitle
+        ) {
+            return cached
+        }
+
+        // 2. レート制限チェック
+        guard await rateLimiter.tryRequest() else {
+            AppLogger.cache.warning("レート制限中のためスキップ: \(suggestion.title)")
+            return nil
+        }
+
+        // 3. API呼び出し
         do {
             let places = try await completerService.search(suggestion: suggestion)
-            return places.first?.coordinate
+            if let coordinate = places.first?.coordinate {
+                // 4. キャッシュに保存
+                await geocodingCacheService.cacheCoordinate(
+                    coordinate,
+                    for: suggestion.title,
+                    subtitle: suggestion.subtitle
+                )
+                return coordinate
+            }
+            return nil
         } catch {
             AppLogger.search.warning("サジェストの座標取得に失敗しました: \(error.localizedDescription)")
             return nil
