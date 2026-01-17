@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "cli": "ts-node src/index.ts"
   },
   "keywords": [
@@ -18,8 +18,11 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@eslint/eslintrc": "^3.0.0",
     "@types/node": "^20.0.0",
     "@types/react": "19.2.8",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.1.3",
     "ts-node": "^10.9.0",
     "typescript": "^5.0.0"
   },

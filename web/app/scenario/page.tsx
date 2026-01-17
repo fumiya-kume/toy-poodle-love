@@ -350,7 +350,7 @@ export default function ScenarioPage() {
                 JSON配列を貼り付け:
               </label>
               <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
-                例: [&#123;"name": "東京駅（スタート）", "address": "..."&#125;, ...]
+                例: [&#123;&quot;name&quot;: &quot;東京駅（スタート）&quot;, &quot;address&quot;: &quot;...&quot;&#125;, ...]
               </p>
               <textarea
                 value={jsonInput}
