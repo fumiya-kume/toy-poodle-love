@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var viewModel = ContentViewModel()
     @State private var hasAppeared = false
+    @State private var showPlanGenerator = false
 
     var body: some View {
         NavigationStack {
@@ -37,6 +38,18 @@ struct ContentView: View {
                         }
                         .buttonStyle(.plain)
 
+                        #if targetEnvironment(macCatalyst)
+                        Button {
+                            showPlanGenerator = true
+                        } label: {
+                            FeatureCard(
+                                icon: "wand.and.stars",
+                                title: "プラン作成",
+                                description: "AIが観光プランを提案"
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        #else
                         NavigationLink {
                             PlanGeneratorView()
                         } label: {
@@ -47,6 +60,7 @@ struct ContentView: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        #endif
 
                         NavigationLink {
                             FavoritesView()
@@ -85,6 +99,12 @@ struct ContentView: View {
                     hasAppeared = true
                 }
             }
+            #if targetEnvironment(macCatalyst)
+            .sheet(isPresented: $showPlanGenerator) {
+                PlanGeneratorView()
+                    .frame(width: 700, height: 600)
+            }
+            #endif
         }
     }
 }
