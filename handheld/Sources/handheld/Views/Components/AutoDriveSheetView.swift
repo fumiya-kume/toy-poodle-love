@@ -21,7 +21,7 @@ struct AutoDriveSheetView: View {
 
     private var headerView: some View {
         HStack {
-            Text("自動再生")
+            Text("オートドライブ")
                 .font(.headline)
 
             Spacer()

@@ -73,7 +73,7 @@ struct RouteInfoView: View {
                     Button(action: onStartAutoDrive) {
                         HStack {
                             Image(systemName: "play.circle.fill")
-                            Text("自動再生")
+                            Text("オートドライブ")
                         }
                         .font(.headline)
                         .foregroundColor(.white)

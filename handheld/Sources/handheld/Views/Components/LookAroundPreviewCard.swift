@@ -24,7 +24,7 @@ struct LookAroundPreviewCard: View {
                             .font(.title3)
                             .foregroundStyle(.green)
                     }
-                    .accessibilityLabel("自動再生")
+                    .accessibilityLabel("オートドライブ")
                 }
 
                 Button(action: onClose) {
