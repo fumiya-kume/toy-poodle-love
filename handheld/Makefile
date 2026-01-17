@@ -7,13 +7,13 @@ build: generate
 	xcodebuild -project handheld.xcodeproj -scheme handheld -sdk iphonesimulator build
 
 test: generate
-	xcodebuild test -project handheld.xcodeproj -scheme handheldTests -destination 'platform=iOS Simulator,name=iPhone 16'
+	xcodebuild test -project handheld.xcodeproj -scheme handheld -destination 'platform=iOS Simulator,name=iPhone 16'
 
 build-mac: generate
 	xcodebuild -project handheld.xcodeproj -scheme handheld -destination 'platform=macOS,variant=Mac Catalyst' CODE_SIGNING_ALLOWED=NO build
 
 test-mac: generate
-	xcodebuild test -project handheld.xcodeproj -scheme handheldTests -destination 'platform=macOS,variant=Mac Catalyst' CODE_SIGNING_ALLOWED=NO
+	xcodebuild test -project handheld.xcodeproj -scheme handheld -destination 'platform=macOS,variant=Mac Catalyst' CODE_SIGNING_ALLOWED=NO
 
 clean:
 	rm -rf handheld.xcodeproj
