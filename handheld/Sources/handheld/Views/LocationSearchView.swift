@@ -40,7 +40,7 @@ struct LocationSearchView: View {
                         suggestionsList
                     }
 
-                    if let errorMessage = viewModel.errorMessage {
+                    if let errorMessage = viewModel.errorMessage ?? viewModel.locationErrorMessage {
                         errorBanner(message: errorMessage)
                     }
                 }

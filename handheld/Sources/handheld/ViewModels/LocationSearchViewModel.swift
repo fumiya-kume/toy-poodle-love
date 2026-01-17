@@ -44,7 +44,14 @@ final class LocationSearchViewModel {
     let lookAroundTriggerDistance: CLLocationDistance = 200
     let stepCompletionDistance: CLLocationDistance = 30
 
+    // AutoDrive関連
+    var autoDriveConfiguration = AutoDriveConfiguration()
+    var autoDrivePoints: [RouteCoordinatePoint] = []
+    var currentAutoDriveIndex: Int = 0
+    private var autoDriveTimer: Timer?
+
     let locationManager = LocationManager()
+    private let autoDriveService: AutoDriveServiceProtocol = AutoDriveService()
 
     private let searchService: LocationSearchServiceProtocol
     private let directionsService: DirectionsServiceProtocol
@@ -126,6 +133,10 @@ final class LocationSearchViewModel {
 
     var currentLocation: CLLocationCoordinate2D? {
         locationManager.currentLocation
+    }
+
+    var locationErrorMessage: String? {
+        locationManager.locationError?.errorDescription
     }
 
     @MainActor
@@ -454,6 +465,120 @@ final class LocationSearchViewModel {
             }
         } catch {
             errorMessage = "経路の計算に失敗しました: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - AutoDrive
+
+    var currentAutoDriveScene: MKLookAroundScene? {
+        guard currentAutoDriveIndex < autoDrivePoints.count else { return nil }
+        return autoDrivePoints[currentAutoDriveIndex].lookAroundScene
+    }
+
+    var autoDriveTotalPoints: Int {
+        autoDrivePoints.count
+    }
+
+    var autoDriveProgress: Double {
+        guard autoDriveTotalPoints > 1 else { return 0 }
+        return Double(currentAutoDriveIndex) / Double(autoDriveTotalPoints - 1)
+    }
+
+    @MainActor
+    func startAutoDrive() async {
+        guard let route = route else { return }
+
+        autoDriveConfiguration.state = .loading(progress: 0, fetched: 0, total: 0)
+        autoDrivePoints = autoDriveService.extractDrivePoints(from: route.polyline, interval: 30)
+        currentAutoDriveIndex = 0
+
+        let totalPoints = autoDrivePoints.count
+        autoDriveConfiguration.state = .loading(progress: 0, fetched: 0, total: totalPoints)
+
+        let result = await autoDriveService.fetchAllScenes(for: autoDrivePoints) { [weak self] index, scene, _ in
+            guard let self = self else { return }
+            if index < self.autoDrivePoints.count {
+                self.autoDrivePoints[index].lookAroundScene = scene
+                self.autoDrivePoints[index].isLookAroundLoading = false
+                self.autoDrivePoints[index].lookAroundFetchFailed = scene == nil
+            }
+
+            let fetchedCount = self.autoDrivePoints.filter { !$0.isLookAroundLoading }.count
+            let progress = Double(fetchedCount) / Double(totalPoints)
+            self.autoDriveConfiguration.state = .loading(progress: progress, fetched: fetchedCount, total: totalPoints)
+        }
+
+        let successRate = Double(result.successCount) / Double(result.totalCount)
+        if successRate < autoDriveConfiguration.minimumSuccessRate {
+            autoDriveConfiguration.state = .failed(message: "Look Aroundデータが十分に取得できませんでした")
+            return
+        }
+
+        autoDriveConfiguration.state = .playing
+        startAutoDriveTimer()
+    }
+
+    @MainActor
+    func stopAutoDrive() {
+        autoDriveTimer?.invalidate()
+        autoDriveTimer = nil
+        autoDriveConfiguration.state = .idle
+        autoDrivePoints = []
+        currentAutoDriveIndex = 0
+    }
+
+    @MainActor
+    func pauseAutoDrive() {
+        autoDriveTimer?.invalidate()
+        autoDriveTimer = nil
+        autoDriveConfiguration.state = .paused
+    }
+
+    @MainActor
+    func resumeAutoDrive() {
+        autoDriveConfiguration.state = .playing
+        startAutoDriveTimer()
+    }
+
+    func setAutoDriveSpeed(_ speed: AutoDriveSpeed) {
+        autoDriveConfiguration.speed = speed
+        if autoDriveConfiguration.isPlaying {
+            autoDriveTimer?.invalidate()
+            startAutoDriveTimer()
+        }
+    }
+
+    @MainActor
+    func seekAutoDrive(to index: Int) {
+        guard index >= 0 && index < autoDrivePoints.count else { return }
+        currentAutoDriveIndex = index
+    }
+
+    private func startAutoDriveTimer() {
+        autoDriveTimer?.invalidate()
+        autoDriveTimer = Timer.scheduledTimer(withTimeInterval: autoDriveConfiguration.speed.intervalSeconds, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.advanceAutoDrive()
+            }
+        }
+    }
+
+    @MainActor
+    private func advanceAutoDrive() {
+        guard autoDriveConfiguration.isPlaying else { return }
+
+        // 次のシーンがある地点まで進める
+        var nextIndex = currentAutoDriveIndex + 1
+        while nextIndex < autoDrivePoints.count && autoDrivePoints[nextIndex].lookAroundScene == nil {
+            nextIndex += 1
+        }
+
+        if nextIndex >= autoDrivePoints.count {
+            autoDriveTimer?.invalidate()
+            autoDriveTimer = nil
+            autoDriveConfiguration.state = .completed
+        } else {
+            currentAutoDriveIndex = nextIndex
         }
     }
 }
