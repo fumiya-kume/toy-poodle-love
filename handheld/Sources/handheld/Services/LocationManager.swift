@@ -9,11 +9,29 @@ final class LocationManager: NSObject {
     var currentLocation: CLLocationCoordinate2D?
     var authorizationStatus: CLAuthorizationStatus = .notDetermined
     var locationError: Error?
+    var isTracking: Bool = false
 
     override init() {
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
+    }
+
+    func startContinuousTracking() {
+        guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
+            requestLocationPermission()
+            return
+        }
+        locationManager.distanceFilter = 10
+        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+        locationManager.startUpdatingLocation()
+        isTracking = true
+    }
+
+    func stopContinuousTracking() {
+        locationManager.stopUpdatingLocation()
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        isTracking = false
     }
 
     func requestLocationPermission() {

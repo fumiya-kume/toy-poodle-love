@@ -4,6 +4,7 @@ import MapKit
 struct LocationSearchView: View {
     @State private var viewModel = LocationSearchViewModel()
     @State private var showSearchResults = false
+    @State private var showNavigationLookAroundSheet = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -11,30 +12,42 @@ struct LocationSearchView: View {
                 .onTapGesture {
                     viewModel.hideSuggestions()
                 }
-
-            VStack(spacing: 0) {
-                SearchBar(text: $viewModel.searchQuery) {
-                    viewModel.hideSuggestions()
-                    Task {
-                        await viewModel.search()
-                        showSearchResults = !viewModel.searchResults.isEmpty
+                .onChange(of: viewModel.locationManager.isTracking) { _, isTracking in
+                    if isTracking, let location = viewModel.currentLocation {
+                        viewModel.updateNavigationForLocation(location)
                     }
-                } onTextChange: { _ in
-                    viewModel.updateSuggestions()
                 }
-                .padding(.top, 8)
-
-                if viewModel.showSuggestions {
-                    suggestionsList
+                .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+                    if viewModel.isNavigationMode, let location = viewModel.currentLocation {
+                        viewModel.updateNavigationForLocation(location)
+                    }
                 }
 
-                if let errorMessage = viewModel.errorMessage {
-                    errorBanner(message: errorMessage)
+            if !viewModel.isNavigationMode {
+                VStack(spacing: 0) {
+                    SearchBar(text: $viewModel.searchQuery) {
+                        viewModel.hideSuggestions()
+                        Task {
+                            await viewModel.search()
+                            showSearchResults = !viewModel.searchResults.isEmpty
+                        }
+                    } onTextChange: { _ in
+                        viewModel.updateSuggestions()
+                    }
+                    .padding(.top, 8)
+
+                    if viewModel.showSuggestions {
+                        suggestionsList
+                    }
+
+                    if let errorMessage = viewModel.errorMessage {
+                        errorBanner(message: errorMessage)
+                    }
                 }
             }
 
-            // Look Aroundプレビューカード
-            if viewModel.showLookAround || viewModel.isLoadingLookAround {
+            // Look Aroundプレビューカード（通常モード）
+            if !viewModel.isNavigationMode && (viewModel.showLookAround || viewModel.isLoadingLookAround) {
                 VStack {
                     Spacer()
                     HStack {
@@ -53,22 +66,74 @@ struct LocationSearchView: View {
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
                     .padding(.trailing, 16)
-                    .padding(.bottom, viewModel.route != nil ? 100 : 16)
+                    .padding(.bottom, viewModel.route != nil ? 160 : 16)
                 }
                 .animation(.spring(response: 0.3), value: viewModel.showLookAround)
             }
 
-            if let route = viewModel.route {
+            // ルート情報（通常モード）
+            if !viewModel.isNavigationMode, let route = viewModel.route {
                 VStack {
                     Spacer()
                     RouteInfoView(
                         route: route,
+                        transportType: $viewModel.transportType,
                         hasLookAroundAvailable: viewModel.hasLookAroundAvailable,
                         onLookAroundTap: {
                             viewModel.showLookAroundCard()
+                        },
+                        onTransportTypeChange: {
+                            Task {
+                                await viewModel.recalculateRouteWithTransportType()
+                            }
+                        },
+                        onStartNavigation: {
+                            Task {
+                                await viewModel.startNavigation()
+                            }
                         }
                     )
                     .padding()
+                }
+            }
+
+            // ナビゲーションモード
+            if viewModel.isNavigationMode {
+                NavigationOverlayView(
+                    currentStep: viewModel.currentNavigationStep,
+                    distanceToNextStep: viewModel.formattedDistanceToNextStep,
+                    onStopNavigation: {
+                        viewModel.stopNavigation()
+                    },
+                    onLookAroundTap: {
+                        showNavigationLookAroundSheet = true
+                    }
+                )
+                .padding(.top, 60)
+
+                // ナビモード中のLook Aroundプレビュー（200m以内で自動表示）
+                if viewModel.shouldShowNavigationLookAround,
+                   let step = viewModel.currentNavigationStep,
+                   step.lookAroundScene != nil {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            LookAroundPreviewCard(
+                                scene: step.lookAroundScene,
+                                locationName: step.instructions.isEmpty ? "次の曲がり角" : step.instructions,
+                                isLoading: step.isLookAroundLoading,
+                                onTap: {
+                                    showNavigationLookAroundSheet = true
+                                },
+                                onClose: {
+                                    viewModel.shouldShowNavigationLookAround = false
+                                }
+                            )
+                        }
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 100)
+                    }
                 }
             }
         }
@@ -84,6 +149,14 @@ struct LocationSearchView: View {
                 nextStepScene: viewModel.nextStepLookAroundScene,
                 destinationName: viewModel.selectedPlace?.name ?? "目的地",
                 hasNextStep: viewModel.hasNextStep
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showNavigationLookAroundSheet) {
+            NavigationLookAroundSheetView(
+                navigationSteps: viewModel.navigationSteps,
+                selectedStepIndex: $viewModel.currentNavigationStepIndex
             )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)

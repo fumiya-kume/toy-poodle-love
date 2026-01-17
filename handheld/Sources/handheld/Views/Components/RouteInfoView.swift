@@ -2,37 +2,69 @@ import SwiftUI
 
 struct RouteInfoView: View {
     let route: Route
+    @Binding var transportType: TransportType
     var hasLookAroundAvailable: Bool = false
     var onLookAroundTap: (() -> Void)?
+    var onTransportTypeChange: (() -> Void)?
+    var onStartNavigation: (() -> Void)?
 
     var body: some View {
-        HStack(spacing: 24) {
-            Label {
-                Text(route.formattedDistance)
-                    .font(.headline)
-            } icon: {
-                Image(systemName: "figure.walk")
-                    .foregroundColor(.blue)
-            }
-
-            Label {
-                Text(route.formattedTravelTime)
-                    .font(.headline)
-            } icon: {
-                Image(systemName: "clock.fill")
-                    .foregroundColor(.blue)
-            }
-
-            Spacer()
-
-            if let onLookAroundTap = onLookAroundTap {
-                Button(action: onLookAroundTap) {
-                    Image(systemName: "binoculars.fill")
-                        .font(.title2)
-                        .foregroundColor(hasLookAroundAvailable ? .blue : .gray)
+        VStack(spacing: 12) {
+            HStack(spacing: 16) {
+                Picker("交通手段", selection: $transportType) {
+                    ForEach(TransportType.allCases) { type in
+                        Image(systemName: type.icon)
+                            .tag(type)
+                    }
                 }
-                .disabled(!hasLookAroundAvailable)
-                .accessibilityLabel("Look Aroundを表示")
+                .pickerStyle(.segmented)
+                .frame(width: 100)
+                .onChange(of: transportType) {
+                    onTransportTypeChange?()
+                }
+
+                Label {
+                    Text(route.formattedDistance)
+                        .font(.headline)
+                } icon: {
+                    Image(systemName: transportType.icon)
+                        .foregroundColor(.blue)
+                }
+
+                Label {
+                    Text(route.formattedTravelTime)
+                        .font(.headline)
+                } icon: {
+                    Image(systemName: "clock.fill")
+                        .foregroundColor(.blue)
+                }
+
+                Spacer()
+
+                if let onLookAroundTap = onLookAroundTap {
+                    Button(action: onLookAroundTap) {
+                        Image(systemName: "binoculars.fill")
+                            .font(.title2)
+                            .foregroundColor(hasLookAroundAvailable ? .blue : .gray)
+                    }
+                    .disabled(!hasLookAroundAvailable)
+                    .accessibilityLabel("Look Aroundを表示")
+                }
+            }
+
+            if let onStartNavigation = onStartNavigation {
+                Button(action: onStartNavigation) {
+                    HStack {
+                        Image(systemName: "location.fill")
+                        Text("ナビ開始")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.blue)
+                    .cornerRadius(10)
+                }
             }
         }
         .padding()
@@ -43,6 +75,9 @@ struct RouteInfoView: View {
 }
 
 #Preview {
-    RouteInfoView(route: Route(mkRoute: .init()))
-        .padding()
+    RouteInfoView(
+        route: Route(mkRoute: .init()),
+        transportType: .constant(.automobile)
+    )
+    .padding()
 }

@@ -76,6 +76,77 @@ struct LookAroundSheetView: View {
     }
 }
 
+struct NavigationLookAroundSheetView: View {
+    let navigationSteps: [NavigationStep]
+    @Binding var selectedStepIndex: Int
+
+    private var currentScene: MKLookAroundScene? {
+        guard selectedStepIndex < navigationSteps.count else { return nil }
+        return navigationSteps[selectedStepIndex].lookAroundScene
+    }
+
+    private var currentStep: NavigationStep? {
+        guard selectedStepIndex < navigationSteps.count else { return nil }
+        return navigationSteps[selectedStepIndex]
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Button(action: { if selectedStepIndex > 0 { selectedStepIndex -= 1 } }) {
+                    Image(systemName: "chevron.left.circle.fill")
+                        .font(.title)
+                        .foregroundColor(selectedStepIndex > 0 ? .blue : .gray)
+                }
+                .disabled(selectedStepIndex <= 0)
+
+                Spacer()
+
+                VStack {
+                    Text("ステップ \(selectedStepIndex + 1) / \(navigationSteps.count)")
+                        .font(.headline)
+                    if let step = currentStep {
+                        Text(step.instructions.isEmpty ? "直進" : step.instructions)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer()
+
+                Button(action: { if selectedStepIndex < navigationSteps.count - 1 { selectedStepIndex += 1 } }) {
+                    Image(systemName: "chevron.right.circle.fill")
+                        .font(.title)
+                        .foregroundColor(selectedStepIndex < navigationSteps.count - 1 ? .blue : .gray)
+                }
+                .disabled(selectedStepIndex >= navigationSteps.count - 1)
+            }
+            .padding(.horizontal)
+
+            if let scene = currentScene {
+                LookAroundPreview(initialScene: scene)
+            } else if currentStep?.isLookAroundLoading == true {
+                VStack {
+                    ProgressView()
+                    Text("読み込み中...")
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ContentUnavailableView(
+                    "利用不可",
+                    systemImage: "eye.slash",
+                    description: Text("この地点ではLook Aroundを利用できません")
+                )
+            }
+
+            Spacer()
+        }
+        .padding(.top, 16)
+    }
+}
+
 #Preview {
     @Previewable @State var target: LookAroundTarget = .destination
 

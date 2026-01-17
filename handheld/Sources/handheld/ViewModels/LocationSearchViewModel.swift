@@ -32,6 +32,18 @@ final class LocationSearchViewModel {
     var showLookAroundSheet: Bool = false
     var lookAroundTarget: LookAroundTarget = .destination
 
+    // ナビゲーションモード
+    var isNavigationMode: Bool = false
+    var navigationSteps: [NavigationStep] = []
+    var currentNavigationStepIndex: Int = 0
+    var distanceToNextStep: CLLocationDistance = 0
+    var shouldShowNavigationLookAround: Bool = false
+    var transportType: TransportType = .automobile
+
+    // 閾値設定
+    let lookAroundTriggerDistance: CLLocationDistance = 200
+    let stepCompletionDistance: CLLocationDistance = 30
+
     let locationManager = LocationManager()
 
     private let searchService: LocationSearchServiceProtocol
@@ -288,5 +300,112 @@ final class LocationSearchViewModel {
     func hideSuggestions() {
         showSuggestions = false
         debounceTask?.cancel()
+    }
+
+    // MARK: - ナビゲーションモード
+
+    var currentNavigationStep: NavigationStep? {
+        guard currentNavigationStepIndex < navigationSteps.count else { return nil }
+        return navigationSteps[currentNavigationStepIndex]
+    }
+
+    var formattedDistanceToNextStep: String {
+        if distanceToNextStep >= 1000 {
+            return String(format: "%.1f km", distanceToNextStep / 1000)
+        } else {
+            return String(format: "%.0f m", distanceToNextStep)
+        }
+    }
+
+    @MainActor
+    func startNavigation() async {
+        guard let route = route else { return }
+
+        isNavigationMode = true
+        currentNavigationStepIndex = 0
+        shouldShowNavigationLookAround = false
+        showLookAround = false
+
+        navigationSteps = route.steps.enumerated().map { index, step in
+            NavigationStep(step: step, index: index)
+        }
+
+        await fetchAllNavigationLookAroundScenes()
+
+        locationManager.startContinuousTracking()
+    }
+
+    @MainActor
+    func stopNavigation() {
+        isNavigationMode = false
+        locationManager.stopContinuousTracking()
+        navigationSteps = []
+        currentNavigationStepIndex = 0
+        distanceToNextStep = 0
+        shouldShowNavigationLookAround = false
+    }
+
+    @MainActor
+    func updateNavigationForLocation(_ location: CLLocationCoordinate2D) {
+        guard isNavigationMode, currentNavigationStepIndex < navigationSteps.count else { return }
+
+        let currentStep = navigationSteps[currentNavigationStepIndex]
+        distanceToNextStep = location.distance(to: currentStep.coordinate)
+
+        if distanceToNextStep < stepCompletionDistance {
+            advanceToNextStep()
+        } else if distanceToNextStep < lookAroundTriggerDistance {
+            shouldShowNavigationLookAround = true
+        }
+    }
+
+    @MainActor
+    private func advanceToNextStep() {
+        currentNavigationStepIndex += 1
+        shouldShowNavigationLookAround = false
+
+        if currentNavigationStepIndex >= navigationSteps.count {
+            stopNavigation()
+        }
+    }
+
+    @MainActor
+    private func fetchAllNavigationLookAroundScenes() async {
+        await lookAroundService.fetchScenesProgressively(for: navigationSteps) { [weak self] index, scene in
+            guard let self = self, index < self.navigationSteps.count else { return }
+            self.navigationSteps[index].lookAroundScene = scene
+            self.navigationSteps[index].isLookAroundLoading = false
+            self.navigationSteps[index].lookAroundFetchFailed = scene == nil
+        }
+    }
+
+    @MainActor
+    func recalculateRouteWithTransportType() async {
+        guard let destination = selectedPlace else { return }
+
+        do {
+            route = try await directionsService.calculateRoute(
+                from: currentLocation!,
+                to: destination.coordinate,
+                transportType: transportType
+            )
+
+            if let route = route {
+                let routeRect = route.polyline.boundingMapRect
+                let region = MKCoordinateRegion(routeRect)
+                let paddedRegion = MKCoordinateRegion(
+                    center: region.center,
+                    span: MKCoordinateSpan(
+                        latitudeDelta: region.span.latitudeDelta * 1.3,
+                        longitudeDelta: region.span.longitudeDelta * 1.3
+                    )
+                )
+                mapCameraPosition = .region(paddedRegion)
+
+                await fetchLookAroundScenes()
+            }
+        } catch {
+            errorMessage = "経路の計算に失敗しました: \(error.localizedDescription)"
+        }
     }
 }
