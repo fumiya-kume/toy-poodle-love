@@ -4,11 +4,8 @@ struct SuggestionListItem: View {
     let suggestion: SearchSuggestion
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "magnifyingglass")
-                .font(.body)
-                .foregroundColor(.secondary)
-                .frame(width: 24)
+        HStack(alignment: .center, spacing: 12) {
+            CategoryIconView(category: suggestion.category, size: 36)
 
             VStack(alignment: .leading, spacing: 2) {
                 highlightedText(
@@ -18,25 +15,38 @@ struct SuggestionListItem: View {
                 .font(.body)
                 .lineLimit(1)
 
-                if !suggestion.subtitle.isEmpty {
-                    highlightedText(
-                        text: suggestion.subtitle,
-                        ranges: suggestion.subtitleHighlightRanges
-                    )
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                }
+                subtitleView
             }
 
             Spacer()
-
-            Image(systemName: "arrow.up.left")
-                .foregroundColor(.secondary)
-                .font(.caption)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private var subtitleView: some View {
+        if let formattedDistance = suggestion.formattedDistance {
+            if !suggestion.subtitle.isEmpty {
+                Text("\(formattedDistance)・\(suggestion.subtitle)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            } else {
+                Text(formattedDistance)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+        } else if !suggestion.subtitle.isEmpty {
+            highlightedText(
+                text: suggestion.subtitle,
+                ranges: suggestion.subtitleHighlightRanges
+            )
+            .font(.caption)
+            .foregroundColor(.secondary)
+            .lineLimit(1)
+        }
     }
 
     private func highlightedText(text: String, ranges: [NSRange]) -> Text {

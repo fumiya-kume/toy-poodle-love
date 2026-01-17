@@ -72,7 +72,55 @@ final class LocationSearchViewModel {
                 self?.suggestions = newSuggestions
                 self?.isSuggesting = false
                 self?.showSuggestions = !newSuggestions.isEmpty && !(self?.searchQuery.isEmpty ?? true)
+                // 距離を非同期で取得
+                await self?.fetchDistancesForSuggestions()
             }
+        }
+    }
+
+    @MainActor
+    private func fetchDistancesForSuggestions() async {
+        guard let userLocation = currentLocation else { return }
+
+        // 上位10件のみ距離を取得（パフォーマンス考慮）
+        let suggestionsToFetch = Array(suggestions.prefix(10))
+
+        await withTaskGroup(of: (UUID, CLLocationCoordinate2D?).self) { group in
+            for suggestion in suggestionsToFetch {
+                group.addTask {
+                    let coordinate = await self.fetchCoordinate(for: suggestion)
+                    return (suggestion.id, coordinate)
+                }
+            }
+
+            for await (id, coordinate) in group {
+                guard let coordinate = coordinate,
+                      let index = self.suggestions.firstIndex(where: { $0.id == id }) else {
+                    continue
+                }
+
+                let userCLLocation = CLLocation(
+                    latitude: userLocation.latitude,
+                    longitude: userLocation.longitude
+                )
+                let suggestionLocation = CLLocation(
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude
+                )
+                let distance = userCLLocation.distance(from: suggestionLocation)
+
+                self.suggestions[index].coordinate = coordinate
+                self.suggestions[index].distance = distance
+            }
+        }
+    }
+
+    private func fetchCoordinate(for suggestion: SearchSuggestion) async -> CLLocationCoordinate2D? {
+        do {
+            let places = try await completerService.search(suggestion: suggestion)
+            return places.first?.coordinate
+        } catch {
+            return nil
         }
     }
 

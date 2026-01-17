@@ -2,23 +2,85 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var viewModel = ContentViewModel()
+    @State private var hasAppeared = false
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                Text(viewModel.message)
-                    .font(.title)
+            ScrollView {
+                VStack(spacing: 32) {
+                    // ヒーローセクション
+                    HeroSection()
+                        .padding(.top, 40)
+                        .opacity(hasAppeared ? 1 : 0)
+                        .offset(y: hasAppeared ? 0 : 20)
 
-                NavigationLink {
-                    LocationSearchView()
-                } label: {
-                    Label("場所を検索", systemImage: "magnifyingglass")
-                        .font(.headline)
+                    // ウェルカムメッセージ
+                    Text(viewModel.message)
+                        .font(.title3)
+                        .fontWeight(.medium)
+                        .foregroundStyle(AppTheme.accentColor)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                        .opacity(hasAppeared ? 1 : 0)
+                        .offset(y: hasAppeared ? 0 : 15)
+
+                    // フィーチャーカード群
+                    VStack(spacing: 16) {
+                        NavigationLink {
+                            LocationSearchView()
+                        } label: {
+                            FeatureCard(
+                                icon: "magnifyingglass",
+                                title: "場所を検索",
+                                description: "お散歩コースを探しましょう"
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        FeatureCard(
+                            icon: "heart.fill",
+                            title: "お気に入り",
+                            description: "保存した場所を確認"
+                        )
+                        .opacity(0.5)
+                        .overlay(alignment: .topTrailing) {
+                            Text("Coming Soon")
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(AppTheme.primaryColor)
+                                .clipShape(Capsule())
+                                .padding(8)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .opacity(hasAppeared ? 1 : 0)
+                    .offset(y: hasAppeared ? 0 : 10)
+
+                    Spacer(minLength: 40)
                 }
-                .buttonStyle(.borderedProminent)
+                #if targetEnvironment(macCatalyst)
+                .frame(maxWidth: 600)
+                .frame(maxWidth: .infinity)
+                #endif
             }
-            .padding()
-            .navigationTitle("Toy Poodle Love")
+            .background(AppTheme.backgroundGradient.ignoresSafeArea())
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Toy Poodle Love")
+                        .font(.headline)
+                        .foregroundStyle(AppTheme.accentColor)
+                }
+            }
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.8).delay(0.1)) {
+                    hasAppeared = true
+                }
+            }
         }
     }
 }

@@ -272,7 +272,7 @@ struct LocationSearchView: View {
 
                             if suggestion.id != viewModel.suggestions.last?.id {
                                 Divider()
-                                    .padding(.leading, 36)
+                                    .padding(.leading, 48)
                             }
                         }
                     }
