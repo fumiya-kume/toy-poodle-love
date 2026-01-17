@@ -8,5 +8,8 @@ struct handheldApp: App {
             ContentView()
         }
         .modelContainer(for: Item.self)
+        #if targetEnvironment(macCatalyst)
+        .defaultSize(width: 1200, height: 800)
+        #endif
     }
 }
