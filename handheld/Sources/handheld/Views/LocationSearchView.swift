@@ -85,7 +85,7 @@ struct LocationSearchView: View {
                 destinationName: viewModel.selectedPlace?.name ?? "目的地",
                 hasNextStep: viewModel.hasNextStep
             )
-            .presentationDetents([.medium])
+            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
         .onAppear {

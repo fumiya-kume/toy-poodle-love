@@ -48,8 +48,6 @@ struct LookAroundSheetView: View {
 
             if let scene = currentScene {
                 LookAroundPreview(initialScene: scene)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal)
             } else {
                 ContentUnavailableView(
                     "利用不可",
@@ -88,6 +86,6 @@ struct LookAroundSheetView: View {
         destinationName: "東京タワー",
         hasNextStep: true
     )
-    .presentationDetents([.medium])
+    .presentationDetents([.large])
     .presentationDragIndicator(.visible)
 }
