@@ -9,6 +9,7 @@ options:
 
 settings:
   SWIFT_VERSION: "5.9"
+  TOOLCHAINS: com.apple.dt.toolchain.XcodeDefault
   CODE_SIGN_IDENTITY: "Apple Development"
   DEVELOPMENT_TEAM: R5YS6ZB47G
   CODE_SIGN_STYLE: Automatic
