@@ -61,6 +61,12 @@ struct LocationSearchView: View {
                             },
                             onClose: {
                                 viewModel.dismissLookAround()
+                            },
+                            onAutoDrive: {
+                                viewModel.showAutoDriveSheet = true
+                                Task {
+                                    await viewModel.startAutoDrive()
+                                }
                             }
                         )
                         .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -90,6 +96,12 @@ struct LocationSearchView: View {
                         onStartNavigation: {
                             Task {
                                 await viewModel.startNavigation()
+                            }
+                        },
+                        onStartAutoDrive: {
+                            viewModel.showAutoDriveSheet = true
+                            Task {
+                                await viewModel.startAutoDrive()
                             }
                         }
                     )
@@ -160,6 +172,11 @@ struct LocationSearchView: View {
             )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $viewModel.showAutoDriveSheet) {
+            AutoDriveSheetView(viewModel: viewModel)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
         .onAppear {
             viewModel.requestLocationPermission()

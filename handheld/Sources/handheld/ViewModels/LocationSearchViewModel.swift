@@ -48,6 +48,7 @@ final class LocationSearchViewModel {
     var autoDriveConfiguration = AutoDriveConfiguration()
     var autoDrivePoints: [RouteCoordinatePoint] = []
     var currentAutoDriveIndex: Int = 0
+    var showAutoDriveSheet: Bool = false
     private var autoDriveTimer: Timer?
 
     let locationManager = LocationManager()

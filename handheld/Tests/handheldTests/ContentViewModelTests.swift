@@ -10,6 +10,12 @@ struct ContentViewModelTests {
 
     @Test func initialMessage() {
         let viewModel = ContentViewModel()
-        #expect(viewModel.message == "Hello, Toy Poodle Love!")
+        let validMessages = [
+            "おはようございます！朝のお散歩はいかがですか？",
+            "こんにちは！お散歩を楽しみましょう",
+            "こんばんは！夕方のお散歩タイムですね",
+            "今日もお疲れさまでした"
+        ]
+        #expect(validMessages.contains(viewModel.message))
     }
 }

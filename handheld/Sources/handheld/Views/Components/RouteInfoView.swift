@@ -7,6 +7,7 @@ struct RouteInfoView: View {
     var onLookAroundTap: (() -> Void)?
     var onTransportTypeChange: (() -> Void)?
     var onStartNavigation: (() -> Void)?
+    var onStartAutoDrive: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -52,18 +53,35 @@ struct RouteInfoView: View {
                 }
             }
 
-            if let onStartNavigation = onStartNavigation {
-                Button(action: onStartNavigation) {
-                    HStack {
-                        Image(systemName: "location.fill")
-                        Text("ナビ開始")
+            HStack(spacing: 12) {
+                if let onStartNavigation = onStartNavigation {
+                    Button(action: onStartNavigation) {
+                        HStack {
+                            Image(systemName: "location.fill")
+                            Text("ナビ開始")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.blue)
+                        .cornerRadius(10)
                     }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.blue)
-                    .cornerRadius(10)
+                }
+
+                if let onStartAutoDrive = onStartAutoDrive, hasLookAroundAvailable {
+                    Button(action: onStartAutoDrive) {
+                        HStack {
+                            Image(systemName: "play.circle.fill")
+                            Text("自動再生")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.green)
+                        .cornerRadius(10)
+                    }
                 }
             }
         }

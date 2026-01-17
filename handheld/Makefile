@@ -7,7 +7,7 @@ build: generate
 	xcodebuild -project handheld.xcodeproj -scheme handheld -sdk iphonesimulator build
 
 test: generate
-	xcodebuild test -project handheld.xcodeproj -scheme handheldTests -destination 'platform=iOS Simulator,name=iPhone 17'
+	xcodebuild test -project handheld.xcodeproj -scheme handheldTests -destination 'platform=iOS Simulator,name=iPhone 16'
 
 build-mac: generate
 	xcodebuild -project handheld.xcodeproj -scheme handheld -destination 'platform=macOS,variant=Mac Catalyst' CODE_SIGNING_ALLOWED=NO build

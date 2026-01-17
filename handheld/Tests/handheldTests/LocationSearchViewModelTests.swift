@@ -24,6 +24,13 @@ struct MockDirectionsService: DirectionsServiceProtocol {
         }
         return mockRoute
     }
+
+    func calculateRoute(from source: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D, transportType: TransportType) async throws -> Route? {
+        if shouldThrowError {
+            throw NSError(domain: "MockError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Mock error"])
+        }
+        return mockRoute
+    }
 }
 
 struct LocationSearchViewModelTests {
@@ -122,6 +129,15 @@ struct MockLookAroundService: LookAroundServiceProtocol {
             throw NSError(domain: "MockError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Mock error"])
         }
         return mockScene
+    }
+
+    func fetchScenesProgressively(
+        for steps: [NavigationStep],
+        onSceneFetched: @escaping @MainActor (Int, MKLookAroundScene?) -> Void
+    ) async {
+        for (index, _) in steps.enumerated() {
+            await onSceneFetched(index, mockScene)
+        }
     }
 }
 

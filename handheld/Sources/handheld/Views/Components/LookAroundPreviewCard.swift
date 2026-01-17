@@ -7,6 +7,7 @@ struct LookAroundPreviewCard: View {
     let isLoading: Bool
     var onTap: () -> Void
     var onClose: () -> Void
+    var onAutoDrive: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -16,6 +17,15 @@ struct LookAroundPreviewCard: View {
                     .lineLimit(1)
 
                 Spacer()
+
+                if let onAutoDrive = onAutoDrive {
+                    Button(action: onAutoDrive) {
+                        Image(systemName: "play.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.green)
+                    }
+                    .accessibilityLabel("自動再生")
+                }
 
                 Button(action: onClose) {
                     Image(systemName: "xmark.circle.fill")
