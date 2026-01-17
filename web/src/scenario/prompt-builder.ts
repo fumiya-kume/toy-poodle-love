@@ -71,30 +71,24 @@ ${spotInfo}
 # 要件
 
 ## 長さ
-- 1500文字程度（1200〜1800文字の範囲）
-- 音声で読み上げると約2〜3分程度の長さ
+- 750文字程度（600〜900文字の範囲）
+- 音声で読み上げると約1〜1.5分程度の長さ
 
 ## 音声AI向け最適化
 - 一文は40文字以内を目安に、短く区切る
 - 「、」や「。」で適切に区切り、息継ぎポイントを作る
-- 難読漢字は避け、読みやすい表現を使う（例: 「風情」→「ふぜい」とルビを振るか「趣」に言い換え）
-- 数字は読み上げやすい形式で（例: 「1920年」→「せんきゅうひゃくにじゅうねん」ではなく「1920年、大正9年」のように補足）
-- 同音異義語は文脈で明確にする
+- 難読漢字は避け、読みやすい表現を使う
 - 専門用語には簡単な説明を添える
 
 ## 話し方のスタイル
 - 自然な話し言葉で、丁寧な敬語を使う
 - 「こちらは」「ご覧ください」などの呼びかけを含める
-- 過度に教科書的にならず、親しみやすいトーンで
-- 乗客の興味を引く小話やエピソードを交える
-- 季節や時間帯に応じた話題を入れると良い
+- 親しみやすいトーンで、興味を引くエピソードを交える
 
 ## 構成
-1. 導入: 地点への注目を促す（1〜2文）
-2. 概要: 地点の基本情報を紹介（2〜3文）
-3. 見どころ: 特徴的なポイントや歴史を詳しく説明（5〜8文）
-4. 豆知識: 興味深いエピソードや裏話（2〜3文）
-5. 締め: 写真撮影の提案や次の地点への期待を高める（1〜2文）
+1. 導入: 地点への注目を促す（1文）
+2. 概要・見どころ: 基本情報と特徴を紹介（4〜6文）
+3. 締め: 豆知識や次への期待（1〜2文）
 
 セリフのみを出力してください（説明や前置きは不要）。`;
   }
@@ -120,30 +114,24 @@ Generate a guide script explaining this location to passengers.
 # Requirements
 
 ## Length
-- Approximately 300-400 words (equivalent to about 1500 Japanese characters)
-- When read aloud, this should take about 2-3 minutes
+- Approximately 150-200 words (equivalent to about 750 Japanese characters)
+- When read aloud, this should take about 1-1.5 minutes
 
 ## Voice AI Optimization
-- Keep sentences short and clear, ideally under 20 words each
-- Use natural pauses with commas and periods for breath points
-- Avoid complex or technical jargon; use simple, conversational words
-- Spell out numbers when appropriate (e.g., "nineteen twenty" for 1920)
-- Avoid ambiguous words that might be mispronounced
+- Keep sentences short and clear, under 20 words each
+- Use natural pauses with commas and periods
+- Avoid complex jargon; use simple, conversational words
 - Add brief explanations for proper nouns or historical terms
 
 ## Speaking Style
 - Use natural spoken language with polite expressions
-- Include phrases like "Here we have...", "On your left/right...", "If you look ahead..."
-- Keep a friendly, approachable tone without being overly academic
-- Include interesting anecdotes or trivia to engage passengers
-- Reference the season, time of day, or current view when appropriate
+- Include phrases like "Here we have...", "On your left/right..."
+- Keep a friendly tone with interesting anecdotes
 
 ## Structure
-1. Introduction: Draw attention to the location (1-2 sentences)
-2. Overview: Provide basic information about the place (2-3 sentences)
-3. Highlights: Explain notable features and history in detail (5-8 sentences)
-4. Fun facts: Share interesting stories or lesser-known details (2-3 sentences)
-5. Closing: Suggest photo opportunities or build anticipation for the next stop (1-2 sentences)
+1. Introduction: Draw attention to the location (1 sentence)
+2. Overview & Highlights: Basic information and notable features (4-6 sentences)
+3. Closing: Fun fact or anticipation for the next stop (1-2 sentences)
 
 Output only the script (no explanations or preambles needed).`;
 }
