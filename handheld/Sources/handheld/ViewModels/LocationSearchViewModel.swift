@@ -54,6 +54,8 @@ final class LocationSearchViewModel {
     var currentAutoDriveIndex: Int = 0
     var showAutoDriveSheet: Bool = false
     private var autoDriveTimer: Timer?
+    private var prefetchTask: Task<Void, Never>?
+    private var lastPrefetchedIndex: Int = -1
 
     let locationManager = LocationManager()
     private let autoDriveService: AutoDriveServiceProtocol = AutoDriveService()
@@ -541,43 +543,74 @@ final class LocationSearchViewModel {
     func startAutoDrive() async {
         guard let route = route else { return }
 
-        autoDriveConfiguration.state = .loading(progress: 0, fetched: 0, total: 0)
+        // 初期化
         autoDrivePoints = autoDriveService.extractDrivePoints(from: route.polyline, interval: 30)
         currentAutoDriveIndex = 0
+        lastPrefetchedIndex = -1
 
         let totalPoints = autoDrivePoints.count
-        autoDriveConfiguration.state = .loading(progress: 0, fetched: 0, total: totalPoints)
+        let initialCount = min(autoDriveConfiguration.initialFetchCount, totalPoints)
 
-        let result = await autoDriveService.fetchAllScenes(for: autoDrivePoints) { [weak self] index, scene, _ in
-            guard let self = self else { return }
-            if index < self.autoDrivePoints.count {
-                self.autoDrivePoints[index].lookAroundScene = scene
-                self.autoDrivePoints[index].isLookAroundLoading = false
-                self.autoDrivePoints[index].lookAroundFetchFailed = scene == nil
-            }
+        autoDriveConfiguration.state = .initializing(fetchedCount: 0, requiredCount: initialCount)
+
+        // 初期シーン取得（最初の3件を並列取得）
+        let successCount = await autoDriveService.fetchInitialScenes(
+            for: autoDrivePoints,
+            initialCount: initialCount
+        ) { [weak self] index, scene in
+            guard let self = self, index < self.autoDrivePoints.count else { return }
+            self.autoDrivePoints[index].lookAroundScene = scene
+            self.autoDrivePoints[index].isLookAroundLoading = false
+            self.autoDrivePoints[index].lookAroundFetchFailed = scene == nil
 
             let fetchedCount = self.autoDrivePoints.filter { !$0.isLookAroundLoading }.count
-            let progress = Double(fetchedCount) / Double(totalPoints)
-            self.autoDriveConfiguration.state = .loading(progress: progress, fetched: fetchedCount, total: totalPoints)
+            self.autoDriveConfiguration.state = .initializing(fetchedCount: fetchedCount, requiredCount: initialCount)
         }
 
-        let successRate = Double(result.successCount) / Double(result.totalCount)
-        if successRate < autoDriveConfiguration.minimumSuccessRate {
-            autoDriveConfiguration.state = .failed(message: "Look Aroundデータが十分に取得できませんでした")
-            return
+        // 1件も成功しなかった場合、追加で取得を試みる
+        if successCount == 0 {
+            let additionalCount = min(3, totalPoints - initialCount)
+            if additionalCount > 0 {
+                let additionalSuccess = await autoDriveService.fetchInitialScenes(
+                    for: Array(autoDrivePoints.dropFirst(initialCount)),
+                    initialCount: additionalCount
+                ) { [weak self] index, scene in
+                    guard let self = self else { return }
+                    let actualIndex = initialCount + index
+                    if actualIndex < self.autoDrivePoints.count {
+                        self.autoDrivePoints[actualIndex].lookAroundScene = scene
+                        self.autoDrivePoints[actualIndex].isLookAroundLoading = false
+                        self.autoDrivePoints[actualIndex].lookAroundFetchFailed = scene == nil
+                    }
+                }
+
+                if additionalSuccess == 0 {
+                    autoDriveConfiguration.state = .failed(message: "Look Aroundデータが取得できませんでした")
+                    return
+                }
+            } else {
+                autoDriveConfiguration.state = .failed(message: "Look Aroundデータが取得できませんでした")
+                return
+            }
         }
 
+        // 再生開始
+        lastPrefetchedIndex = initialCount - 1
         autoDriveConfiguration.state = .playing
         startAutoDriveTimer()
+        startPrefetching()
     }
 
     @MainActor
     func stopAutoDrive() {
+        prefetchTask?.cancel()
+        prefetchTask = nil
         autoDriveTimer?.invalidate()
         autoDriveTimer = nil
         autoDriveConfiguration.state = .idle
         autoDrivePoints = []
         currentAutoDriveIndex = 0
+        lastPrefetchedIndex = -1
     }
 
     @MainActor
@@ -618,20 +651,80 @@ final class LocationSearchViewModel {
 
     @MainActor
     private func advanceAutoDrive() {
-        guard autoDriveConfiguration.isPlaying, !isUserInteractingWithMap else { return }
+        guard autoDriveConfiguration.isPlaying || autoDriveConfiguration.isBuffering,
+              !isUserInteractingWithMap else { return }
 
-        // 次のシーンがある地点まで進める
+        // 次のシーンがある地点を探す
         var nextIndex = currentAutoDriveIndex + 1
-        while nextIndex < autoDrivePoints.count && autoDrivePoints[nextIndex].lookAroundScene == nil {
+        while nextIndex < autoDrivePoints.count {
+            let point = autoDrivePoints[nextIndex]
+
+            // シーンがある場合は次へ進む
+            if point.lookAroundScene != nil {
+                break
+            }
+
+            // まだ取得中の場合はバッファリング状態に
+            if point.isLookAroundLoading {
+                autoDriveConfiguration.state = .buffering
+                return
+            }
+
+            // 取得失敗の場合はスキップ
             nextIndex += 1
         }
 
+        // バッファリングから復帰
+        if autoDriveConfiguration.isBuffering {
+            autoDriveConfiguration.state = .playing
+        }
+
         if nextIndex >= autoDrivePoints.count {
+            prefetchTask?.cancel()
+            prefetchTask = nil
             autoDriveTimer?.invalidate()
             autoDriveTimer = nil
             autoDriveConfiguration.state = .completed
         } else {
             currentAutoDriveIndex = nextIndex
+        }
+    }
+
+    private func startPrefetching() {
+        prefetchTask?.cancel()
+        prefetchTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self = self else { break }
+
+                await self.prefetchAhead()
+
+                // 500msごとにチェック
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+        }
+    }
+
+    @MainActor
+    private func prefetchAhead() async {
+        let currentIndex = currentAutoDriveIndex
+        let lookahead = autoDriveConfiguration.prefetchLookahead
+        let targetEndIndex = min(currentIndex + lookahead, autoDrivePoints.count)
+
+        // 既にプリフェッチ済みの範囲はスキップ
+        let startIndex = max(lastPrefetchedIndex + 1, currentIndex)
+
+        guard startIndex < targetEndIndex else { return }
+
+        await autoDriveService.prefetchScenes(
+            for: autoDrivePoints,
+            from: startIndex,
+            count: targetEndIndex - startIndex
+        ) { [weak self] index, scene in
+            guard let self = self, index < self.autoDrivePoints.count else { return }
+            self.autoDrivePoints[index].lookAroundScene = scene
+            self.autoDrivePoints[index].isLookAroundLoading = false
+            self.autoDrivePoints[index].lookAroundFetchFailed = scene == nil
+            self.lastPrefetchedIndex = max(self.lastPrefetchedIndex, index)
         }
     }
 }

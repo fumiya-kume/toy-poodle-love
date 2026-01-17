@@ -26,9 +26,11 @@ enum AutoDriveSpeed: String, CaseIterable, Identifiable {
 
 enum AutoDriveState: Equatable {
     case idle
+    case initializing(fetchedCount: Int, requiredCount: Int)
     case loading(progress: Double, fetched: Int, total: Int)
     case playing
     case paused
+    case buffering
     case completed
     case failed(message: String)
 }
@@ -36,22 +38,29 @@ enum AutoDriveState: Equatable {
 struct AutoDriveConfiguration {
     var speed: AutoDriveSpeed = .normal
     var state: AutoDriveState = .idle
-    var minimumSuccessRate: Double = 0.30
+
+    // 段階的取得の設定
+    let initialFetchCount: Int = 3
+    let prefetchLookahead: Int = 5
 
     var isPlaying: Bool {
         state == .playing
     }
 
-    var isLoading: Bool {
-        if case .loading = state { return true }
+    var isInitializing: Bool {
+        if case .initializing = state { return true }
         return false
+    }
+
+    var isBuffering: Bool {
+        state == .buffering
     }
 
     var isActive: Bool {
         switch state {
         case .idle, .completed, .failed:
             return false
-        case .loading, .playing, .paused:
+        case .initializing, .loading, .playing, .paused, .buffering:
             return true
         }
     }

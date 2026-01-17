@@ -41,6 +41,9 @@ struct AutoDriveSheetView: View {
         case .idle:
             EmptyView()
 
+        case .initializing(let fetchedCount, let requiredCount):
+            initializingView(fetchedCount: fetchedCount, requiredCount: requiredCount)
+
         case .loading(let progress, let fetched, let total):
             AutoDriveLoadingView(
                 progress: progress,
@@ -57,11 +60,86 @@ struct AutoDriveSheetView: View {
         case .playing, .paused:
             playbackView
 
+        case .buffering:
+            bufferingView
+
         case .completed:
             completedView
 
         case .failed(let message):
             failedView(message: message)
+        }
+    }
+
+    private func initializingView(fetchedCount: Int, requiredCount: Int) -> some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            ProgressView()
+                .scaleEffect(1.5)
+
+            Text("準備中...")
+                .font(.headline)
+
+            Text("\(fetchedCount)/\(requiredCount) シーンを取得中")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+
+            Button("キャンセル") {
+                viewModel.stopAutoDrive()
+                dismiss()
+            }
+            .buttonStyle(.bordered)
+
+            Spacer()
+        }
+        .padding()
+    }
+
+    private var bufferingView: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                AutoDriveLookAroundView(
+                    scene: viewModel.currentAutoDriveScene,
+                    isLoading: false,
+                    pointIndex: viewModel.currentAutoDriveIndex,
+                    totalPoints: viewModel.autoDriveTotalPoints
+                )
+
+                // バッファリングオーバーレイ
+                Color.black.opacity(0.3)
+                    .overlay {
+                        VStack(spacing: 12) {
+                            ProgressView()
+                                .scaleEffect(1.2)
+                                .tint(.white)
+                            Text("次のシーンを読み込み中...")
+                                .font(.subheadline)
+                                .foregroundColor(.white)
+                        }
+                    }
+            }
+
+            AutoDriveControlsView(
+                isPlaying: false,
+                speed: viewModel.autoDriveConfiguration.speed,
+                progress: viewModel.autoDriveProgress,
+                currentIndex: viewModel.currentAutoDriveIndex,
+                totalPoints: viewModel.autoDriveTotalPoints,
+                onPlayPause: { },
+                onStop: {
+                    viewModel.stopAutoDrive()
+                    dismiss()
+                },
+                onSpeedChange: { speed in
+                    viewModel.setAutoDriveSpeed(speed)
+                },
+                onSeek: { progress in
+                    let index = Int(progress * Double(viewModel.autoDriveTotalPoints - 1))
+                    viewModel.seekAutoDrive(to: index)
+                }
+            )
+            .padding(.bottom)
         }
     }
 
