@@ -5,11 +5,13 @@ struct LocationSearchView: View {
     @State private var viewModel = LocationSearchViewModel()
     @State private var showSearchResults = false
     @State private var showNavigationLookAroundSheet = false
+    @FocusState private var isSearchFieldFocused: Bool
 
     var body: some View {
         ZStack(alignment: .top) {
             mapView
                 .onTapGesture {
+                    isSearchFieldFocused = false
                     viewModel.hideSuggestions()
                 }
                 .onChange(of: viewModel.locationManager.isTracking) { _, isTracking in
@@ -26,15 +28,20 @@ struct LocationSearchView: View {
 
             if !viewModel.isNavigationMode {
                 VStack(spacing: 0) {
-                    SearchBar(text: $viewModel.searchQuery) {
-                        viewModel.hideSuggestions()
-                        Task {
-                            await viewModel.search()
-                            showSearchResults = !viewModel.searchResults.isEmpty
-                        }
-                    } onTextChange: { _ in
-                        viewModel.updateSuggestions()
-                    }
+                    SearchBar(
+                        text: $viewModel.searchQuery,
+                        onSearch: {
+                            viewModel.hideSuggestions()
+                            Task {
+                                await viewModel.search()
+                                showSearchResults = !viewModel.searchResults.isEmpty
+                            }
+                        },
+                        onTextChange: { _ in
+                            viewModel.updateSuggestions()
+                        },
+                        isFocused: $isSearchFieldFocused
+                    )
                     .padding(.top, 8)
 
                     if viewModel.showSuggestions {

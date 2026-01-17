@@ -5,6 +5,7 @@ struct SearchBar: View {
     var placeholder: String = "場所を入力..."
     var onSearch: () -> Void
     var onTextChange: ((String) -> Void)?
+    var isFocused: FocusState<Bool>.Binding
 
     var body: some View {
         HStack {
@@ -15,6 +16,7 @@ struct SearchBar: View {
                 TextField(placeholder, text: $text)
                     .textFieldStyle(.plain)
                     .autocorrectionDisabled()
+                    .focused(isFocused)
                     .onSubmit {
                         onSearch()
                     }
@@ -48,7 +50,8 @@ struct SearchBar: View {
 }
 
 #Preview {
-    SearchBar(text: .constant("東京駅")) {
-        // no-op
-    }
+    @Previewable @FocusState var isFocused: Bool
+    SearchBar(text: .constant("東京駅"), onSearch: {
+        print("Search tapped")
+    }, isFocused: $isFocused)
 }
