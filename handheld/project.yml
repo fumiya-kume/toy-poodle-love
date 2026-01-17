@@ -9,6 +9,9 @@ options:
 
 settings:
   SWIFT_VERSION: "5.9"
+  CODE_SIGN_IDENTITY: "Apple Development"
+  DEVELOPMENT_TEAM: R5YS6ZB47G
+  CODE_SIGN_STYLE: Automatic
 
 targets:
   handheld:
@@ -19,6 +22,9 @@ targets:
       - Sources/handheld
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.fumiyakume.handheld
+      CODE_SIGN_IDENTITY: "Apple Development"
+      DEVELOPMENT_TEAM: R5YS6ZB47G
+      CODE_SIGN_STYLE: Automatic
       INFOPLIST_GENERATION_MODE: GeneratedFile
       MARKETING_VERSION: "1.0.0"
       CURRENT_PROJECT_VERSION: "1"
