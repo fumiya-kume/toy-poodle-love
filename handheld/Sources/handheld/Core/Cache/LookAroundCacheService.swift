@@ -49,7 +49,7 @@ actor LookAroundCacheService {
         self.configuration = configuration
         self.cacheFileURL = Self.defaultCacheFileURL()
 
-        Task {
+        Task.detached { [self] in
             await loadAvailabilityCache()
         }
     }
@@ -201,7 +201,7 @@ actor LookAroundCacheService {
     private func scheduleSave() {
         guard saveTask == nil else { return }
 
-        saveTask = Task {
+        saveTask = Task.detached { [self] in
             try? await Task.sleep(for: saveDebounce)
             await saveAvailabilityCache()
             await clearSaveTask()

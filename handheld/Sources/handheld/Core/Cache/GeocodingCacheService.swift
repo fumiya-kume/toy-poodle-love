@@ -15,7 +15,7 @@ actor GeocodingCacheService {
         self.configuration = configuration
         self.cacheFileURL = Self.defaultCacheFileURL()
 
-        Task {
+        Task.detached { [self] in
             await loadCache()
         }
     }
@@ -124,7 +124,7 @@ actor GeocodingCacheService {
     private func scheduleSave() {
         guard saveTask == nil else { return }
 
-        saveTask = Task {
+        saveTask = Task.detached { [self] in
             try? await Task.sleep(for: saveDebounce)
             await saveCache()
             await clearSaveTask()
