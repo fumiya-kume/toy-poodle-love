@@ -26,13 +26,12 @@ jobs:
   build-and-test-ios:
     name: Build & Test (iOS)
     runs-on: macos-15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Select Xcode version
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -46,13 +45,11 @@ jobs:
             ${{ runner.os }}-homebrew-xcodegen-
 
       - name: Install xcodegen
+        env:
+          HOMEBREW_NO_ANALYTICS: "1"
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
         run: brew install xcodegen
-
-      - name: Generate Xcode project
-        run: make generate
-
-      - name: Build for iOS Simulator
-        run: make build
 
       - name: Run iOS tests
         run: make test
@@ -60,13 +57,12 @@ jobs:
   build-and-test-mac:
     name: Build & Test (Mac Catalyst)
     runs-on: macos-15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Select Xcode version
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -80,13 +76,11 @@ jobs:
             ${{ runner.os }}-homebrew-xcodegen-
 
       - name: Install xcodegen
+        env:
+          HOMEBREW_NO_ANALYTICS: "1"
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
         run: brew install xcodegen
-
-      - name: Generate Xcode project
-        run: make generate
-
-      - name: Build for Mac Catalyst
-        run: make build-mac
 
       - name: Run Mac Catalyst tests
         run: make test-mac
