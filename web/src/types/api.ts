@@ -4,6 +4,7 @@
 
 import { RouteInput, ScenarioOutput, ModelSelection, ScenarioIntegrationInput, ScenarioIntegrationOutput } from './scenario';
 import { RouteGenerationInput, RouteGenerationOutput } from './route';
+import { PlaceRoutePipelineInput, PlaceRoutePipelineOutput, RouteSummary } from './place-route-pipeline';
 
 /**
  * シナリオ生成APIリクエスト
@@ -94,6 +95,28 @@ export interface RouteGenerationResponse {
   success: boolean;
   /** 生成されたルート */
   data?: RouteGenerationOutput;
+  /** エラーメッセージ */
+  error?: string;
+}
+
+/**
+ * Place Route パイプラインAPIリクエスト
+ */
+export interface PlaceRoutePipelineRequest {
+  /** パイプライン入力 */
+  input: PlaceRoutePipelineInput;
+}
+
+/**
+ * Place Route パイプラインAPIレスポンス
+ */
+export interface PlaceRoutePipelineResponse {
+  /** 成功フラグ */
+  success: boolean;
+  /** パイプライン出力 */
+  data?: PlaceRoutePipelineOutput;
+  /** ルートサマリー（成功時のみ） */
+  summary?: RouteSummary;
   /** エラーメッセージ */
   error?: string;
 }

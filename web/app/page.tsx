@@ -7,8 +7,13 @@ import {
   OptimizedWaypoint,
   RouteLeg,
 } from '../src/types/place-route';
+import {
+  PlaceRoutePipelineResponse,
+  PlaceRoutePipelineRequest,
+} from '../src/types/api';
+import { RouteSummary, PlaceRoutePipelineOutput } from '../src/types/place-route-pipeline';
 
-type TabType = 'ai' | 'route';
+type TabType = 'ai' | 'route' | 'pipeline';
 
 interface ModelResponse {
   qwen?: string;
@@ -23,7 +28,7 @@ interface OptimizedRouteResult {
 }
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<TabType>('route');
+  const [activeTab, setActiveTab] = useState<TabType>('pipeline');
 
   // AI テキスト生成用のstate
   const [message, setMessage] = useState('');
@@ -40,6 +45,16 @@ export default function Home() {
   const [geocodedPlaces, setGeocodedPlaces] = useState<GeocodedPlace[]>([]);
   const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRouteResult | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
+
+  // パイプライン用のstate
+  const [pipelineStartPoint, setPipelineStartPoint] = useState('');
+  const [pipelinePurpose, setPipelinePurpose] = useState('');
+  const [pipelineSpotCount, setPipelineSpotCount] = useState(5);
+  const [pipelineModel, setPipelineModel] = useState<'qwen' | 'gemini'>('gemini');
+  const [pipelineLoading, setPipelineLoading] = useState(false);
+  const [pipelineResult, setPipelineResult] = useState<PlaceRoutePipelineOutput | null>(null);
+  const [pipelineSummary, setPipelineSummary] = useState<RouteSummary | null>(null);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   const handleModelToggle = (model: 'qwen' | 'gemini') => {
     setEnabledModels(prev => ({
@@ -183,6 +198,62 @@ export default function Home() {
     }
   };
 
+  const handlePipelineExecute = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!pipelineStartPoint.trim()) {
+      alert('スタート地点を入力してください');
+      return;
+    }
+
+    if (!pipelinePurpose.trim()) {
+      alert('目的・テーマを入力してください');
+      return;
+    }
+
+    setPipelineLoading(true);
+    setPipelineError(null);
+    setPipelineResult(null);
+    setPipelineSummary(null);
+
+    try {
+      const request: PlaceRoutePipelineRequest = {
+        input: {
+          startPoint: pipelineStartPoint,
+          purpose: pipelinePurpose,
+          spotCount: pipelineSpotCount,
+          model: pipelineModel,
+          travelMode: 'DRIVE',
+          optimizeWaypointOrder: true,
+        },
+      };
+
+      const response = await fetch('/api/place-route/pipeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+
+      const data: PlaceRoutePipelineResponse = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'パイプラインの実行に失敗しました');
+      }
+
+      if (data.data) {
+        setPipelineResult(data.data);
+      }
+      if (data.summary) {
+        setPipelineSummary(data.summary);
+      }
+    } catch (error) {
+      console.error('パイプライン実行エラー:', error);
+      setPipelineError(error instanceof Error ? error.message : 'エラーが発生しました');
+    } finally {
+      setPipelineLoading(false);
+    }
+  };
+
   const formatDistance = (meters: number) => {
     if (meters >= 1000) {
       return `${(meters / 1000).toFixed(1)} km`;
@@ -218,6 +289,22 @@ export default function Home() {
         borderBottom: '2px solid #e5e7eb'
       }}>
         <button
+          onClick={() => setActiveTab('pipeline')}
+          style={{
+            padding: '12px 24px',
+            fontSize: '16px',
+            fontWeight: activeTab === 'pipeline' ? '600' : '400',
+            backgroundColor: 'transparent',
+            color: activeTab === 'pipeline' ? '#0070f3' : '#6b7280',
+            border: 'none',
+            borderBottom: activeTab === 'pipeline' ? '2px solid #0070f3' : '2px solid transparent',
+            marginBottom: '-2px',
+            cursor: 'pointer',
+          }}
+        >
+          AI ルート生成
+        </button>
+        <button
           onClick={() => setActiveTab('route')}
           style={{
             padding: '12px 24px',
@@ -250,6 +337,276 @@ export default function Home() {
           AI テキスト生成
         </button>
       </div>
+
+      {/* AI ルート生成パイプラインタブ */}
+      {activeTab === 'pipeline' && (
+        <div>
+          <form onSubmit={handlePipelineExecute}>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '600'
+              }}>
+                スタート地点:
+              </label>
+              <input
+                type="text"
+                value={pipelineStartPoint}
+                onChange={(e) => setPipelineStartPoint(e.target.value)}
+                placeholder="例: 東京駅"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '16px',
+                  border: '1px solid #ccc',
+                  borderRadius: '8px',
+                  fontFamily: 'inherit'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '600'
+              }}>
+                目的・テーマ:
+              </label>
+              <textarea
+                value={pipelinePurpose}
+                onChange={(e) => setPipelinePurpose(e.target.value)}
+                placeholder="例: 皇居周辺を観光したい、歴史的建造物を巡りたい"
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '16px',
+                  border: '1px solid #ccc',
+                  borderRadius: '8px',
+                  resize: 'vertical',
+                  fontFamily: 'inherit'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  地点数:
+                </label>
+                <select
+                  value={pipelineSpotCount}
+                  onChange={(e) => setPipelineSpotCount(Number(e.target.value))}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontSize: '16px',
+                    border: '1px solid #ccc',
+                    borderRadius: '8px',
+                    fontFamily: 'inherit',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  {[3, 4, 5, 6, 7, 8].map(n => (
+                    <option key={n} value={n}>{n}箇所</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  AIモデル:
+                </label>
+                <select
+                  value={pipelineModel}
+                  onChange={(e) => setPipelineModel(e.target.value as 'qwen' | 'gemini')}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontSize: '16px',
+                    border: '1px solid #ccc',
+                    borderRadius: '8px',
+                    fontFamily: 'inherit',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="gemini">Gemini</option>
+                  <option value="qwen">Qwen</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={pipelineLoading}
+              style={{
+                width: '100%',
+                padding: '12px 24px',
+                fontSize: '16px',
+                fontWeight: '600',
+                backgroundColor: pipelineLoading ? '#ccc' : '#8b5cf6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: pipelineLoading ? 'not-allowed' : 'pointer',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              {pipelineLoading ? 'ルート生成中...' : 'AIでルートを生成'}
+            </button>
+
+            <p style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>
+              AIが観光スポットを提案 → 住所を取得 → 最適なルートを計算
+            </p>
+          </form>
+
+          {/* エラー表示 */}
+          {pipelineError && (
+            <div style={{
+              marginTop: '24px',
+              padding: '16px',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              color: '#dc2626'
+            }}>
+              {pipelineError}
+            </div>
+          )}
+
+          {/* 処理状況表示 */}
+          {pipelineResult && !pipelineSummary && (
+            <div style={{ marginTop: '24px' }}>
+              <h3 style={{ fontSize: '18px', marginBottom: '12px', fontWeight: '600' }}>
+                処理状況
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{
+                  padding: '12px',
+                  backgroundColor: pipelineResult.aiGeneration.success ? '#f0fdf4' : '#fef2f2',
+                  borderRadius: '8px',
+                  border: `1px solid ${pipelineResult.aiGeneration.success ? '#22c55e' : '#fecaca'}`
+                }}>
+                  Step 1: AI生成 - {pipelineResult.aiGeneration.success ? '成功' : '失敗'}
+                  ({pipelineResult.aiGeneration.processingTimeMs}ms)
+                </div>
+                <div style={{
+                  padding: '12px',
+                  backgroundColor: pipelineResult.geocoding.success ? '#f0fdf4' : '#fef2f2',
+                  borderRadius: '8px',
+                  border: `1px solid ${pipelineResult.geocoding.success ? '#22c55e' : '#fecaca'}`
+                }}>
+                  Step 2: ジオコーディング - {pipelineResult.geocoding.success ? '成功' : '失敗'}
+                  ({pipelineResult.geocoding.processingTimeMs}ms)
+                </div>
+                <div style={{
+                  padding: '12px',
+                  backgroundColor: pipelineResult.routeOptimization.success ? '#f0fdf4' : '#fef2f2',
+                  borderRadius: '8px',
+                  border: `1px solid ${pipelineResult.routeOptimization.success ? '#22c55e' : '#fecaca'}`
+                }}>
+                  Step 3: ルート最適化 - {pipelineResult.routeOptimization.success ? '成功' : '失敗'}
+                  ({pipelineResult.routeOptimization.processingTimeMs}ms)
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 生成されたルート */}
+          {pipelineSummary && (
+            <div style={{ marginTop: '24px' }}>
+              <h3 style={{ fontSize: '20px', marginBottom: '16px', fontWeight: '600' }}>
+                生成されたルート
+              </h3>
+
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#faf5ff',
+                border: '2px solid #8b5cf6',
+                borderRadius: '8px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ display: 'flex', gap: '24px', justifyContent: 'center' }}>
+                  <div>
+                    <span style={{ fontSize: '14px', color: '#6b7280' }}>総距離</span>
+                    <p style={{ fontSize: '24px', fontWeight: '700', margin: '4px 0 0', color: '#6d28d9' }}>
+                      {pipelineSummary.totalDistanceText}
+                    </p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '14px', color: '#6b7280' }}>総所要時間</span>
+                    <p style={{ fontSize: '24px', fontWeight: '700', margin: '4px 0 0', color: '#6d28d9' }}>
+                      {pipelineSummary.totalDurationText}
+                    </p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '14px', color: '#6b7280' }}>処理時間</span>
+                    <p style={{ fontSize: '24px', fontWeight: '700', margin: '4px 0 0', color: '#6d28d9' }}>
+                      {pipelineResult ? `${(pipelineResult.totalProcessingTimeMs / 1000).toFixed(1)}秒` : '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {pipelineSummary.spots.map((spot, i) => (
+                  <li key={i} style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    padding: '16px 0',
+                    borderBottom: i < pipelineSummary.spots.length - 1 ? '1px solid #e5e7eb' : 'none'
+                  }}>
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      backgroundColor: spot.type === 'start' ? '#22c55e' : spot.type === 'destination' ? '#ef4444' : '#8b5cf6',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: '600',
+                      flexShrink: 0
+                    }}>
+                      {spot.order + 1}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: 0, fontWeight: '600', fontSize: '16px' }}>
+                        {spot.name}
+                      </p>
+                      {spot.address && (
+                        <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#6b7280' }}>
+                          {spot.address}
+                        </p>
+                      )}
+                      <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#9ca3af' }}>
+                        {spot.type === 'start' ? '出発地点' : spot.type === 'destination' ? '到着地点' : '経由地点'}
+                      </p>
+                    </div>
+                    {spot.distanceToNextText && spot.durationToNextText && (
+                      <div style={{ textAlign: 'right', fontSize: '14px', color: '#6b7280' }}>
+                        <p style={{ margin: 0 }}>{spot.distanceToNextText}</p>
+                        <p style={{ margin: '2px 0 0' }}>{spot.durationToNextText}</p>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ルート最適化タブ */}
       {activeTab === 'route' && (
