@@ -12,7 +12,7 @@ enum LocationError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .locationUnknown:
-            return "現在地を特定できません。屋外で再試行してください"
+            return "現在地を特定できません。Wi-Fiをオンにして再試行してください"
         case .denied:
             return "位置情報へのアクセスが拒否されています"
         case .network:
@@ -62,6 +62,7 @@ final class LocationManager: NSObject {
     var authorizationStatus: CLAuthorizationStatus = .notDetermined
     var locationError: LocationError?
     var isTracking: Bool = false
+    var horizontalAccuracy: CLLocationAccuracy?
 
     private var retryCount: Int = 0
     private let maxRetryCount: Int = 3
@@ -107,6 +108,7 @@ extension LocationManager: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         currentLocation = location.coordinate
+        horizontalAccuracy = location.horizontalAccuracy
         locationError = nil
         retryCount = 0
     }
