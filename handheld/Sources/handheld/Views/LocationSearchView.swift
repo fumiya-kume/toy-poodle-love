@@ -18,6 +18,7 @@ struct LocationSearchView: View {
                     }
                 }
                 .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+                    guard !viewModel.isUserInteractingWithMap else { return }
                     if viewModel.isNavigationMode, let location = viewModel.currentLocation {
                         viewModel.updateNavigationForLocation(location)
                     }
@@ -221,6 +222,12 @@ struct LocationSearchView: View {
             MapUserLocationButton()
             MapCompass()
             MapScaleView()
+        }
+        .onMapCameraChange(frequency: .continuous) { _ in
+            viewModel.isUserInteractingWithMap = true
+        }
+        .onMapCameraChange(frequency: .onEnd) { _ in
+            viewModel.isUserInteractingWithMap = false
         }
         .ignoresSafeArea(edges: .bottom)
     }

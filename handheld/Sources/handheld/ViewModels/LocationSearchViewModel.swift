@@ -41,6 +41,9 @@ final class LocationSearchViewModel {
     var shouldShowNavigationLookAround: Bool = false
     var transportType: TransportType = .automobile
 
+    // 地図操作状態（パフォーマンス最適化用）
+    var isUserInteractingWithMap: Bool = false
+
     // 閾値設定
     let lookAroundTriggerDistance: CLLocationDistance = 200
     let stepCompletionDistance: CLLocationDistance = 30
@@ -615,7 +618,7 @@ final class LocationSearchViewModel {
 
     @MainActor
     private func advanceAutoDrive() {
-        guard autoDriveConfiguration.isPlaying else { return }
+        guard autoDriveConfiguration.isPlaying, !isUserInteractingWithMap else { return }
 
         // 次のシーンがある地点まで進める
         var nextIndex = currentAutoDriveIndex + 1
