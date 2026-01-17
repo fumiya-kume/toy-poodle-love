@@ -12,6 +12,7 @@ enum LookAroundTarget: String, CaseIterable, Identifiable {
 }
 
 @Observable
+@MainActor
 final class LocationSearchViewModel {
     var searchQuery: String = ""
     var searchResults: [Place] = []
@@ -57,8 +58,8 @@ final class LocationSearchViewModel {
     var autoDrivePoints: [RouteCoordinatePoint] = []
     var currentAutoDriveIndex: Int = 0
     var showAutoDriveSheet: Bool = false
-    private var autoDriveTimer: Timer?
-    private var prefetchTask: Task<Void, Never>?
+    private nonisolated(unsafe) var autoDriveTimer: Timer?
+    private nonisolated(unsafe) var prefetchTask: Task<Void, Never>?
     private var lastPrefetchedIndex: Int = -1
 
     let locationManager = LocationManager()
@@ -70,7 +71,7 @@ final class LocationSearchViewModel {
     private let lookAroundService: LookAroundServiceProtocol
     private let geocodingCacheService: GeocodingCacheService
     private let rateLimiter: RateLimiter
-    private var debounceTask: Task<Void, Never>?
+    private nonisolated(unsafe) var debounceTask: Task<Void, Never>?
     private let debounceInterval: Duration = .milliseconds(300)
 
     init(
@@ -95,7 +96,7 @@ final class LocationSearchViewModel {
     }
 
     /// リソースのクリーンアップ
-    private func cleanup() {
+    private nonisolated func cleanup() {
         autoDriveTimer?.invalidate()
         autoDriveTimer = nil
         prefetchTask?.cancel()

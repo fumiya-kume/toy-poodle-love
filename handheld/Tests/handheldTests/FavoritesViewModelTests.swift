@@ -1,6 +1,7 @@
 import Testing
 @testable import handheld
 
+@MainActor
 struct FavoritesViewModelTests {
     // MARK: - Initial State
 

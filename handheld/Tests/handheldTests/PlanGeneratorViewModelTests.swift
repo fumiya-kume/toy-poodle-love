@@ -108,6 +108,7 @@ final class MockLocationCompleterService: LocationCompleterServiceProtocol {
 
 // MARK: - Tests
 
+@MainActor
 struct PlanGeneratorViewModelTests {
     // MARK: - Initial State
 

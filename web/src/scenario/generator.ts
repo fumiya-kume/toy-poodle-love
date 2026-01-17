@@ -5,7 +5,7 @@
 import { QwenClient } from '../qwen-client';
 import { GeminiClient } from '../gemini-client';
 import { RouteInput, SpotScenario, ScenarioOutput, ModelSelection, RouteSpot } from '../types/scenario';
-import { buildPrompt, resolveLanguage, getSystemPrompt } from './prompt-builder';
+import { buildPrompt, resolveLanguage } from './prompt-builder';
 
 export class ScenarioGenerator {
   private qwenClient?: QwenClient;

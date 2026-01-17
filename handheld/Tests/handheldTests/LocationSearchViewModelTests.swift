@@ -21,6 +21,7 @@ struct MockDirectionsService: DirectionsServiceProtocol {
     }
 }
 
+@MainActor
 struct LocationSearchViewModelTests {
     @Test func initialState() {
         let viewModel = LocationSearchViewModel()
@@ -39,7 +40,7 @@ struct LocationSearchViewModelTests {
         #expect(viewModel.searchResults.isEmpty)
     }
 
-    @Test @MainActor func searchWithResults() async {
+    @Test func searchWithResults() async {
         var mockSearchService = MockSearchService()
         let mockPlace = createMockPlace(name: "東京駅")
         mockSearchService.mockResults = [mockPlace]
@@ -57,7 +58,7 @@ struct LocationSearchViewModelTests {
         #expect(viewModel.alertError == nil)
     }
 
-    @Test @MainActor func searchWithError() async {
+    @Test func searchWithError() async {
         var mockSearchService = MockSearchService()
         mockSearchService.shouldThrowError = true
 
@@ -129,6 +130,7 @@ struct MockLookAroundService: LookAroundServiceProtocol {
     }
 }
 
+@MainActor
 struct LookAroundViewModelTests {
     @Test func initialLookAroundState() {
         let viewModel = LocationSearchViewModel()

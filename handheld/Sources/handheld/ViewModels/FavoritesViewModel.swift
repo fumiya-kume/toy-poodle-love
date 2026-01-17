@@ -38,6 +38,7 @@ enum FavoritesTab: String, CaseIterable, Identifiable {
 ///
 /// - SeeAlso: ``FavoritesTab``, ``SightseeingPlan``, ``FavoriteSpot``
 @Observable
+@MainActor
 final class FavoritesViewModel {
     /// 選択中のタブ。
     var selectedTab: FavoritesTab = .plans
