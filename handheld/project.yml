@@ -23,6 +23,7 @@ targets:
       GENERATE_INFOPLIST_FILE: YES
       INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
       INFOPLIST_KEY_UILaunchScreen_Generation: YES
+      INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "現在地から目的地までの経路を表示するために使用します"
 
   handheldTests:
     type: bundle.unit-test
