@@ -1,6 +1,7 @@
 import SwiftUI
 import AVKit
 
+#if os(macOS)
 struct MainVideoPlayerView: NSViewRepresentable {
     let player: AVPlayer?
 
@@ -19,6 +20,25 @@ struct MainVideoPlayerView: NSViewRepresentable {
         }
     }
 }
+#else
+struct MainVideoPlayerView: UIViewControllerRepresentable {
+    let player: AVPlayer?
+
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let controller = AVPlayerViewController()
+        controller.player = player
+        controller.showsPlaybackControls = false
+        controller.videoGravity = .resizeAspect
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+        if uiViewController.player !== player {
+            uiViewController.player = player
+        }
+    }
+}
+#endif
 
 #Preview {
     MainVideoPlayerView(player: nil)

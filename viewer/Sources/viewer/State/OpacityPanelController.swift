@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import SwiftUI
 import Observation
 
@@ -13,12 +15,15 @@ final class OpacityPanelController {
 
     // MARK: - Private Properties
 
+    #if os(macOS)
     private var panel: NSPanel?
-    private weak var appState: AppState?
     private var panelDelegate: PanelDelegate?  // Strong reference to delegate
 
     // UserDefaults keys for panel position/size persistence
     private let panelFrameKey = "opacityPanelFrame"
+    #endif
+
+    private weak var appState: AppState?
 
     // MARK: - Initialization
 
@@ -29,15 +34,18 @@ final class OpacityPanelController {
     // MARK: - Panel Visibility
 
     func toggle() {
+        #if os(macOS)
         print("[OpacityPanel] toggle() called, isVisible=\(isVisible)")
         if isVisible {
             hide()
         } else {
             show()
         }
+        #endif
     }
 
     func show() {
+        #if os(macOS)
         print("[OpacityPanel] show() called, isVisible=\(isVisible), appState=\(appState != nil ? "set" : "nil")")
         guard !isVisible else {
             print("[OpacityPanel] Already visible, returning")
@@ -71,9 +79,11 @@ final class OpacityPanelController {
 
         panel.makeKeyAndOrderFront(nil)
         isVisible = true
+        #endif
     }
 
     func hide() {
+        #if os(macOS)
         guard isVisible, let panel = panel else { return }
 
         // Save current position/size
@@ -81,6 +91,7 @@ final class OpacityPanelController {
 
         panel.orderOut(nil)
         isVisible = false
+        #endif
     }
 
     // MARK: - Window Focus Tracking
@@ -93,10 +104,12 @@ final class OpacityPanelController {
         if focusedWindowId == windowId {
             focusedWindowId = nil
 
+            #if os(macOS)
             // Auto-close panel when no windows are focused
             if isVisible {
                 hide()
             }
+            #endif
         }
     }
 
@@ -148,6 +161,7 @@ final class OpacityPanelController {
 
     // MARK: - Private Methods
 
+    #if os(macOS)
     private func createPanel() {
         print("[OpacityPanel] createPanel() called, appState=\(appState != nil ? "set" : "nil")")
         guard let appState = appState else {
@@ -201,8 +215,10 @@ final class OpacityPanelController {
             UserDefaults.standard.set(data, forKey: panelFrameKey)
         }
     }
+    #endif
 }
 
+#if os(macOS)
 // MARK: - Panel Delegate
 
 /// NSPanel delegate to intercept close button
@@ -237,3 +253,4 @@ extension OpacityPanelController {
         isVisible = false
     }
 }
+#endif
