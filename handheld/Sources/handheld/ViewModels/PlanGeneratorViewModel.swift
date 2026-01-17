@@ -4,12 +4,18 @@ import Observation
 import SwiftData
 import os
 
+/// プラン生成ウィザードのステップを表す列挙型。
 enum PlanGeneratorStep: Int, CaseIterable {
+    /// エリア選択ステップ。
     case location = 0
+    /// カテゴリ選択ステップ。
     case category = 1
+    /// テーマ設定ステップ。
     case theme = 2
+    /// 確認ステップ。
     case confirm = 3
 
+    /// ステップのタイトル。
     var title: String {
         switch self {
         case .location: return "エリア選択"
@@ -19,18 +25,28 @@ enum PlanGeneratorStep: Int, CaseIterable {
         }
     }
 
+    /// 最初のステップかどうか。
     var isFirst: Bool { self == .location }
+    /// 最後のステップかどうか。
     var isLast: Bool { self == .confirm }
 }
 
+/// プラン生成の状態を表す列挙型。
 enum PlanGeneratorState: Equatable {
+    /// 待機状態。
     case idle
+    /// スポット検索中。
     case searchingSpots
+    /// AIプラン生成中。
     case generatingPlan
+    /// ルート計算中。
     case calculatingRoutes
+    /// 完了。
     case completed
+    /// エラー発生。
     case error(message: String)
 
+    /// 現在の進捗メッセージ。
     var progressMessage: String {
         switch self {
         case .idle: return ""
@@ -42,6 +58,7 @@ enum PlanGeneratorState: Equatable {
         }
     }
 
+    /// 進捗ステップ番号（0-3）。
     var progressStep: Int {
         switch self {
         case .idle: return 0
@@ -54,30 +71,81 @@ enum PlanGeneratorState: Equatable {
     }
 }
 
+/// プラン生成画面のViewModel。
+///
+/// プラン生成のステップ管理、検索、AI生成、ルート計算を統括します。
+/// `@Observable`マクロを使用してSwiftUIビューとバインドします。
+///
+/// ## 概要
+///
+/// プラン生成は以下の4ステップで進行します：
+/// 1. エリア選択（``PlanGeneratorStep/location``）
+/// 2. カテゴリ選択（``PlanGeneratorStep/category``）
+/// 3. テーマ設定（``PlanGeneratorStep/theme``）
+/// 4. 確認（``PlanGeneratorStep/confirm``）
+///
+/// ## 使用例
+///
+/// ```swift
+/// struct PlanGeneratorView: View {
+///     @State private var viewModel = PlanGeneratorViewModel()
+///
+///     var body: some View {
+///         switch viewModel.currentStep {
+///         case .location:
+///             LocationStepView(viewModel: viewModel)
+///         // ...
+///         }
+///     }
+/// }
+/// ```
+///
+/// - SeeAlso: ``PlanGeneratorStep``, ``PlanGeneratorState``
 @Observable
+@MainActor
 final class PlanGeneratorViewModel {
-    // MARK: - Input State
+    // MARK: - 入力状態
+
+    /// 現在のステップ。
     var currentStep: PlanGeneratorStep = .location
+    /// エリア検索クエリ。
     var locationQuery: String = ""
+    /// 選択されたエリア。
     var selectedLocation: Place?
+    /// 検索半径。
     var searchRadius: SearchRadius = .large
+    /// 選択されたカテゴリ。
     var selectedCategories: Set<PlanCategory> = []
+    /// プランのテーマ。
     var theme: String = ""
+    /// 開始予定時刻。
     var startTime: Date?
+    /// 開始時刻を使用するかどうか。
     var useStartTime: Bool = false
 
-    // MARK: - Search State
+    // MARK: - 検索状態
+
+    /// エリア検索結果。
     var locationSuggestions: [Place] = []
+    /// エリア検索中かどうか。
     var isSearchingLocation: Bool = false
 
-    // MARK: - Generation State
+    // MARK: - 生成状態
+
+    /// 現在の生成状態。
     var generatorState: PlanGeneratorState = .idle
+    /// 検索された候補地。
     var candidatePlaces: [Place] = []
+    /// 生成されたプラン。
     var generatedPlan: SightseeingPlan?
+    /// 生成されたスポット。
     var generatedSpots: [PlanSpot] = []
+    /// スポット間のルート。
     var spotRoutes: [SpotRoute] = []
 
-    // MARK: - Result View State
+    // MARK: - 結果表示状態
+
+    /// 結果表示モード。
     enum ViewMode: String, CaseIterable, Identifiable {
         case timeline = "タイムライン"
         case map = "地図"
@@ -93,24 +161,40 @@ final class PlanGeneratorViewModel {
             }
         }
     }
+    /// 現在の表示モード。
     var viewMode: ViewMode = .timeline
+    /// 詳細表示中のスポット。
     var selectedSpotForDetail: PlanSpot?
+    /// スポット詳細シートを表示するか。
     var showSpotDetailSheet: Bool = false
+    /// スポット追加シートを表示するか。
     var showAddSpotSheet: Bool = false
+    /// タイトル編集中かどうか。
     var isEditingTitle: Bool = false
+    /// 編集中のタイトル。
     var editedTitle: String = ""
 
-    // MARK: - Services
+    // MARK: - サービス
+
     private let locationSearchService: LocationSearchServiceProtocol
     private let spotSearchService: SpotSearchServiceProtocol
     private let planRouteService: PlanRouteServiceProtocol
     private let planGeneratorService: PlanGeneratorServiceProtocol
     private let completerService: LocationCompleterServiceProtocol
 
+    /// Apple Intelligenceが利用可能かどうか。
     var isAIAvailable: Bool {
         planGeneratorService.isAvailable
     }
 
+    /// ViewModelを初期化する。
+    ///
+    /// - Parameters:
+    ///   - locationSearchService: エリア検索サービス
+    ///   - spotSearchService: スポット検索サービス
+    ///   - planRouteService: ルート計算サービス
+    ///   - planGeneratorService: プラン生成サービス
+    ///   - completerService: 入力補完サービス
     init(
         locationSearchService: LocationSearchServiceProtocol = LocationSearchService(),
         spotSearchService: SpotSearchServiceProtocol = SpotSearchService(),
@@ -125,8 +209,9 @@ final class PlanGeneratorViewModel {
         self.completerService = completerService
     }
 
-    // MARK: - Navigation
+    // MARK: - ナビゲーション
 
+    /// 次のステップに進めるかどうか。
     var canProceedToNext: Bool {
         switch currentStep {
         case .location:
@@ -140,18 +225,21 @@ final class PlanGeneratorViewModel {
         }
     }
 
+    /// 次のステップに進む。
     func nextStep() {
         guard let next = PlanGeneratorStep(rawValue: currentStep.rawValue + 1) else { return }
         currentStep = next
     }
 
+    /// 前のステップに戻る。
     func previousStep() {
         guard let prev = PlanGeneratorStep(rawValue: currentStep.rawValue - 1) else { return }
         currentStep = prev
     }
 
-    // MARK: - Location Search
+    // MARK: - エリア検索
 
+    /// エリアを検索する。
     @MainActor
     func searchLocation() async {
         guard !locationQuery.trimmingCharacters(in: .whitespaces).isEmpty else {
@@ -170,14 +258,20 @@ final class PlanGeneratorViewModel {
         }
     }
 
+    /// エリアを選択する。
+    ///
+    /// - Parameter place: 選択するエリア
     func selectLocation(_ place: Place) {
         selectedLocation = place
         locationQuery = place.name
         locationSuggestions = []
     }
 
-    // MARK: - Category Selection
+    // MARK: - カテゴリ選択
 
+    /// カテゴリの選択を切り替える。
+    ///
+    /// - Parameter category: 切り替えるカテゴリ
     func toggleCategory(_ category: PlanCategory) {
         if selectedCategories.contains(category) {
             selectedCategories.remove(category)
@@ -194,12 +288,18 @@ final class PlanGeneratorViewModel {
         return suggestions
     }
 
+    /// テーマサジェストを選択する。
+    ///
+    /// - Parameter suggestion: 選択するサジェスト文字列
     func selectThemeSuggestion(_ suggestion: String) {
         theme = suggestion
     }
 
-    // MARK: - Plan Generation
+    // MARK: - プラン生成
 
+    /// プランを生成する。
+    ///
+    /// スポット検索、AI生成、ルート計算を順次実行します。
     @MainActor
     func generatePlan() async {
         guard let location = selectedLocation else { return }
@@ -308,18 +408,29 @@ final class PlanGeneratorViewModel {
         }
     }
 
-    // MARK: - Editing
+    // MARK: - 編集
 
+    /// スポットの順序を変更する。
+    ///
+    /// - Parameters:
+    ///   - source: 移動元のインデックス
+    ///   - destination: 移動先のインデックス
     func reorderSpots(from source: IndexSet, to destination: Int) {
         generatedSpots.move(fromOffsets: source, toOffset: destination)
         updateSpotOrders()
     }
 
+    /// 指定インデックスのスポットを削除する。
+    ///
+    /// - Parameter offsets: 削除するインデックス
     func deleteSpot(at offsets: IndexSet) {
         generatedSpots.remove(atOffsets: offsets)
         updateSpotOrders()
     }
 
+    /// スポットを削除する。
+    ///
+    /// - Parameter spot: 削除するスポット
     func deleteSpot(_ spot: PlanSpot) {
         if let index = generatedSpots.firstIndex(where: { $0.id == spot.id }) {
             generatedSpots.remove(at: index)
@@ -333,6 +444,11 @@ final class PlanGeneratorViewModel {
         }
     }
 
+    /// スポットの滞在時間を変更する。
+    ///
+    /// - Parameters:
+    ///   - spot: 対象のスポット
+    ///   - minutes: 変更する分数（正負）
     func updateStayDuration(for spot: PlanSpot, by minutes: Int) {
         guard let index = generatedSpots.firstIndex(where: { $0.id == spot.id }) else { return }
         let newDuration = generatedSpots[index].estimatedStayDuration + TimeInterval(minutes * 60)
@@ -341,28 +457,39 @@ final class PlanGeneratorViewModel {
         }
     }
 
+    /// スポットのお気に入り状態を切り替える。
+    ///
+    /// - Parameter spot: 対象のスポット
     func toggleFavorite(for spot: PlanSpot) {
         guard let index = generatedSpots.firstIndex(where: { $0.id == spot.id }) else { return }
         generatedSpots[index].isFavorite.toggle()
     }
 
+    /// タイトル編集を開始する。
     func startEditingTitle() {
         editedTitle = generatedPlan?.title ?? ""
         isEditingTitle = true
     }
 
+    /// タイトルを保存する。
     func saveTitle() {
         generatedPlan?.title = editedTitle
         isEditingTitle = false
     }
 
+    /// スポット詳細を表示する。
+    ///
+    /// - Parameter spot: 表示するスポット
     func showSpotDetail(_ spot: PlanSpot) {
         selectedSpotForDetail = spot
         showSpotDetailSheet = true
     }
 
-    // MARK: - Add Spot
+    // MARK: - スポット追加
 
+    /// スポットを追加する。
+    ///
+    /// - Parameter place: 追加する場所
     func addSpot(_ place: Place) {
         let newSpot = PlanSpot(
             order: generatedSpots.count,
@@ -376,8 +503,11 @@ final class PlanGeneratorViewModel {
         showAddSpotSheet = false
     }
 
-    // MARK: - Recalculate Routes
+    // MARK: - ルート再計算
 
+    /// ルートを再計算する。
+    ///
+    /// スポット追加・削除・並び替え後に呼び出します。
     @MainActor
     func recalculateRoutes() async {
         generatorState = .calculatingRoutes
@@ -407,8 +537,11 @@ final class PlanGeneratorViewModel {
         }
     }
 
-    // MARK: - Save
+    // MARK: - 保存
 
+    /// プランをSwiftDataに保存する。
+    ///
+    /// - Parameter context: SwiftDataのモデルコンテキスト
     @MainActor
     func savePlan(context: ModelContext) {
         guard let plan = generatedPlan else { return }
@@ -426,6 +559,9 @@ final class PlanGeneratorViewModel {
         }
     }
 
+    /// お気に入りスポットをSwiftDataに保存する。
+    ///
+    /// - Parameter context: SwiftDataのモデルコンテキスト
     func saveFavoriteSpots(context: ModelContext) {
         let favoriteSpots = generatedSpots.filter { $0.isFavorite }
 
@@ -442,8 +578,9 @@ final class PlanGeneratorViewModel {
         }
     }
 
-    // MARK: - Reset
+    // MARK: - リセット
 
+    /// ViewModelの状態を初期化する。
     func reset() {
         currentStep = .location
         locationQuery = ""
@@ -461,8 +598,9 @@ final class PlanGeneratorViewModel {
         viewMode = .timeline
     }
 
-    // MARK: - Share
+    // MARK: - 共有
 
+    /// Apple Mapsでルートを開く。
     func openInAppleMaps() {
         guard !generatedSpots.isEmpty else { return }
 
@@ -481,8 +619,9 @@ final class PlanGeneratorViewModel {
         }
     }
 
-    // MARK: - Polylines for Map
+    // MARK: - 地図表示用
 
+    /// 全ルートのポリライン配列。
     var routePolylines: [MKPolyline] {
         spotRoutes.map { $0.route.polyline }
     }
