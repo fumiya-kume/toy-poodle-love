@@ -20,7 +20,7 @@ export class QwenClient {
   async chat(message: string): Promise<string> {
     try {
       const response = await this.client.chat.completions.create({
-        model: 'qwen-flash', // or 'qwen-turbo', 'qwen-max'
+        model: 'qwen-max',
         messages: [
           {
             role: 'user',
