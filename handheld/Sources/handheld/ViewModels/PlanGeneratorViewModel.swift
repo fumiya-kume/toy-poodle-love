@@ -238,7 +238,27 @@ final class PlanGeneratorViewModel {
                 return
             }
 
-            generatedSpots = matchedSpots.enumerated().map { index, matched in
+            // 座標検証 - 検索範囲内のスポットのみ許可（50%のマージン）
+            let centerLocation = CLLocation(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
+            let maxDistanceMeters = searchRadius.meters * 1.5
+
+            let validatedSpots = matchedSpots.filter { matched in
+                let spotLocation = CLLocation(latitude: matched.place.coordinate.latitude, longitude: matched.place.coordinate.longitude)
+                let distance = centerLocation.distance(from: spotLocation)
+
+                if distance > maxDistanceMeters {
+                    AppLogger.ai.warning("スポット '\(matched.place.name)' は検索範囲外です (距離: \(Int(distance))m)")
+                    return false
+                }
+                return true
+            }
+
+            guard validatedSpots.count >= 3 else {
+                generatorState = .error(message: "検索範囲内のスポットが不足しています（\(validatedSpots.count)件）。範囲を広げてお試しください。")
+                return
+            }
+
+            generatedSpots = validatedSpots.enumerated().map { index, matched in
                 PlanSpot(
                     order: index,
                     name: matched.place.name,
@@ -251,7 +271,14 @@ final class PlanGeneratorViewModel {
 
             generatorState = .calculatingRoutes
 
-            spotRoutes = try await planRouteService.calculateRoutes(for: generatedSpots)
+            let routeResult = try await planRouteService.calculateRoutes(for: generatedSpots)
+            spotRoutes = routeResult.routes
+
+            // 部分的失敗を警告として記録
+            if routeResult.hasPartialFailure {
+                let failedPairs = routeResult.failures.map { "\($0.fromSpotName) → \($0.toSpotName)" }.joined(separator: ", ")
+                AppLogger.directions.warning("一部ルートの計算に失敗: \(failedPairs)")
+            }
 
             planRouteService.updateSpotRouteInfo(spots: &generatedSpots, routes: spotRoutes)
 
@@ -357,7 +384,15 @@ final class PlanGeneratorViewModel {
         generatorState = .calculatingRoutes
 
         do {
-            spotRoutes = try await planRouteService.calculateRoutes(for: generatedSpots)
+            let routeResult = try await planRouteService.calculateRoutes(for: generatedSpots)
+            spotRoutes = routeResult.routes
+
+            // 部分的失敗を警告として記録
+            if routeResult.hasPartialFailure {
+                let failedPairs = routeResult.failures.map { "\($0.fromSpotName) → \($0.toSpotName)" }.joined(separator: ", ")
+                AppLogger.directions.warning("一部ルートの再計算に失敗: \(failedPairs)")
+            }
+
             planRouteService.updateSpotRouteInfo(spots: &generatedSpots, routes: spotRoutes)
 
             let (totalDistance, totalDuration) = planRouteService.calculateTotalMetrics(

@@ -4,14 +4,29 @@ import MapKit
 import os
 
 /// Look Aroundシーンをキャッシュするサービス
-/// - L1: メモリキャッシュ（MKLookAroundSceneオブジェクト、セッションスコープ）
+/// - L1: メモリキャッシュ（MKLookAroundSceneオブジェクト、TTL付き）
 /// - L2: 可用性キャッシュ（Bool、ファイル永続化）
 actor LookAroundCacheService {
 
+    // MARK: - Types
+
+    /// L1: メモリキャッシュエントリ（タイムスタンプ付き）
+    private struct SceneCacheEntry {
+        let scene: MKLookAroundScene
+        let createdAt: Date
+
+        func isExpired(ttl: TimeInterval) -> Bool {
+            Date().timeIntervalSince(createdAt) > ttl
+        }
+    }
+
     // MARK: - Properties
 
-    /// L1: メモリキャッシュ（セッション中のみ有効）
-    private var sceneCache: [LookAroundCacheKey: MKLookAroundScene] = [:]
+    /// L1: メモリキャッシュ（TTL付き）
+    private var sceneCache: [LookAroundCacheKey: SceneCacheEntry] = [:]
+
+    /// メモリキャッシュの TTL (デフォルト 1 時間)
+    private let memoryCacheTTL: TimeInterval = 3600
 
     /// L2: 可用性キャッシュ（永続化対象）
     private var availabilityCache: [LookAroundCacheKey: LookAroundAvailabilityEntry] = [:]
@@ -43,10 +58,17 @@ actor LookAroundCacheService {
     func cachedScene(for coordinate: CLLocationCoordinate2D) -> MKLookAroundScene? {
         let key = LookAroundCacheKey(coordinate: coordinate)
 
-        if let scene = sceneCache[key] {
+        if let entry = sceneCache[key] {
+            // TTL チェック
+            if entry.isExpired(ttl: memoryCacheTTL) {
+                sceneCache.removeValue(forKey: key)
+                AppLogger.cache.debug("Look Aroundメモリキャッシュ期限切れ: \(key.description)")
+                return nil
+            }
+
             memoryHitCount += 1
             AppLogger.cache.debug("Look Aroundメモリキャッシュヒット: \(key.description)")
-            return scene
+            return entry.scene
         }
 
         return nil
@@ -86,7 +108,7 @@ actor LookAroundCacheService {
             if sceneCache.count >= configuration.maxSceneEntries {
                 evictOldestScenes(count: configuration.maxSceneEntries / 10)
             }
-            sceneCache[key] = scene
+            sceneCache[key] = SceneCacheEntry(scene: scene, createdAt: Date())
             AppLogger.cache.debug("Look Aroundシーンをメモリキャッシュに保存: \(key.description)")
         }
 
@@ -196,11 +218,23 @@ actor LookAroundCacheService {
     }
 
     private func evictOldestScenes(count: Int) {
-        let keysToRemove = Array(sceneCache.keys.prefix(count))
-        for key in keysToRemove {
+        // まず期限切れエントリを削除
+        let expiredKeys = sceneCache.filter { $0.value.isExpired(ttl: memoryCacheTTL) }.keys
+        for key in expiredKeys {
             sceneCache.removeValue(forKey: key)
         }
-        AppLogger.cache.debug("メモリキャッシュから\(count)件のシーンを削除しました")
+
+        // まだ超過している場合は古い順に削除
+        if sceneCache.count >= configuration.maxSceneEntries {
+            let sortedKeys = sceneCache.sorted { $0.value.createdAt < $1.value.createdAt }
+                .prefix(count)
+                .map { $0.key }
+            for key in sortedKeys {
+                sceneCache.removeValue(forKey: key)
+            }
+        }
+
+        AppLogger.cache.debug("メモリキャッシュからシーンを削除しました")
     }
 }
 

@@ -163,12 +163,44 @@ final class PlanGeneratorService: PlanGeneratorServiceProtocol {
         candidatePlaces: [Place]
     ) -> [(spot: GeneratedSpotInfo, place: Place)] {
         var matchedSpots: [(spot: GeneratedSpotInfo, place: Place)] = []
+        let similarityThreshold = 0.7  // 70%以上の類似度でマッチ
 
         for generatedSpot in generatedSpots {
+            let normalizedSpotName = StringMatching.normalize(generatedSpot.name)
+
+            // 1. 完全一致を試行
             if let matchedPlace = candidatePlaces.first(where: { $0.name == generatedSpot.name }) {
                 matchedSpots.append((generatedSpot, matchedPlace))
-            } else if let matchedPlace = candidatePlaces.first(where: { $0.name.contains(generatedSpot.name) || generatedSpot.name.contains($0.name) }) {
+                continue
+            }
+
+            // 2. 正規化後の完全一致を試行
+            if let matchedPlace = candidatePlaces.first(where: {
+                StringMatching.normalize($0.name) == normalizedSpotName
+            }) {
                 matchedSpots.append((generatedSpot, matchedPlace))
+                continue
+            }
+
+            // 3. 類似度スコアでマッチング
+            var bestMatch: (place: Place, score: Double)?
+            for place in candidatePlaces {
+                let score = StringMatching.similarityScore(
+                    normalizedSpotName,
+                    StringMatching.normalize(place.name)
+                )
+                if score >= similarityThreshold {
+                    if bestMatch == nil || score > bestMatch!.score {
+                        bestMatch = (place, score)
+                    }
+                }
+            }
+
+            if let match = bestMatch {
+                AppLogger.ai.debug("ファジーマッチング: '\(generatedSpot.name)' → '\(match.place.name)' (score: \(String(format: "%.2f", match.score)))")
+                matchedSpots.append((generatedSpot, match.place))
+            } else {
+                AppLogger.ai.warning("マッチング失敗: '\(generatedSpot.name)'")
             }
         }
 

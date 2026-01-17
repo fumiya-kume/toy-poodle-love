@@ -48,6 +48,10 @@ final class LocationSearchViewModel {
     let lookAroundTriggerDistance: CLLocationDistance = 200
     let stepCompletionDistance: CLLocationDistance = 30
 
+    // ナビゲーションステップ連続進行防止
+    private var lastStepAdvanceTime: Date?
+    private let minimumStepDuration: TimeInterval = 5.0
+
     // AutoDrive関連
     var autoDriveConfiguration = AutoDriveConfiguration()
     var autoDrivePoints: [RouteCoordinatePoint] = []
@@ -84,6 +88,20 @@ final class LocationSearchViewModel {
         self.geocodingCacheService = geocodingCacheService
         self.rateLimiter = rateLimiter
         setupCompleterCallback()
+    }
+
+    deinit {
+        cleanup()
+    }
+
+    /// リソースのクリーンアップ
+    private func cleanup() {
+        autoDriveTimer?.invalidate()
+        autoDriveTimer = nil
+        prefetchTask?.cancel()
+        prefetchTask = nil
+        debounceTask?.cancel()
+        debounceTask = nil
     }
 
     private func setupCompleterCallback() {
@@ -451,6 +469,7 @@ final class LocationSearchViewModel {
         currentNavigationStepIndex = 0
         distanceToNextStep = 0
         shouldShowNavigationLookAround = false
+        lastStepAdvanceTime = nil
     }
 
     @MainActor
@@ -461,7 +480,17 @@ final class LocationSearchViewModel {
         distanceToNextStep = location.distance(to: currentStep.coordinate)
 
         if distanceToNextStep < stepCompletionDistance {
-            advanceToNextStep()
+            // 最低滞在時間チェック - 連続進行を防止
+            let canAdvance: Bool
+            if let lastAdvance = lastStepAdvanceTime {
+                canAdvance = Date().timeIntervalSince(lastAdvance) >= minimumStepDuration
+            } else {
+                canAdvance = true
+            }
+
+            if canAdvance {
+                advanceToNextStep()
+            }
         } else if distanceToNextStep < lookAroundTriggerDistance {
             shouldShowNavigationLookAround = true
         }
@@ -469,6 +498,7 @@ final class LocationSearchViewModel {
 
     @MainActor
     private func advanceToNextStep() {
+        lastStepAdvanceTime = Date()
         currentNavigationStepIndex += 1
         shouldShowNavigationLookAround = false
 
@@ -674,8 +704,9 @@ final class LocationSearchViewModel {
             nextIndex += 1
         }
 
-        // バッファリングから復帰
+        // バッファリングから復帰 - ユーザー操作中は復帰しない
         if autoDriveConfiguration.isBuffering {
+            guard !isUserInteractingWithMap else { return }
             autoDriveConfiguration.state = .playing
         }
 
