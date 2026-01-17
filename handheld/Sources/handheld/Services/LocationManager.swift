@@ -3,12 +3,18 @@ import CoreLocation
 import Observation
 import os
 
+/// 位置情報取得時のエラー。
 enum LocationError: LocalizedError {
-    case locationUnknown      // Code 0: 一時的に取得不可
-    case denied               // Code 1: 権限拒否
-    case network              // Code 2: ネットワークエラー
-    case headingFailure       // Code 3: 方位取得失敗
-    case unknown(Error)       // その他
+    /// 一時的に位置を特定できない（CLError.Code 0）。
+    case locationUnknown
+    /// 位置情報の権限が拒否されている（CLError.Code 1）。
+    case denied
+    /// ネットワークエラーが発生した（CLError.Code 2）。
+    case network
+    /// 方位の取得に失敗した（CLError.Code 3）。
+    case headingFailure
+    /// その他のエラー。
+    case unknown(Error)
 
     var errorDescription: String? {
         switch self {
@@ -25,6 +31,7 @@ enum LocationError: LocalizedError {
         }
     }
 
+    /// リトライ可能なエラーかどうか。
     var isRetryable: Bool {
         switch self {
         case .locationUnknown, .network:
@@ -34,6 +41,10 @@ enum LocationError: LocalizedError {
         }
     }
 
+    /// CoreLocationエラーからLocationErrorを生成する。
+    ///
+    /// - Parameter error: CoreLocationのエラー
+    /// - Returns: 対応するLocationError
     static func from(_ error: Error) -> LocationError {
         let nsError = error as NSError
         guard nsError.domain == kCLErrorDomain else {
@@ -55,14 +66,43 @@ enum LocationError: LocalizedError {
     }
 }
 
+/// 位置情報を管理するクラス。
+///
+/// CLLocationManagerをラップし、位置情報の取得・権限管理を行います。
+/// `@Observable`マクロを使用してSwiftUIビューとバインドします。
+///
+/// ## 概要
+///
+/// このクラスは以下の機能を提供します：
+/// - 位置情報の権限リクエスト
+/// - 現在地の取得（単発/継続）
+/// - エラー時の自動リトライ
+///
+/// ## 使用例
+///
+/// ```swift
+/// let locationManager = LocationManager()
+/// locationManager.requestLocationPermission()
+///
+/// // 現在地を取得
+/// locationManager.requestCurrentLocation()
+/// let coordinate = locationManager.currentLocation
+/// ```
+///
+/// - SeeAlso: ``LocationError``
 @Observable
 final class LocationManager: NSObject {
     private let locationManager = CLLocationManager()
 
+    /// 現在地の座標。
     var currentLocation: CLLocationCoordinate2D?
+    /// 現在の権限ステータス。
     var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    /// 発生したエラー。
     var locationError: LocationError?
+    /// 継続トラッキング中かどうか。
     var isTracking: Bool = false
+    /// 水平精度（メートル）。
     var horizontalAccuracy: CLLocationAccuracy?
 
     private var retryCount: Int = 0
@@ -75,6 +115,7 @@ final class LocationManager: NSObject {
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
     }
 
+    /// 継続的な位置情報トラッキングを開始する。
     func startContinuousTracking() {
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
             AppLogger.location.info("位置情報の権限がないためトラッキングを開始できません")
@@ -88,6 +129,7 @@ final class LocationManager: NSObject {
         AppLogger.location.info("位置情報のトラッキングを開始しました")
     }
 
+    /// 継続的な位置情報トラッキングを停止する。
     func stopContinuousTracking() {
         locationManager.stopUpdatingLocation()
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
@@ -95,10 +137,12 @@ final class LocationManager: NSObject {
         AppLogger.location.info("位置情報のトラッキングを停止しました")
     }
 
+    /// 位置情報の使用許可をリクエストする。
     func requestLocationPermission() {
         locationManager.requestWhenInUseAuthorization()
     }
 
+    /// 現在地を単発で取得する。
     func requestCurrentLocation() {
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
             requestLocationPermission()

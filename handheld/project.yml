@@ -21,6 +21,9 @@ targets:
     supportedDestinations: [iOS, macCatalyst]
     sources:
       - Sources/handheld
+      - path: Sources/handheld/Documentation.docc
+        type: folder
+        buildPhase: none
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.fumiyakume.handheld
       CODE_SIGN_IDENTITY: "Apple Development"

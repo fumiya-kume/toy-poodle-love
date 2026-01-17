@@ -1,12 +1,30 @@
 import SwiftUI
 
+/// 観光プランのカテゴリを表す列挙型。
+///
+/// ユーザーがプランを作成する際に選択できるカテゴリです。
+/// 各カテゴリには、アイコン、色、テーマ提案、検索キーワードが関連付けられています。
+///
+/// ## 使用例
+///
+/// ```swift
+/// let categories: [PlanCategory] = [.scenic, .activity]
+///
+/// for category in categories {
+///     print("\(category.rawValue): \(category.suggestions)")
+/// }
+/// ```
 enum PlanCategory: String, Codable, CaseIterable, Identifiable {
+    /// 景勝地・名所カテゴリ。神社仏閣、城、庭園、公園などの観光名所を検索します。
     case scenic = "景勝地・名所"
+    /// 体験・アクティビティカテゴリ。美術館、博物館、レジャー施設などの体験型スポットを検索します。
     case activity = "体験・アクティビティ"
+    /// ショッピングカテゴリ。商店街、モール、デパートなどの買い物スポットを検索します。
     case shopping = "ショッピング"
 
     var id: String { rawValue }
 
+    /// カテゴリを表すSF Symbolsアイコン名。
     var icon: String {
         switch self {
         case .scenic: return "mountain.2.fill"
@@ -15,6 +33,7 @@ enum PlanCategory: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// カテゴリを表す色。
     var color: Color {
         switch self {
         case .scenic: return .green
@@ -23,6 +42,7 @@ enum PlanCategory: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// テーマ入力時のサジェスト候補。
     var suggestions: [String] {
         switch self {
         case .scenic:
@@ -34,6 +54,7 @@ enum PlanCategory: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// MapKit検索に使用するキーワード。
     var searchKeywords: [String] {
         switch self {
         case .scenic:

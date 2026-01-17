@@ -1,14 +1,27 @@
 import Foundation
 import Observation
 
+/// メイン画面のViewModel。
+///
+/// 時間帯に応じた挨拶メッセージを管理します。
+/// `@Observable`マクロを使用してSwiftUIビューとバインドします。
 @Observable
 final class ContentViewModel {
+    /// 表示するメッセージ。
     var message: String = ""
 
+    /// ViewModelを初期化する。
+    ///
+    /// - Parameters:
+    ///   - now: 現在時刻を取得するクロージャ（テスト用）
+    ///   - calendar: 使用するカレンダー
     init(now: () -> Date = Date.init, calendar: Calendar = .current) {
         message = Self.timeBasedGreeting(for: now(), calendar: calendar)
     }
 
+    /// メッセージを更新する。
+    ///
+    /// - Parameter newMessage: 新しいメッセージ
     func updateMessage(_ newMessage: String) {
         message = newMessage
     }

@@ -2,7 +2,38 @@ import Foundation
 import MapKit
 import os
 
+/// スポット検索サービスのプロトコル。
+///
+/// テーマとカテゴリに基づいて周辺のスポットを検索します。
+///
+/// ## 概要
+///
+/// このプロトコルは、プラン生成時に使用するスポット候補を検索する機能を定義します。
+/// 複数のキーワードで並列検索し、重複を除去して結果を返します。
+///
+/// ## 使用例
+///
+/// ```swift
+/// let service: SpotSearchServiceProtocol = SpotSearchService()
+/// let spots = try await service.searchSpots(
+///     theme: "神社巡り",
+///     categories: [.scenic],
+///     centerCoordinate: coordinate,
+///     radius: .large
+/// )
+/// ```
 protocol SpotSearchServiceProtocol {
+    /// スポットを検索する。
+    ///
+    /// - Parameters:
+    ///   - theme: 検索テーマ
+    ///   - categories: 検索カテゴリのリスト
+    ///   - centerCoordinate: 検索中心座標
+    ///   - radius: 検索半径
+    ///
+    /// - Returns: 検索結果のスポット配列
+    ///
+    /// - Throws: 検索に失敗した場合
     func searchSpots(
         theme: String,
         categories: [PlanCategory],
@@ -11,6 +42,12 @@ protocol SpotSearchServiceProtocol {
     ) async throws -> [Place]
 }
 
+/// スポット検索サービス。
+///
+/// ``SpotSearchServiceProtocol``の実装クラスです。
+/// 複数のキーワードで並列検索し、重複を除去して結果を返します。
+///
+/// - SeeAlso: ``SpotSearchServiceProtocol``
 final class SpotSearchService: SpotSearchServiceProtocol {
     private let locationSearchService: LocationSearchServiceProtocol
 

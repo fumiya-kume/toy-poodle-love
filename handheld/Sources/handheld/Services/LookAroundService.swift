@@ -2,14 +2,52 @@ import Foundation
 import MapKit
 import os
 
+/// Look Aroundシーン取得サービスのプロトコル。
+///
+/// MapKitのLook Aroundシーンを取得する機能を提供します。
+///
+/// ## 概要
+///
+/// このプロトコルは以下の機能を定義します：
+/// - 単一座標でのシーン取得
+/// - ナビゲーションステップに沿った段階的なシーン取得
+///
+/// ## 使用例
+///
+/// ```swift
+/// let service: LookAroundServiceProtocol = LookAroundService()
+/// if let scene = try await service.fetchScene(for: coordinate) {
+///     // シーンを表示
+/// }
+/// ```
 protocol LookAroundServiceProtocol {
+    /// 指定座標のLook Aroundシーンを取得する。
+    ///
+    /// - Parameter coordinate: 取得する座標
+    /// - Returns: Look Aroundシーン（利用不可の場合は`nil`）
+    ///
+    /// - Throws: 取得に失敗した場合
     func fetchScene(for coordinate: CLLocationCoordinate2D) async throws -> MKLookAroundScene?
+
+    /// ナビゲーションステップに沿ってシーンを段階的に取得する。
+    ///
+    /// 最初の3件は並列取得、以降は順次取得します。
+    ///
+    /// - Parameters:
+    ///   - steps: ナビゲーションステップの配列
+    ///   - onSceneFetched: シーン取得完了時のコールバック
     func fetchScenesProgressively(
         for steps: [NavigationStep],
         onSceneFetched: @escaping @MainActor (Int, MKLookAroundScene?) -> Void
     ) async
 }
 
+/// Look Aroundシーン取得サービス。
+///
+/// ``LookAroundServiceProtocol``の実装クラスです。
+/// キャッシュを活用して効率的にシーンを取得します。
+///
+/// - SeeAlso: ``LookAroundServiceProtocol``, ``LookAroundCacheService``
 final class LookAroundService: LookAroundServiceProtocol {
 
     private let cacheService: LookAroundCacheService

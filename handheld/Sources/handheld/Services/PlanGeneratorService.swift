@@ -2,6 +2,8 @@ import Foundation
 import MapKit
 import os
 
+// MARK: - AI生成用構造体
+
 #if canImport(FoundationModels)
 import FoundationModels
 
@@ -29,21 +31,37 @@ struct GeneratedSpot {
 }
 #endif
 
+// MARK: - 公開構造体
+
+/// AI生成されたプランの情報。
 struct GeneratedPlan {
+    /// プランのタイトル。
     let title: String
+    /// 生成されたスポットのリスト。
     let spots: [GeneratedSpotInfo]
 }
 
+/// AI生成されたスポットの情報。
 struct GeneratedSpotInfo {
+    /// スポット名。
     let name: String
+    /// スポットの説明文。
     let description: String
+    /// 推奨滞在時間（分）。
     let stayMinutes: Int
 }
 
+// MARK: - エラー
+
+/// プラン生成時のエラー。
 enum PlanGeneratorError: Error, LocalizedError {
+    /// Apple Intelligenceが利用できない。
     case aiUnavailable
+    /// 生成処理に失敗した。
     case generationFailed(underlying: Error)
+    /// スポットが生成されなかった。
     case noSpotsGenerated
+    /// AIからの応答が不正。
     case invalidResponse
 
     var errorDescription: String? {
@@ -60,19 +78,82 @@ enum PlanGeneratorError: Error, LocalizedError {
     }
 }
 
+// MARK: - プロトコル
+
+/// 観光プラン生成サービスのプロトコル。
+///
+/// AI（Apple Intelligence）を使用してテーマに基づいた観光プランを生成します。
+///
+/// ## 概要
+///
+/// このプロトコルは以下の機能を定義します：
+/// 1. AI生成機能の利用可否確認
+/// 2. テーマと候補地からのプラン生成
+/// 3. 生成結果と候補地のマッチング
+///
+/// ## 使用例
+///
+/// ```swift
+/// let service: PlanGeneratorServiceProtocol = PlanGeneratorService()
+///
+/// guard service.isAvailable else {
+///     throw PlanGeneratorError.aiUnavailable
+/// }
+///
+/// let plan = try await service.generatePlan(
+///     theme: "歴史巡り",
+///     categories: [.scenic],
+///     candidatePlaces: candidatePlaces
+/// )
+/// ```
 protocol PlanGeneratorServiceProtocol {
+    /// Apple Intelligenceが利用可能かどうか。
+    ///
+    /// iOS 26.0以上かつデバイスがApple Intelligenceに対応している場合に`true`を返します。
     var isAvailable: Bool { get }
+
+    /// テーマと候補地からプランを生成する。
+    ///
+    /// - Parameters:
+    ///   - theme: プランのテーマ（例: "神社仏閣巡り"）
+    ///   - categories: 選択されたカテゴリのリスト
+    ///   - candidatePlaces: 候補となる場所のリスト
+    ///
+    /// - Returns: 生成されたプラン情報
+    ///
+    /// - Throws: ``PlanGeneratorError/aiUnavailable`` AIが利用不可の場合
+    /// - Throws: ``PlanGeneratorError/noSpotsGenerated`` スポットが生成されなかった場合
     func generatePlan(
         theme: String,
         categories: [PlanCategory],
         candidatePlaces: [Place]
     ) async throws -> GeneratedPlan
+
+    /// 生成されたスポットを候補地とマッチングする。
+    ///
+    /// AI生成結果のスポット名と候補地リストを照合し、一致するペアを返します。
+    /// 完全一致、正規化後の一致、ファジーマッチングの順で試行します。
+    ///
+    /// - Parameters:
+    ///   - generatedSpots: AI生成されたスポット情報
+    ///   - candidatePlaces: 候補地リスト
+    ///
+    /// - Returns: マッチングされたスポットと場所のペア配列
     func matchGeneratedSpotsWithPlaces(
         generatedSpots: [GeneratedSpotInfo],
         candidatePlaces: [Place]
     ) -> [(spot: GeneratedSpotInfo, place: Place)]
 }
 
+// MARK: - 実装
+
+/// 観光プラン生成サービス。
+///
+/// ``PlanGeneratorServiceProtocol``の実装クラスです。
+/// Apple IntelligenceのFoundationModelsフレームワークを使用してプランを生成します。
+///
+/// - Important: iOS 26.0以上が必要です。
+/// - SeeAlso: ``PlanGeneratorServiceProtocol``, ``PlanGeneratorError``
 final class PlanGeneratorService: PlanGeneratorServiceProtocol {
     var isAvailable: Bool {
         #if canImport(FoundationModels)
