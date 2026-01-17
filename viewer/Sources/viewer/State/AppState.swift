@@ -1,0 +1,107 @@
+import Foundation
+import Observation
+
+@Observable
+@MainActor
+final class AppState {
+    var videoConfigurations: [VideoConfiguration]
+    var appSettings: AppSettings
+    var playbackController: PlaybackController
+    var opacityPanelController: OpacityPanelController
+
+    private let configurationsKey = "videoConfigurations"
+    private let settingsKey = "appSettings"
+
+    init() {
+        if let data = UserDefaults.standard.data(forKey: configurationsKey),
+           let configs = try? JSONDecoder().decode([VideoConfiguration].self, from: data) {
+            self.videoConfigurations = configs
+        } else {
+            self.videoConfigurations = VideoConfiguration.defaultConfigurations()
+        }
+
+        if let data = UserDefaults.standard.data(forKey: settingsKey),
+           let settings = try? JSONDecoder().decode(AppSettings.self, from: data) {
+            self.appSettings = settings
+        } else {
+            self.appSettings = AppSettings.default
+        }
+
+        self.playbackController = PlaybackController()
+        self.opacityPanelController = OpacityPanelController()
+
+        // Initialize opacity panel controller with self reference
+        self.opacityPanelController.initialize(appState: self)
+    }
+
+    func save() {
+        if let data = try? JSONEncoder().encode(videoConfigurations) {
+            UserDefaults.standard.set(data, forKey: configurationsKey)
+        }
+        if let data = try? JSONEncoder().encode(appSettings) {
+            UserDefaults.standard.set(data, forKey: settingsKey)
+        }
+    }
+
+    func configuration(for index: Int) -> VideoConfiguration? {
+        videoConfigurations.first { $0.windowIndex == index }
+    }
+
+    func configurationBinding(for index: Int) -> VideoConfiguration {
+        configuration(for: index) ?? VideoConfiguration(windowIndex: index)
+    }
+
+    /// 指定インデックスの設定を確保（存在しなければ作成）
+    func ensureConfiguration(for index: Int) {
+        if configuration(for: index) == nil {
+            videoConfigurations.append(VideoConfiguration(windowIndex: index))
+            save()
+        }
+    }
+
+    func updateConfiguration(at index: Int, _ update: (inout VideoConfiguration) -> Void) {
+        // 設定が存在しない場合は作成
+        ensureConfiguration(for: index)
+        guard let configIndex = videoConfigurations.firstIndex(where: { $0.windowIndex == index }) else { return }
+        update(&videoConfigurations[configIndex])
+        save()
+    }
+
+    func setMainVideo(at index: Int, url: URL) {
+        guard let bookmark = VideoConfiguration.createBookmark(for: url) else { return }
+        updateConfiguration(at: index) { config in
+            config.mainVideoBookmark = bookmark
+        }
+    }
+
+    func setOverlayVideo(at index: Int, url: URL) {
+        guard let bookmark = VideoConfiguration.createBookmark(for: url) else { return }
+        updateConfiguration(at: index) { config in
+            config.overlayVideoBookmark = bookmark
+        }
+    }
+
+    func clearMainVideo(at index: Int) {
+        updateConfiguration(at: index) { config in
+            config.mainVideoBookmark = nil
+        }
+    }
+
+    func clearOverlayVideo(at index: Int) {
+        updateConfiguration(at: index) { config in
+            config.overlayVideoBookmark = nil
+        }
+    }
+
+    func setOverlayOpacity(at index: Int, opacity: Double) {
+        updateConfiguration(at: index) { config in
+            config.overlayOpacity = opacity
+        }
+    }
+
+    func resetToDefaults() {
+        videoConfigurations = VideoConfiguration.defaultConfigurations()
+        appSettings = AppSettings.default
+        save()
+    }
+}

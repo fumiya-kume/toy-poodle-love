@@ -1,0 +1,71 @@
+name: viewer
+options:
+  bundleIdPrefix: com.fumiyakume
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TOOLCHAINS: com.apple.dt.toolchain.XcodeDefault
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Automatic
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+targets:
+  viewer:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/viewer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.fumiyakume.viewer
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Automatic
+        INFOPLIST_GENERATION_MODE: GeneratedFile
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        ENABLE_APP_SANDBOX: YES
+        ENABLE_USER_SELECTED_FILES: readOnly
+        CODE_SIGN_ENTITLEMENTS: Sources/viewer/Resources/viewer.entitlements
+        PRODUCT_NAME: VideoOverlayViewer
+    entitlements:
+      path: Sources/viewer/Resources/viewer.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-only: true
+        com.apple.security.files.bookmarks.app-scope: true
+
+  viewerTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/viewerTests
+    dependencies:
+      - target: viewer
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.fumiyakume.viewerTests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  viewer:
+    build:
+      targets:
+        viewer: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - viewerTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

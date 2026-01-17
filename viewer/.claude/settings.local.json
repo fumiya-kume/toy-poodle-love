@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(xcodegen generate:*)",
+      "Bash(xcodebuild:*)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "WebSearch",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}
