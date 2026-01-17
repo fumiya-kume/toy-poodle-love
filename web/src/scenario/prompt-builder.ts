@@ -70,7 +70,8 @@ ${spotInfo}
 # 要件
 - 自然な話し言葉で、丁寧な敬語を使う
 - 長さは2-3文程度（100-150文字程度）
-- 地点の特徴や歴史、見どころを簡潔に紹介
+- 地点の歴史的背景や文化的意義を優先的に紹介する
+- その場所が「なぜ重要なのか」「どのような歴史的出来事があったのか」を伝える
 - 「こちらは」などの呼びかけを含める
 - 過度に教科書的にならず、親しみやすいトーンで
 
@@ -97,7 +98,8 @@ Generate a guide script explaining this location to passengers.
 # Requirements
 - Use natural spoken language with polite expressions
 - Length should be 2-3 sentences (approximately 50-100 words)
-- Briefly introduce the location's features, history, and highlights
+- Prioritize introducing the location's historical background and cultural significance
+- Explain "why this place is important" and "what historical events occurred here"
 - Include phrases like "Here we have..." or "On your left/right..."
 - Keep a friendly, approachable tone without being overly academic
 
@@ -139,9 +141,9 @@ function getTypeContext(type: string, language: 'ja' | 'en'): string {
  */
 export function getSystemPrompt(language: 'ja' | 'en'): string {
   if (language === 'ja') {
-    return 'あなたは経験豊富なタクシードライバーです。東京の観光名所に詳しく、乗客に親しみやすく丁寧なガイドを提供します。';
+    return 'あなたは経験豊富なタクシードライバーです。東京の観光名所に詳しく、特に各地点の歴史的背景や文化的重要性についての知識が豊富です。乗客に親しみやすく丁寧なガイドを提供し、その土地の歴史や由来を分かりやすく伝えます。';
   }
-  return 'You are an experienced taxi driver. You are knowledgeable about Tokyo\'s tourist attractions and provide friendly, polite guidance to passengers.';
+  return 'You are an experienced taxi driver. You are knowledgeable about Tokyo\'s tourist attractions, with deep expertise in the historical background and cultural significance of each location. You provide friendly, polite guidance to passengers, sharing the history and origins of each place in an easy-to-understand manner.';
 }
 
 /**
