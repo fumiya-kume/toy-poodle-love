@@ -11,10 +11,36 @@ protocol LookAroundServiceProtocol {
 }
 
 final class LookAroundService: LookAroundServiceProtocol {
+
+    private let cacheService: LookAroundCacheService
+
+    init(cacheService: LookAroundCacheService = LookAroundCacheService()) {
+        self.cacheService = cacheService
+    }
+
     func fetchScene(for coordinate: CLLocationCoordinate2D) async throws -> MKLookAroundScene? {
         AppLogger.lookAround.debug("Look Aroundシーン取得を開始します: (\(coordinate.latitude), \(coordinate.longitude))")
+
+        // 1. メモリキャッシュをチェック
+        if let cachedScene = await cacheService.cachedScene(for: coordinate) {
+            AppLogger.lookAround.debug("メモリキャッシュからシーンを返却")
+            return cachedScene
+        }
+
+        // 2. 利用不可と記録済みの座標はスキップ
+        if await cacheService.isKnownUnavailable(for: coordinate) {
+            AppLogger.lookAround.debug("利用不可キャッシュによりスキップ")
+            return nil
+        }
+
+        // 3. APIから取得
         let request = MKLookAroundSceneRequest(coordinate: coordinate)
-        return try await request.scene
+        let scene = try await request.scene
+
+        // 4. キャッシュに保存
+        await cacheService.cacheScene(scene, for: coordinate)
+
+        return scene
     }
 
     func fetchScenesProgressively(
