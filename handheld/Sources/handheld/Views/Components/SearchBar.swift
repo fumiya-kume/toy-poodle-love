@@ -42,6 +42,7 @@ struct SearchBar: View {
             }
             .buttonStyle(.borderedProminent)
         }
+        .frame(maxWidth: 500)
         .padding(.horizontal)
     }
 }

@@ -278,9 +278,10 @@ struct LocationSearchView: View {
                     }
                     .padding(.horizontal)
                 }
-                .frame(maxHeight: 250)
+                .frame(maxWidth: 500, maxHeight: 250)
             }
         }
+        .frame(maxWidth: 500)
         .background(Color(.systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
