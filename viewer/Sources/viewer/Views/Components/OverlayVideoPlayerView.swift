@@ -1,6 +1,7 @@
 import SwiftUI
 import AVKit
 
+#if os(macOS)
 struct OverlayVideoPlayerView: NSViewRepresentable {
     let player: AVPlayer?
 
@@ -21,6 +22,26 @@ struct OverlayVideoPlayerView: NSViewRepresentable {
         }
     }
 }
+#else
+struct OverlayVideoPlayerView: UIViewControllerRepresentable {
+    let player: AVPlayer?
+
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let controller = AVPlayerViewController()
+        controller.player = player
+        controller.showsPlaybackControls = false
+        controller.videoGravity = .resizeAspect
+        controller.view.backgroundColor = .clear
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+        if uiViewController.player !== player {
+            uiViewController.player = player
+        }
+    }
+}
+#endif
 
 #Preview {
     OverlayVideoPlayerView(player: nil)

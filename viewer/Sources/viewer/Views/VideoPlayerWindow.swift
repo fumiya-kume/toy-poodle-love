@@ -1,6 +1,7 @@
 import SwiftUI
 import AVKit
 import AVFoundation
+import UniformTypeIdentifiers
 
 struct VideoPlayerWindow: View {
     @Environment(AppState.self) private var appState
@@ -11,6 +12,9 @@ struct VideoPlayerWindow: View {
     @State private var mainAccessedURL: URL?
     @State private var overlayAccessedURL: URL?
     @State private var windowId = UUID()
+    @State private var showMainVideoPicker = false
+    @State private var showOverlayVideoPicker = false
+    @State private var showOpacitySheet = false
 
     /// VideoConfigurationから透明度を取得（永続化対応）
     private var overlayOpacity: Double {
@@ -85,6 +89,7 @@ struct VideoPlayerWindow: View {
                 .transition(.opacity.animation(.easeInOut(duration: 0.2)))
             }
         }
+        #if os(macOS)
         .onHover { hovering in
             if hovering {
                 showControls = true
@@ -94,10 +99,21 @@ struct VideoPlayerWindow: View {
                 controlsTimer?.invalidate()
             }
         }
+        #endif
         .onTapGesture {
-            // ウィンドウクリック時にフォーカスを更新
+            // タップ時にフォーカスを更新
             appState.opacityPanelController.setFocusedWindow(windowId.hashValue)
+            #if os(iOS)
+            // iOS ではタップでコントロールの表示/非表示を切り替え
+            if mainPlayer != nil {
+                showControls.toggle()
+                if showControls {
+                    resetControlsTimer()
+                }
+            }
+            #else
             appState.playbackController.togglePlayPause()
+            #endif
         }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleDrop(providers: providers)
@@ -113,6 +129,7 @@ struct VideoPlayerWindow: View {
             // パネルからフォーカスをクリア
             appState.opacityPanelController.clearFocusedWindow(windowId.hashValue)
         }
+        #if os(macOS)
         .focusable()
         .onKeyPress(.space) {
             appState.playbackController.togglePlayPause()
@@ -130,6 +147,7 @@ struct VideoPlayerWindow: View {
             appState.playbackController.isMuted.toggle()
             return .handled
         }
+        #endif
         .toolbar {
             ToolbarItemGroup {
                 Button(action: selectMainVideo) {
@@ -141,11 +159,40 @@ struct VideoPlayerWindow: View {
                     Label("Overlay", systemImage: "square.stack")
                 }
                 .help("Select overlay video file")
+
+                #if os(iOS)
+                Button(action: { showOpacitySheet = true }) {
+                    Label("Opacity", systemImage: "slider.horizontal.3")
+                }
+                .help("Adjust overlay opacity")
+                #endif
             }
         }
+        .fileImporter(
+            isPresented: $showMainVideoPicker,
+            allowedContentTypes: [.movie, .video, .mpeg4Movie, .quickTimeMovie],
+            allowsMultipleSelection: false
+        ) { result in
+            handleMainVideoSelection(result)
+        }
+        .fileImporter(
+            isPresented: $showOverlayVideoPicker,
+            allowedContentTypes: [.movie, .video, .mpeg4Movie, .quickTimeMovie],
+            allowsMultipleSelection: false
+        ) { result in
+            handleOverlayVideoSelection(result)
+        }
+        #if os(iOS)
+        .sheet(isPresented: $showOpacitySheet) {
+            OpacitySheetView(opacity: overlayOpacityBinding)
+                .presentationDetents([.height(150)])
+                .presentationDragIndicator(.visible)
+        }
+        #endif
     }
 
     private func selectMainVideo() {
+        #if os(macOS)
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.movie, .video, .mpeg4Movie, .quickTimeMovie]
         panel.canChooseFiles = true
@@ -156,9 +203,13 @@ struct VideoPlayerWindow: View {
         if panel.runModal() == .OK, let url = panel.url {
             loadMainVideo(url: url)
         }
+        #else
+        showMainVideoPicker = true
+        #endif
     }
 
     private func selectOverlayVideo() {
+        #if os(macOS)
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.movie, .video, .mpeg4Movie, .quickTimeMovie]
         panel.canChooseFiles = true
@@ -169,6 +220,19 @@ struct VideoPlayerWindow: View {
         if panel.runModal() == .OK, let url = panel.url {
             loadOverlayVideo(url: url)
         }
+        #else
+        showOverlayVideoPicker = true
+        #endif
+    }
+
+    private func handleMainVideoSelection(_ result: Result<[URL], Error>) {
+        guard case .success(let urls) = result, let url = urls.first else { return }
+        loadMainVideo(url: url)
+    }
+
+    private func handleOverlayVideoSelection(_ result: Result<[URL], Error>) {
+        guard case .success(let urls) = result, let url = urls.first else { return }
+        loadOverlayVideo(url: url)
     }
 
     private func loadMainVideo(url: URL) {
@@ -248,6 +312,44 @@ struct VideoPlayerWindow: View {
         }
     }
 }
+
+#if os(iOS)
+/// iOS 用の透明度調整シート
+struct OpacitySheetView: View {
+    @Binding var opacity: Double
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                HStack {
+                    Image(systemName: "square.stack")
+                    Text("Overlay Opacity")
+                    Spacer()
+                    Text("\(Int(opacity * 100))%")
+                        .monospacedDigit()
+                }
+                .padding(.horizontal)
+
+                Slider(value: $opacity, in: 0...1, step: 0.01)
+                    .padding(.horizontal)
+
+                Spacer()
+            }
+            .padding(.top, 20)
+            .navigationTitle("Opacity Control")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+#endif
 
 #Preview {
     VideoPlayerWindow()

@@ -9,6 +9,7 @@ struct ViewerApp: App {
             VideoPlayerWindow()
                 .environment(appState)
         }
+        #if os(macOS)
         .defaultSize(width: 800, height: 600)
         .commands {
             CommandGroup(after: .newItem) {
@@ -71,10 +72,13 @@ struct ViewerApp: App {
                 .keyboardShortcut("[", modifiers: .command)
             }
         }
+        #endif
 
+        #if os(macOS)
         Settings {
             SettingsView()
                 .environment(appState)
         }
+        #endif
     }
 }
