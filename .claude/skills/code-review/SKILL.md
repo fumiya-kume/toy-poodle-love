@@ -14,20 +14,21 @@ version: 1.0.0
 
 # Code Review
 
-Comprehensive code review skill for Swift (iOS) and TypeScript (Web) codebases with automatic fix capability.
+Comprehensive code review skill using **codex-cli** for analysis, with Claude Code applying fixes automatically.
 
 ## Overview
+
+**Review Engine**: codex-cli (via Bash)
+**Fix Engine**: Claude Code (Edit tool)
 
 **Supported Languages**:
 - Swift 5.9+ (iOS 17+, SwiftUI, SwiftData)
 - TypeScript 5.x+ (Next.js 14+, React 18+)
 
 **Core Capabilities**:
-- Identify code quality issues
-- Suggest improvements and refactoring
-- Check for common anti-patterns
-- Verify best practices compliance
-- **Automatically fix identified issues**
+- Use codex-cli to identify code quality issues
+- Parse codex-cli output for structured feedback
+- **Claude Code automatically applies fixes**
 
 ## Default Behavior (No Arguments)
 
@@ -35,13 +36,12 @@ When `/code-review` is invoked without specifying a file or directory:
 
 1. **Get changed files** from `git diff master...HEAD --name-only`
 2. **Filter** to only `.swift`, `.ts`, `.tsx` files
-3. **Read and review** each changed file
-4. **Report issues** found in the diff
-
-This is useful for reviewing changes before creating a PR.
+3. **Run codex-cli** to review each changed file
+4. **Parse output** and present issues
+5. **Apply fixes** with Claude Code's Edit tool
 
 ```bash
-# What gets executed internally:
+# Get changed files
 git diff master...HEAD --name-only | grep -E '\.(swift|ts|tsx)$'
 ```
 
@@ -53,48 +53,111 @@ git diff master...HEAD --name-only | grep -E '\.(swift|ts|tsx)$'
 /code-review handheld/Sources/  # Review directory
 ```
 
-## Quick Start Checklist
+## Codex-CLI Integration
 
-When reviewing code, check the following:
+### Step 1: Prepare Review Prompt
 
-1. [ ] Identify the language and framework
-2. [ ] Check for linting errors (SwiftLint / ESLint)
-3. [ ] Verify type safety
-4. [ ] Review error handling
-5. [ ] Check for memory leaks / performance issues
-6. [ ] Verify accessibility compliance (if UI code)
-7. [ ] Ensure test coverage for changes
+Create a structured prompt for codex-cli:
 
-## Auto-Fix Workflow
+```bash
+# Review a single file with codex-cli
+codex -q "Review this code for issues. Output in JSON format with fields: file, line, severity (Critical/High/Medium/Low), category, description, current_code, suggested_fix. File: <filename>
 
-When performing code review with automatic fixes:
+$(cat path/to/file.swift)"
+```
 
-### Step 1: Analyze
-Read the target file(s) and identify all issues.
+### Step 2: Run Codex-CLI
 
-### Step 2: Report Issues
-Present issues in a structured format:
+Execute codex-cli via Bash tool:
+
+```bash
+# For Swift files
+codex -q "You are a Swift code reviewer. Review for:
+- Memory leaks (retain cycles in closures)
+- Missing @MainActor for UI updates
+- Force unwrap without safety
+- Performance issues
+- SwiftUI best practices
+
+Output JSON array of issues. Each issue: {file, line, severity, category, description, current_code, suggested_fix}
+
+$(cat handheld/Sources/path/to/File.swift)"
+
+# For TypeScript files
+codex -q "You are a TypeScript code reviewer. Review for:
+- any type usage
+- Missing useEffect dependencies
+- Unnecessary re-renders
+- Type safety issues
+- Next.js/React best practices
+
+Output JSON array of issues. Each issue: {file, line, severity, category, description, current_code, suggested_fix}
+
+$(cat web/src/path/to/file.tsx)"
+```
+
+### Step 3: Parse and Present Issues
+
+Parse the JSON output from codex-cli and present to user:
 
 ```
-## Issue #1: [Issue Title]
+## Issue #1: [Description]
 - **File**: path/to/file.swift:42
 - **Severity**: Critical | High | Medium | Low
 - **Category**: Memory | Type Safety | Performance | Style
-- **Description**: What the problem is
-- **Current Code**: (show problematic code)
-- **Suggested Fix**: (show corrected code)
+- **Current Code**: (from codex output)
+- **Suggested Fix**: (from codex output)
 ```
 
-### Step 3: Apply Fixes
-After user confirmation, use the Edit tool to apply fixes:
-1. Apply each fix sequentially
-2. Verify the fix doesn't break other code
-3. Run linter/tests to confirm
+### Step 4: Apply Fixes (Claude Code)
 
-### Step 4: Verify
-Run appropriate verification commands:
-- Swift: `cd handheld && make test`
-- TypeScript: `cd web && npm run lint && npm run type-check`
+After user confirmation ("Fix All" or specific issue numbers):
+1. Use Edit tool to apply each fix from codex-cli's suggestions
+2. Run linter/tests to verify
+
+### Step 5: Verify
+
+```bash
+# Swift
+cd handheld && make test
+
+# TypeScript
+cd web && npm run lint && npm run type-check
+```
+
+## Quick Reference
+
+### Codex-CLI Commands
+
+```bash
+# Basic review
+codex -q "Review this Swift code: $(cat file.swift)"
+
+# With specific focus
+codex -q "Check for memory leaks in: $(cat file.swift)"
+
+# Multiple files (loop)
+for f in $(git diff master --name-only | grep '\.swift$'); do
+  echo "=== $f ==="
+  codex -q "Review: $(cat $f)"
+done
+```
+
+### Expected JSON Output Format
+
+```json
+[
+  {
+    "file": "ViewModel.swift",
+    "line": 42,
+    "severity": "High",
+    "category": "Concurrency",
+    "description": "Missing @MainActor for class with @Observable",
+    "current_code": "@Observable\nclass ViewModel {",
+    "suggested_fix": "@Observable\n@MainActor\nclass ViewModel {"
+  }
+]
+```
 
 ## Swift Code Review
 
