@@ -29,6 +29,30 @@ Comprehensive code review skill for Swift (iOS) and TypeScript (Web) codebases w
 - Verify best practices compliance
 - **Automatically fix identified issues**
 
+## Default Behavior (No Arguments)
+
+When `/code-review` is invoked without specifying a file or directory:
+
+1. **Get changed files** from `git diff master...HEAD --name-only`
+2. **Filter** to only `.swift`, `.ts`, `.tsx` files
+3. **Read and review** each changed file
+4. **Report issues** found in the diff
+
+This is useful for reviewing changes before creating a PR.
+
+```bash
+# What gets executed internally:
+git diff master...HEAD --name-only | grep -E '\.(swift|ts|tsx)$'
+```
+
+### Usage Examples
+
+```
+/code-review                    # Review all changes vs master
+/code-review path/to/file.swift # Review specific file
+/code-review handheld/Sources/  # Review directory
+```
+
 ## Quick Start Checklist
 
 When reviewing code, check the following:
