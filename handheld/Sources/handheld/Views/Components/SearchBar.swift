@@ -4,6 +4,7 @@ struct SearchBar: View {
     @Binding var text: String
     var placeholder: String = "場所を入力..."
     var onSearch: () -> Void
+    var onTextChange: ((String) -> Void)?
 
     var body: some View {
         HStack {
@@ -17,10 +18,14 @@ struct SearchBar: View {
                     .onSubmit {
                         onSearch()
                     }
+                    .onChange(of: text) { _, newValue in
+                        onTextChange?(newValue)
+                    }
 
                 if !text.isEmpty {
                     Button {
                         text = ""
+                        onTextChange?("")
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.secondary)

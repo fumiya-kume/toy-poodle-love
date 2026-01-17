@@ -13,17 +13,37 @@ final class LocationSearchViewModel {
     var errorMessage: String?
     var mapCameraPosition: MapCameraPosition = .automatic
 
+    var suggestions: [SearchSuggestion] = []
+    var isSuggesting: Bool = false
+    var showSuggestions: Bool = false
+
     let locationManager = LocationManager()
 
     private let searchService: LocationSearchServiceProtocol
     private let directionsService: DirectionsServiceProtocol
+    private let completerService: LocationCompleterServiceProtocol
+    private var debounceTask: Task<Void, Never>?
+    private let debounceInterval: Duration = .milliseconds(300)
 
     init(
         searchService: LocationSearchServiceProtocol = LocationSearchService(),
-        directionsService: DirectionsServiceProtocol = DirectionsService()
+        directionsService: DirectionsServiceProtocol = DirectionsService(),
+        completerService: LocationCompleterServiceProtocol? = nil
     ) {
         self.searchService = searchService
         self.directionsService = directionsService
+        self.completerService = completerService ?? LocationCompleterService()
+        setupCompleterCallback()
+    }
+
+    private func setupCompleterCallback() {
+        completerService.onSuggestionsUpdated = { [weak self] newSuggestions in
+            Task { @MainActor in
+                self?.suggestions = newSuggestions
+                self?.isSuggesting = false
+                self?.showSuggestions = !newSuggestions.isEmpty && !(self?.searchQuery.isEmpty ?? true)
+            }
+        }
     }
 
     var currentLocation: CLLocationCoordinate2D? {
@@ -109,5 +129,61 @@ final class LocationSearchViewModel {
         selectedPlace = nil
         route = nil
         errorMessage = nil
+        suggestions = []
+        showSuggestions = false
+        debounceTask?.cancel()
+        completerService.clear()
+    }
+
+    @MainActor
+    func updateSuggestions() {
+        debounceTask?.cancel()
+
+        debounceTask = Task {
+            do {
+                try await Task.sleep(for: debounceInterval)
+
+                guard !Task.isCancelled else { return }
+
+                isSuggesting = true
+
+                if let location = currentLocation {
+                    completerService.setRegion(MKCoordinateRegion(
+                        center: location,
+                        span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
+                    ))
+                }
+
+                completerService.updateQuery(searchQuery)
+            } catch {
+                // Task cancelled
+            }
+        }
+    }
+
+    @MainActor
+    func selectSuggestion(_ suggestion: SearchSuggestion) async {
+        showSuggestions = false
+        isSearching = true
+        errorMessage = nil
+
+        do {
+            let places = try await completerService.search(suggestion: suggestion)
+            searchResults = places
+
+            if let firstPlace = places.first, places.count == 1 {
+                await selectPlace(firstPlace)
+            }
+        } catch {
+            errorMessage = "検索に失敗しました: \(error.localizedDescription)"
+            searchResults = []
+        }
+
+        isSearching = false
+    }
+
+    func hideSuggestions() {
+        showSuggestions = false
+        debounceTask?.cancel()
     }
 }

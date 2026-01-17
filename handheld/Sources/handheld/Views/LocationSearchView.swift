@@ -8,15 +8,25 @@ struct LocationSearchView: View {
     var body: some View {
         ZStack(alignment: .top) {
             mapView
+                .onTapGesture {
+                    viewModel.hideSuggestions()
+                }
 
             VStack(spacing: 0) {
                 SearchBar(text: $viewModel.searchQuery) {
+                    viewModel.hideSuggestions()
                     Task {
                         await viewModel.search()
                         showSearchResults = !viewModel.searchResults.isEmpty
                     }
+                } onTextChange: { _ in
+                    viewModel.updateSuggestions()
                 }
                 .padding(.top, 8)
+
+                if viewModel.showSuggestions {
+                    suggestionsList
+                }
 
                 if let errorMessage = viewModel.errorMessage {
                     errorBanner(message: errorMessage)
@@ -118,6 +128,49 @@ struct LocationSearchView: View {
             .background(Color.red)
             .cornerRadius(8)
             .padding(.top, 8)
+    }
+
+    private var suggestionsList: some View {
+        VStack(spacing: 0) {
+            if viewModel.isSuggesting {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("検索中...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 12)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(viewModel.suggestions) { suggestion in
+                            SuggestionListItem(suggestion: suggestion)
+                                .onTapGesture {
+                                    Task {
+                                        await viewModel.selectSuggestion(suggestion)
+                                        if viewModel.searchResults.count > 1 {
+                                            showSearchResults = true
+                                        }
+                                    }
+                                }
+
+                            if suggestion.id != viewModel.suggestions.last?.id {
+                                Divider()
+                                    .padding(.leading, 36)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .frame(maxHeight: 250)
+            }
+        }
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+        .padding(.horizontal)
+        .padding(.top, 4)
     }
 }
 
