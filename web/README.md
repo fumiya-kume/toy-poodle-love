@@ -69,11 +69,9 @@ taxi-senario-writer/
 
 ## 使用しているモデル
 
-- **Qwen**: `qwen-plus` (他のオプション: `qwen-turbo`, `qwen-max`)
-- **Gemini**: `gemini-pro`
+- **Qwen**: `qwen-flash` (他のオプション: `qwen-turbo`, `qwen-max`, `qwen-plus`)
+- **Gemini**: `gemini-2.5-flash-lite` (他のオプション: `gemini-1.5-pro`)
 
 ## ライセンス
 
 ISC
-# toy-story-love
-# toy-story-love

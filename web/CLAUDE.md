@@ -60,7 +60,7 @@ npm run cli
 #### APIクライアント (`src/`)
 
 - **`qwen-client.ts`**: OpenAI互換のDashScope APIを使用
-  - OpenAI SDKを利用して`qwen-plus`モデルを呼び出し
+  - OpenAI SDKを利用して`qwen-flash`モデルを呼び出し
   - リージョン選択可能(中国 vs 国際)
   - ベースURLが異なるため、regionパラメータで切り替え
 

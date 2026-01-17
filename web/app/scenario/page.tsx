@@ -151,6 +151,12 @@ export default function ScenarioPage() {
         body: JSON.stringify({ route: routeInput, models: 'both' }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.error || `HTTPエラー: ${response.status}`);
+        return;
+      }
+
       const data = await response.json();
 
       if (data.success && data.data) {
@@ -199,6 +205,12 @@ export default function ScenarioPage() {
         }),
         signal: abortController.signal,
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        setIntegrationError(errorData.error || `HTTPエラー: ${response.status}`);
+        return;
+      }
 
       const data = await response.json();
 

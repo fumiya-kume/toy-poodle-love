@@ -1,5 +1,5 @@
 {
-  "name": "taxi-senario-writer",
+  "name": "taxi-scenario-writer",
   "version": "1.0.0",
   "description": "Minimal application to call Qwen and Gemini APIs",
   "main": "dist/index.js",
