@@ -66,7 +66,7 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity)
                 #endif
             }
-            .background(AppTheme.backgroundGradient.ignoresSafeArea())
+            .background(Color(uiColor: .systemBackground).ignoresSafeArea())
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
