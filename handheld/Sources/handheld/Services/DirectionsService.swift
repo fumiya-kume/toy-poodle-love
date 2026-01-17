@@ -13,7 +13,7 @@ final class DirectionsService: DirectionsServiceProtocol {
         let request = MKDirections.Request()
         request.source = MKMapItem(placemark: sourcePlacemark)
         request.destination = MKMapItem(placemark: destinationPlacemark)
-        request.transportType = .automobile
+        request.transportType = .walking
 
         let directions = MKDirections(request: request)
         let response = try await directions.calculate()
