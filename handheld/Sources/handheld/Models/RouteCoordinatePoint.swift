@@ -22,4 +22,10 @@ struct RouteCoordinatePoint: Identifiable {
     var hasScene: Bool {
         lookAroundScene != nil
     }
+
+    mutating func setLookAroundFetchResult(_ scene: MKLookAroundScene?) {
+        lookAroundScene = scene
+        isLookAroundLoading = false
+        lookAroundFetchFailed = scene == nil
+    }
 }

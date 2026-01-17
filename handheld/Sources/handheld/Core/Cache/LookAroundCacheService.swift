@@ -34,6 +34,8 @@ actor LookAroundCacheService {
     private let configuration: LookAroundCacheConfiguration
     private let cacheFileURL: URL
     private var isDirty = false
+    private var saveTask: Task<Void, Never>?
+    private let saveDebounce: Duration = .milliseconds(300)
 
     // MARK: - Statistics
 
@@ -121,9 +123,7 @@ actor LookAroundCacheService {
             cleanupOldEntries()
         }
 
-        Task {
-            await saveAvailabilityCache()
-        }
+        scheduleSave()
 
         let status = isAvailable ? "利用可能" : "利用不可"
         AppLogger.cache.debug("Look Around可用性をキャッシュに保存: \(key.description) (\(status))")
@@ -149,9 +149,9 @@ actor LookAroundCacheService {
         missCount = 0
         isDirty = true
 
-        Task {
-            await saveAvailabilityCache()
-        }
+        saveTask?.cancel()
+        saveTask = nil
+        scheduleSave()
 
         AppLogger.cache.info("Look Aroundキャッシュをクリアしました")
     }
@@ -159,7 +159,8 @@ actor LookAroundCacheService {
     // MARK: - Private Methods
 
     private static func defaultCacheFileURL() -> URL {
-        let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         return cacheDirectory.appendingPathComponent("lookaround_availability_cache.json")
     }
 
@@ -195,6 +196,20 @@ actor LookAroundCacheService {
         } catch {
             AppLogger.cache.error("Look Around可用性キャッシュの保存に失敗しました: \(error.localizedDescription)")
         }
+    }
+
+    private func scheduleSave() {
+        guard saveTask == nil else { return }
+
+        saveTask = Task {
+            try? await Task.sleep(for: saveDebounce)
+            await saveAvailabilityCache()
+            await clearSaveTask()
+        }
+    }
+
+    private func clearSaveTask() {
+        saveTask = nil
     }
 
     private func cleanupOldEntries() {

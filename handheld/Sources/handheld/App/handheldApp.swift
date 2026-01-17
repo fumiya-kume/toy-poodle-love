@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct handheldApp: App {
+struct HandheldApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

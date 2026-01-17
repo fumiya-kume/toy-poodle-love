@@ -106,7 +106,7 @@ struct NavigationLookAroundSheetView: View {
                     Text("ステップ \(selectedStepIndex + 1) / \(navigationSteps.count)")
                         .font(.headline)
                     if let step = currentStep {
-                        Text(step.instructions.isEmpty ? "直進" : step.instructions)
+                        Text(step.displayInstructions)
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .lineLimit(1)

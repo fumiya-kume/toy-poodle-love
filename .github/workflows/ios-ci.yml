@@ -28,6 +28,10 @@ jobs:
     runs-on: macos-15
     env:
       DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      DERIVED_DATA_PATH: .derivedData.ios
+      CLONED_SOURCE_PACKAGES_DIR_PATH: .sourcepackages
+      XCODEBUILD_ARGS: -showBuildTimingSummary
+      XCODEBUILD_SETTINGS: ENABLE_PREVIEWS=NO
 
     steps:
       - name: Checkout repository
@@ -36,29 +40,43 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      - name: Cache SwiftPM checkouts
+        uses: actions/cache@v4
+        with:
+          path: handheld/.sourcepackages
+          key: ${{ runner.os }}-spm-${{ env.DEVELOPER_DIR }}-${{ hashFiles('handheld/project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-${{ env.DEVELOPER_DIR }}-
+
       - name: Cache Homebrew packages
         uses: actions/cache@v4
         with:
           path: ~/Library/Caches/Homebrew
-          key: ${{ runner.os }}-homebrew-xcodegen-${{ hashFiles('handheld/project.yml') }}
+          key: ${{ runner.os }}-homebrew-tools-${{ hashFiles('handheld/project.yml') }}
           restore-keys: |
-            ${{ runner.os }}-homebrew-xcodegen-
+            ${{ runner.os }}-homebrew-tools-
 
-      - name: Install xcodegen
+      - name: Install tools
         env:
           HOMEBREW_NO_ANALYTICS: "1"
           HOMEBREW_NO_AUTO_UPDATE: "1"
           HOMEBREW_NO_INSTALL_CLEANUP: "1"
-        run: brew install xcodegen
+        run: brew install xcodegen xcbeautify
 
       - name: Run iOS tests
-        run: make test
+        run: |
+          set -o pipefail
+          make test 2>&1 | xcbeautify
 
   build-and-test-mac:
     name: Build & Test (Mac Catalyst)
     runs-on: macos-15
     env:
       DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      DERIVED_DATA_PATH: .derivedData.maccatalyst
+      CLONED_SOURCE_PACKAGES_DIR_PATH: .sourcepackages
+      XCODEBUILD_ARGS: -showBuildTimingSummary
+      XCODEBUILD_SETTINGS: ENABLE_PREVIEWS=NO
 
     steps:
       - name: Checkout repository
@@ -67,20 +85,30 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      - name: Cache SwiftPM checkouts
+        uses: actions/cache@v4
+        with:
+          path: handheld/.sourcepackages
+          key: ${{ runner.os }}-spm-${{ env.DEVELOPER_DIR }}-${{ hashFiles('handheld/project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-${{ env.DEVELOPER_DIR }}-
+
       - name: Cache Homebrew packages
         uses: actions/cache@v4
         with:
           path: ~/Library/Caches/Homebrew
-          key: ${{ runner.os }}-homebrew-xcodegen-${{ hashFiles('handheld/project.yml') }}
+          key: ${{ runner.os }}-homebrew-tools-${{ hashFiles('handheld/project.yml') }}
           restore-keys: |
-            ${{ runner.os }}-homebrew-xcodegen-
+            ${{ runner.os }}-homebrew-tools-
 
-      - name: Install xcodegen
+      - name: Install tools
         env:
           HOMEBREW_NO_ANALYTICS: "1"
           HOMEBREW_NO_AUTO_UPDATE: "1"
           HOMEBREW_NO_INSTALL_CLEANUP: "1"
-        run: brew install xcodegen
+        run: brew install xcodegen xcbeautify
 
       - name: Run Mac Catalyst tests
-        run: make test-mac
+        run: |
+          set -o pipefail
+          make test-mac 2>&1 | xcbeautify

@@ -8,6 +8,8 @@ actor GeocodingCacheService {
     private let configuration: CacheConfiguration
     private let cacheFileURL: URL
     private var isDirty = false
+    private var saveTask: Task<Void, Never>?
+    private let saveDebounce: Duration = .milliseconds(300)
 
     init(configuration: CacheConfiguration = .default) {
         self.configuration = configuration
@@ -52,9 +54,7 @@ actor GeocodingCacheService {
             cleanupOldEntries()
         }
 
-        Task {
-            await saveCache()
-        }
+        scheduleSave()
 
         AppLogger.cache.debug("キャッシュ保存: \(title) (\(coordinate.latitude), \(coordinate.longitude))")
     }
@@ -63,9 +63,9 @@ actor GeocodingCacheService {
     func clearCache() {
         memoryCache.removeAll()
         isDirty = true
-        Task {
-            await saveCache()
-        }
+        saveTask?.cancel()
+        saveTask = nil
+        scheduleSave()
         AppLogger.cache.info("キャッシュをクリアしました")
     }
 
@@ -80,7 +80,8 @@ actor GeocodingCacheService {
     // MARK: - Private Methods
 
     private static func defaultCacheFileURL() -> URL {
-        let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         return cacheDirectory.appendingPathComponent("geocoding_cache.json")
     }
 
@@ -118,6 +119,20 @@ actor GeocodingCacheService {
         } catch {
             AppLogger.cache.error("キャッシュの保存に失敗しました: \(error.localizedDescription)")
         }
+    }
+
+    private func scheduleSave() {
+        guard saveTask == nil else { return }
+
+        saveTask = Task {
+            try? await Task.sleep(for: saveDebounce)
+            await saveCache()
+            await clearSaveTask()
+        }
+    }
+
+    private func clearSaveTask() {
+        saveTask = nil
     }
 
     private func cleanupOldEntries() {

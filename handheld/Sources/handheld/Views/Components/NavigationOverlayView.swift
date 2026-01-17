@@ -17,7 +17,7 @@ struct NavigationOverlayView: View {
                                 .font(.system(size: 40, weight: .bold))
                                 .foregroundColor(.primary)
 
-                            Text(step.instructions.isEmpty ? "直進" : step.instructions)
+                            Text(step.displayInstructions)
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                                 .lineLimit(2)

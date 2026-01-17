@@ -160,6 +160,7 @@ final class PlanGeneratorViewModel {
         }
 
         isSearchingLocation = true
+        defer { isSearchingLocation = false }
 
         do {
             locationSuggestions = try await locationSearchService.search(query: locationQuery, region: nil)
@@ -167,8 +168,6 @@ final class PlanGeneratorViewModel {
             AppLogger.search.error("エリア検索に失敗: \(error.localizedDescription)")
             locationSuggestions = []
         }
-
-        isSearchingLocation = false
     }
 
     func selectLocation(_ place: Place) {

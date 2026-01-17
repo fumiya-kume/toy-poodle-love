@@ -49,6 +49,9 @@ DerivedData/
 *.dSYM.zip
 *.dSYM
 build/
+handheld/.derivedData*/
+handheld/.xcresult/
+handheld/.sourcepackages/
 
 # Swift Package Manager
 .build/

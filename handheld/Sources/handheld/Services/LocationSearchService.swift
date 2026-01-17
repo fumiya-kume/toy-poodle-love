@@ -1,6 +1,5 @@
 import Foundation
 import MapKit
-import os
 
 protocol LocationSearchServiceProtocol {
     func search(query: String, region: MKCoordinateRegion?) async throws -> [Place]

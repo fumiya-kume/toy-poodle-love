@@ -2,18 +2,6 @@ import Testing
 import MapKit
 @testable import handheld
 
-struct MockLocationSearchService: LocationSearchServiceProtocol {
-    var mockResults: [Place] = []
-    var shouldThrowError: Bool = false
-
-    func search(query: String, region: MKCoordinateRegion?) async throws -> [Place] {
-        if shouldThrowError {
-            throw NSError(domain: "MockError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Mock error"])
-        }
-        return mockResults
-    }
-}
-
 struct MockDirectionsService: DirectionsServiceProtocol {
     var mockRoute: Route?
     var shouldThrowError: Bool = false

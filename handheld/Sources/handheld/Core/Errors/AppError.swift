@@ -20,6 +20,26 @@ enum AppError: LocalizedError {
     case lookAroundNotAvailable(coordinate: CLLocationCoordinate2D)
     case lookAroundFetchFailed(underlying: Error)
 
+    var underlyingError: Error? {
+        switch self {
+        case .searchFailed(let underlying),
+             .routeCalculationFailed(let underlying),
+             .lookAroundFetchFailed(let underlying):
+            return underlying
+        default:
+            return nil
+        }
+    }
+
+    var associatedCoordinate: CLLocationCoordinate2D? {
+        switch self {
+        case .lookAroundNotAvailable(let coordinate):
+            return coordinate
+        default:
+            return nil
+        }
+    }
+
     var errorDescription: String? {
         switch self {
         case .locationPermissionDenied:

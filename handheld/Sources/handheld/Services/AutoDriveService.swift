@@ -23,7 +23,7 @@ protocol AutoDriveServiceProtocol {
 
 final class AutoDriveService: AutoDriveServiceProtocol {
     private let lookAroundService: LookAroundServiceProtocol
-    private let defaultInterval: CLLocationDistance = 30
+    private static let defaultInterval: CLLocationDistance = 30
 
     init(lookAroundService: LookAroundServiceProtocol = LookAroundService()) {
         self.lookAroundService = lookAroundService
@@ -31,7 +31,7 @@ final class AutoDriveService: AutoDriveServiceProtocol {
 
     func extractDrivePoints(
         from polyline: MKPolyline,
-        interval: CLLocationDistance = 30
+        interval: CLLocationDistance = AutoDriveService.defaultInterval
     ) -> [RouteCoordinatePoint] {
         let allCoordinates = polyline.coordinates
         guard !allCoordinates.isEmpty else {
@@ -81,6 +81,7 @@ final class AutoDriveService: AutoDriveServiceProtocol {
         let targetCount = min(initialCount, points.count)
         let targetPoints = Array(points.prefix(targetCount))
         var successCount = 0
+        let lookAroundService = lookAroundService
 
         AppLogger.autoDrive.info("初期シーン取得を開始します: \(targetCount)件")
 
@@ -88,7 +89,7 @@ final class AutoDriveService: AutoDriveServiceProtocol {
             for (idx, point) in targetPoints.enumerated() {
                 group.addTask {
                     do {
-                        let scene = try await self.lookAroundService.fetchScene(for: point.coordinate)
+                        let scene = try await lookAroundService.fetchScene(for: point.coordinate)
                         return (idx, scene)
                     } catch {
                         AppLogger.autoDrive.warning("初期シーン取得失敗: インデックス \(idx)")
@@ -117,6 +118,7 @@ final class AutoDriveService: AutoDriveServiceProtocol {
     ) async {
         let endIndex = min(startIndex + count, points.count)
         guard startIndex < endIndex else { return }
+        let lookAroundService = lookAroundService
 
         for index in startIndex..<endIndex {
             let point = points[index]

@@ -87,9 +87,7 @@ struct FlowLayout: Layout {
 #Preview {
     ThemeSuggestionChips(
         categories: [.scenic, .activity],
-        onSelect: { suggestion in
-            print("Selected: \(suggestion)")
-        }
+        onSelect: { _ in }
     )
     .padding()
 }

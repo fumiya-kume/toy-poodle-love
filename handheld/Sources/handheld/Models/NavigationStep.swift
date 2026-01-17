@@ -9,7 +9,7 @@ struct NavigationStep: Identifiable {
     let instructions: String
     let distance: CLLocationDistance
     var lookAroundScene: MKLookAroundScene?
-    var isLookAroundLoading: Bool = false
+    var isLookAroundLoading: Bool = true
     var lookAroundFetchFailed: Bool = false
 
     init(step: MKRoute.Step, index: Int) {
@@ -19,12 +19,14 @@ struct NavigationStep: Identifiable {
         self.instructions = step.instructions
         self.distance = step.distance
     }
-}
 
-extension CLLocationCoordinate2D {
-    func distance(to other: CLLocationCoordinate2D) -> CLLocationDistance {
-        let location1 = CLLocation(latitude: latitude, longitude: longitude)
-        let location2 = CLLocation(latitude: other.latitude, longitude: other.longitude)
-        return location1.distance(from: location2)
+    var displayInstructions: String {
+        instructions.isEmpty ? "直進" : instructions
+    }
+
+    mutating func setLookAroundFetchResult(_ scene: MKLookAroundScene?) {
+        lookAroundScene = scene
+        isLookAroundLoading = false
+        lookAroundFetchFailed = scene == nil
     }
 }

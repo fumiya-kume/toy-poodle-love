@@ -38,11 +38,28 @@ struct SuggestionCategoryClassifier {
         "コンビニ", "ドラッグストア"
     ]
 
+    private static func isLikelyAddress(_ text: String) -> Bool {
+        guard !text.isEmpty else { return false }
+
+        let addressKeywords = [
+            "丁目", "番地", "番", "号",
+            "都", "道", "府", "県",
+            "市", "区", "町", "村"
+        ]
+
+        let containsAddressKeyword = addressKeywords.contains(where: { text.contains($0) })
+        let containsDigit = text.rangeOfCharacter(from: .decimalDigits) != nil
+
+        return containsAddressKeyword && containsDigit
+    }
+
     static func classify(title: String, subtitle: String) -> SuggestionCategory {
         let combined = title + subtitle
+        let likelyAddressSubtitle = isLikelyAddress(subtitle)
+        let textForPatternMatching = likelyAddressSubtitle ? title : combined
 
         // 駅を最優先でチェック（日本では最も重要なカテゴリ）
-        if stationPatterns.contains(where: { combined.localizedCaseInsensitiveContains($0) }) {
+        if stationPatterns.contains(where: { textForPatternMatching.localizedCaseInsensitiveContains($0) }) {
             return .station
         }
 
@@ -51,28 +68,28 @@ struct SuggestionCategoryClassifier {
             return .searchQuery
         }
 
-        if hotelPatterns.contains(where: { combined.localizedCaseInsensitiveContains($0) }) {
+        if hotelPatterns.contains(where: { textForPatternMatching.localizedCaseInsensitiveContains($0) }) {
             return .hotel
         }
 
-        if restaurantPatterns.contains(where: { combined.localizedCaseInsensitiveContains($0) }) {
+        if restaurantPatterns.contains(where: { textForPatternMatching.localizedCaseInsensitiveContains($0) }) {
             return .restaurant
         }
 
-        if hospitalPatterns.contains(where: { combined.localizedCaseInsensitiveContains($0) }) {
+        if hospitalPatterns.contains(where: { textForPatternMatching.localizedCaseInsensitiveContains($0) }) {
             return .hospital
         }
 
-        if parkPatterns.contains(where: { combined.localizedCaseInsensitiveContains($0) }) {
+        if parkPatterns.contains(where: { textForPatternMatching.localizedCaseInsensitiveContains($0) }) {
             return .park
         }
 
-        if shoppingPatterns.contains(where: { combined.localizedCaseInsensitiveContains($0) }) {
+        if shoppingPatterns.contains(where: { textForPatternMatching.localizedCaseInsensitiveContains($0) }) {
             return .shopping
         }
 
         // サブタイトルに住所情報がある場合はPOI
-        if !subtitle.isEmpty {
+        if likelyAddressSubtitle || !subtitle.isEmpty {
             return .poi
         }
 

@@ -49,6 +49,6 @@ struct SearchBar: View {
 
 #Preview {
     SearchBar(text: .constant("東京駅")) {
-        print("Search tapped")
+        // no-op
     }
 }

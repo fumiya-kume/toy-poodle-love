@@ -203,8 +203,9 @@ final class LocationSearchViewModel {
         }
 
         isSearching = true
+        defer { isSearching = false }
         alertError = nil
-        AppLogger.search.info("検索を実行します: \(self.searchQuery)")
+        AppLogger.search.info("検索を実行します: \(self.searchQuery, privacy: .private(mask: .hash))")
 
         do {
             let region: MKCoordinateRegion? = currentLocation.map {
@@ -221,8 +222,6 @@ final class LocationSearchViewModel {
             alertError = .searchFailed(underlying: error)
             searchResults = []
         }
-
-        isSearching = false
     }
 
     @MainActor
@@ -511,9 +510,7 @@ final class LocationSearchViewModel {
     private func fetchAllNavigationLookAroundScenes() async {
         await lookAroundService.fetchScenesProgressively(for: navigationSteps) { [weak self] index, scene in
             guard let self = self, index < self.navigationSteps.count else { return }
-            self.navigationSteps[index].lookAroundScene = scene
-            self.navigationSteps[index].isLookAroundLoading = false
-            self.navigationSteps[index].lookAroundFetchFailed = scene == nil
+            self.navigationSteps[index].setLookAroundFetchResult(scene)
         }
     }
 
@@ -589,9 +586,7 @@ final class LocationSearchViewModel {
             initialCount: initialCount
         ) { [weak self] index, scene in
             guard let self = self, index < self.autoDrivePoints.count else { return }
-            self.autoDrivePoints[index].lookAroundScene = scene
-            self.autoDrivePoints[index].isLookAroundLoading = false
-            self.autoDrivePoints[index].lookAroundFetchFailed = scene == nil
+            self.autoDrivePoints[index].setLookAroundFetchResult(scene)
 
             let fetchedCount = self.autoDrivePoints.filter { !$0.isLookAroundLoading }.count
             self.autoDriveConfiguration.state = .initializing(fetchedCount: fetchedCount, requiredCount: initialCount)
@@ -608,9 +603,7 @@ final class LocationSearchViewModel {
                     guard let self = self else { return }
                     let actualIndex = initialCount + index
                     if actualIndex < self.autoDrivePoints.count {
-                        self.autoDrivePoints[actualIndex].lookAroundScene = scene
-                        self.autoDrivePoints[actualIndex].isLookAroundLoading = false
-                        self.autoDrivePoints[actualIndex].lookAroundFetchFailed = scene == nil
+                        self.autoDrivePoints[actualIndex].setLookAroundFetchResult(scene)
                     }
                 }
 
@@ -752,9 +745,7 @@ final class LocationSearchViewModel {
             count: targetEndIndex - startIndex
         ) { [weak self] index, scene in
             guard let self = self, index < self.autoDrivePoints.count else { return }
-            self.autoDrivePoints[index].lookAroundScene = scene
-            self.autoDrivePoints[index].isLookAroundLoading = false
-            self.autoDrivePoints[index].lookAroundFetchFailed = scene == nil
+            self.autoDrivePoints[index].setLookAroundFetchResult(scene)
             self.lastPrefetchedIndex = max(self.lastPrefetchedIndex, index)
         }
     }

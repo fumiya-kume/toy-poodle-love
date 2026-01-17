@@ -2,19 +2,19 @@ import Foundation
 import Observation
 
 @Observable
-class ContentViewModel {
+final class ContentViewModel {
     var message: String = ""
 
-    init() {
-        message = getTimeBasedGreeting()
+    init(now: () -> Date = Date.init, calendar: Calendar = .current) {
+        message = Self.timeBasedGreeting(for: now(), calendar: calendar)
     }
 
     func updateMessage(_ newMessage: String) {
         message = newMessage
     }
 
-    func getTimeBasedGreeting() -> String {
-        let hour = Calendar.current.component(.hour, from: Date())
+    private static func timeBasedGreeting(for date: Date, calendar: Calendar) -> String {
+        let hour = calendar.component(.hour, from: date)
         switch hour {
         case 5..<12:
             return "おはようございます！朝のお散歩はいかがですか？"
