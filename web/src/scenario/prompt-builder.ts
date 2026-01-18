@@ -45,7 +45,8 @@ export function resolveLanguage(
 export function buildPrompt(
   routeName: string,
   spot: RouteSpot,
-  language: 'ja' | 'en' = 'en'
+  language: 'ja' | 'en' = 'en',
+  includeImagePrompt: boolean = false
 ): string {
   const { name, type, description, point } = spot;
   const typeContext = getTypeContext(type, language);
@@ -56,6 +57,59 @@ export function buildPrompt(
       description && `説明: ${description}`,
       point && `ポイント: ${point}`,
     ].filter(Boolean).join('\n');
+
+    if (includeImagePrompt) {
+      return `あなたは旅行ガイドのシナリオライターです。「${routeName}」というタクシー観光ルートで、乗客に観光ガイドをしています。
+このシナリオは音声合成AI（TTS）で読み上げられます。
+
+${typeContext}
+
+# 地点情報
+${spotInfo}
+
+# 指示
+この地点について、以下の2つを生成してください:
+1. 乗客に地点を説明するガイドのシナリオ
+2. この地点の雰囲気を表現する画像生成用プロンプト
+
+# シナリオの要件
+
+## 長さ
+- 750文字程度（600〜900文字の範囲）
+- 音声で読み上げると約1〜1.5分程度の長さ
+
+## 音声AI向け最適化
+- 一文は40文字以内を目安に、短く区切る
+- 「、」や「。」で適切に区切り、息継ぎポイントを作る
+- 難読漢字は避け、読みやすい表現を使う
+- 専門用語には簡単な説明を添える
+
+## 話し方のスタイル
+- 自然な話し言葉で、丁寧な敬語を使う
+- 「こちらは」「ご覧ください」などの呼びかけを含める
+- 親しみやすいトーンで、興味を引くエピソードを交える
+
+## 構成
+1. 導入: 地点への注目を促す（1文）
+2. 概要・見どころ: 基本情報と特徴を紹介（4〜6文）
+3. 締め: 豆知識や次への期待（1〜2文）
+
+# 画像プロンプトの要件
+- 英語で記述（DALL-E、Midjourney、Stable Diffusion等で使用可能な汎用形式）
+- 100語以内
+- シナリオの主要要素を視覚的に表現
+- 歴史的エピソードがある場合はそのシーンを想起させる描写
+- 写真のような現実的な描写、または芸術的な表現のどちらでも可
+
+# 出力形式
+以下のJSON形式で出力してください:
+\`\`\`json
+{
+  "scenario": "ガイドシナリオのテキスト",
+  "imagePrompt": "画像生成用プロンプト（英語）"
+}
+\`\`\``;
+    }
 
     return `あなたは旅行ガイドのシナリオライターです。「${routeName}」というタクシー観光ルートで、乗客に観光ガイドをしています。
 このシナリオは音声合成AI（TTS）で読み上げられます。
@@ -99,6 +153,59 @@ ${spotInfo}
     description && `Description: ${description}`,
     point && `Highlight: ${point}`,
   ].filter(Boolean).join('\n');
+
+  if (includeImagePrompt) {
+    return `You are a scenario writer for travel guides. You are providing a tour guide for passengers on a taxi sightseeing route called "${routeName}".
+This script will be read aloud by a text-to-speech AI (TTS).
+
+${typeContext}
+
+# Location Information
+${spotInfo}
+
+# Instructions
+Generate two things for this location:
+1. A guide script explaining this location to passengers
+2. An image generation prompt that captures the atmosphere of this location
+
+# Script Requirements
+
+## Length
+- Approximately 150-200 words (equivalent to about 750 Japanese characters)
+- When read aloud, this should take about 1-1.5 minutes
+
+## Voice AI Optimization
+- Keep sentences short and clear, under 20 words each
+- Use natural pauses with commas and periods
+- Avoid complex jargon; use simple, conversational words
+- Add brief explanations for proper nouns or historical terms
+
+## Speaking Style
+- Use natural spoken language with polite expressions
+- Include phrases like "Here we have...", "On your left/right..."
+- Keep a friendly tone with interesting anecdotes
+
+## Structure
+1. Introduction: Draw attention to the location (1 sentence)
+2. Overview & Highlights: Basic information and notable features (4-6 sentences)
+3. Closing: Fun fact or anticipation for the next stop (1-2 sentences)
+
+# Image Prompt Requirements
+- Written in English (compatible with DALL-E, Midjourney, Stable Diffusion, etc.)
+- Maximum 100 words
+- Visually represent the key elements from the scenario
+- If there's a historical episode, evoke that scene
+- Can be photorealistic or artistic in style
+
+# Output Format
+Output in the following JSON format:
+\`\`\`json
+{
+  "scenario": "Guide script text",
+  "imagePrompt": "Image generation prompt in English"
+}
+\`\`\``;
+  }
 
   return `You are a scenario writer for travel guides. You are providing a tour guide for passengers on a taxi sightseeing route called "${routeName}".
 This script will be read aloud by a text-to-speech AI (TTS).

@@ -50,6 +50,11 @@ export interface SpotScenario {
   qwen?: string;
   /** Geminiによる生成結果 */
   gemini?: string;
+  /** 画像生成用プロンプト */
+  imagePrompt?: {
+    qwen?: string;
+    gemini?: string;
+  };
   /** エラーメッセージ（失敗時） */
   error?: {
     qwen?: string;

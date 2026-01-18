@@ -7,6 +7,43 @@ import { GeminiClient } from '../gemini-client';
 import { RouteInput, SpotScenario, ScenarioOutput, ModelSelection, RouteSpot } from '../types/scenario';
 import { buildPrompt, resolveLanguage } from './prompt-builder';
 
+/**
+ * LLMからのレスポンスをパースする
+ * JSON形式の場合はscenarioとimagePromptを抽出、それ以外はそのまま返す
+ */
+function parseLLMResponse(response: string): { scenario: string; imagePrompt?: string } {
+  // JSONコードブロックを抽出（```json ... ```）
+  const jsonMatch = response.match(/```json\s*\n([\s\S]*?)\n```/);
+
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[1]);
+      return {
+        scenario: parsed.scenario || response,
+        imagePrompt: parsed.imagePrompt,
+      };
+    } catch {
+      // JSONパースに失敗した場合は元のテキストを返す
+      return { scenario: response };
+    }
+  }
+
+  // JSONコードブロックがない場合、直接JSONとしてパース
+  try {
+    const parsed = JSON.parse(response);
+    if (parsed.scenario) {
+      return {
+        scenario: parsed.scenario,
+        imagePrompt: parsed.imagePrompt,
+      };
+    }
+  } catch {
+    // JSONでない場合は元のテキストをそのまま返す
+  }
+
+  return { scenario: response };
+}
+
 export class ScenarioGenerator {
   private qwenClient?: QwenClient;
   private geminiClient?: GeminiClient;
@@ -29,7 +66,8 @@ export class ScenarioGenerator {
    */
   async generateRoute(
     route: RouteInput,
-    models: ModelSelection = 'both'
+    models: ModelSelection = 'both',
+    includeImagePrompt: boolean = false
   ): Promise<ScenarioOutput> {
     const startTime = Date.now();
 
@@ -43,7 +81,7 @@ export class ScenarioGenerator {
 
     // 全地点を並列処理
     const spotPromises = spotsToProcess.map(spot =>
-      this.generateSpot(route.routeName, spot, models, language)
+      this.generateSpot(route.routeName, spot, models, language, includeImagePrompt)
     );
 
     const results = await Promise.all(spotPromises);
@@ -75,15 +113,20 @@ export class ScenarioGenerator {
     routeName: string,
     spot: RouteSpot,
     models: ModelSelection = 'both',
-    language: 'ja' | 'en' = 'en'
+    language: 'ja' | 'en' = 'en',
+    includeImagePrompt: boolean = false
   ): Promise<SpotScenario> {
-    const prompt = buildPrompt(routeName, spot, language);
+    const prompt = buildPrompt(routeName, spot, language, includeImagePrompt);
 
     const result: SpotScenario = {
       name: spot.name,
       type: spot.type,
       error: {},
     };
+
+    if (includeImagePrompt) {
+      result.imagePrompt = {};
+    }
 
     const promises: Promise<void>[] = [];
 
@@ -92,7 +135,11 @@ export class ScenarioGenerator {
       promises.push(
         this.qwenClient.chat(prompt)
           .then(response => {
-            result.qwen = response;
+            const parsed = parseLLMResponse(response);
+            result.qwen = parsed.scenario;
+            if (includeImagePrompt && parsed.imagePrompt) {
+              result.imagePrompt!.qwen = parsed.imagePrompt;
+            }
           })
           .catch(error => {
             result.error!.qwen = error.message;
@@ -105,7 +152,11 @@ export class ScenarioGenerator {
       promises.push(
         this.geminiClient.chat(prompt)
           .then(response => {
-            result.gemini = response;
+            const parsed = parseLLMResponse(response);
+            result.gemini = parsed.scenario;
+            if (includeImagePrompt && parsed.imagePrompt) {
+              result.imagePrompt!.gemini = parsed.imagePrompt;
+            }
           })
           .catch(error => {
             result.error!.gemini = error.message;
@@ -119,6 +170,11 @@ export class ScenarioGenerator {
     // エラーがなければerrorフィールドを削除
     if (!result.error?.qwen && !result.error?.gemini) {
       delete result.error;
+    }
+
+    // imagePromptが空なら削除
+    if (result.imagePrompt && !result.imagePrompt.qwen && !result.imagePrompt.gemini) {
+      delete result.imagePrompt;
     }
 
     return result;

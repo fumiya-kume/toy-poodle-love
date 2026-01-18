@@ -13,6 +13,8 @@ export interface ScenarioRequest {
   route: RouteInput;
   /** 使用するモデル */
   models?: ModelSelection;
+  /** 画像生成プロンプトを含めるか */
+  includeImagePrompt?: boolean;
 }
 
 /**
@@ -41,6 +43,8 @@ export interface SpotScenarioRequest {
   point?: string;
   /** 使用するモデル */
   models?: ModelSelection;
+  /** 画像生成プロンプトを含めるか */
+  includeImagePrompt?: boolean;
 }
 
 /**
