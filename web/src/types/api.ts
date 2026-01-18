@@ -3,6 +3,7 @@
  */
 
 import { RouteInput, ScenarioOutput, ModelSelection, ScenarioIntegrationInput, ScenarioIntegrationOutput } from './scenario';
+import { RouteGenerationInput, RouteGenerationOutput } from './route';
 
 /**
  * シナリオ生成APIリクエスト
@@ -73,6 +74,26 @@ export interface ScenarioIntegrationResponse {
   success: boolean;
   /** 統合されたシナリオ */
   data?: ScenarioIntegrationOutput;
+  /** エラーメッセージ */
+  error?: string;
+}
+
+/**
+ * ルート自動生成APIリクエスト
+ */
+export interface RouteGenerationRequest {
+  /** ルート生成入力 */
+  input: RouteGenerationInput;
+}
+
+/**
+ * ルート自動生成APIレスポンス
+ */
+export interface RouteGenerationResponse {
+  /** 成功フラグ */
+  success: boolean;
+  /** 生成されたルート */
+  data?: RouteGenerationOutput;
   /** エラーメッセージ */
   error?: string;
 }
