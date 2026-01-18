@@ -104,7 +104,7 @@ export class ScenarioGenerator {
     const promises: Promise<void>[] = [];
 
     // 画像がある場合はQwen VLモデルを使用
-    const useQwenVL = spot.imageUrl && this.qwenClient;
+    const useQwenVL = !!(spot.imageUrl && this.qwenClient);
 
     // Qwen呼び出し(画像がある場合はVLモデル、ない場合は通常モデル)
     if ((models === 'qwen' || models === 'qwen-vl' || models === 'both') && this.qwenClient) {
