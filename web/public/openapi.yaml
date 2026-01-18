@@ -389,8 +389,10 @@ paths:
       description: |
         ルート情報からタクシーガイドのシナリオを生成します
 
-        各地点に画像を指定すると、Qwen VLモデルが自動的に使用され、
-        画像の視覚的特徴を含めたシナリオが生成されます
+        ## 画像対応
+        - 各地点に画像を指定すると、`models`が`qwen`/`qwen-vl`/`both`の場合にQwen VLモデルが自動的に使用されます
+        - Geminiは画像処理に対応していないため、`models=gemini`では画像は無視されます
+        - 画像がある場合、Qwenは視覚的特徴を含めたシナリオを生成します
       operationId: generateScenario
       requestBody:
         required: true
@@ -422,7 +424,10 @@ paths:
                   type: string
                   enum: [qwen, qwen-vl, gemini, both]
                   default: both
-                  description: 使用するモデル（画像がある場合はqwen-vlが自動選択されます）
+                  description: |
+                    使用するモデル。画像指定時の動作:
+                    - `qwen`/`qwen-vl`/`both`: 画像がある場合、Qwen VLモデルを自動使用
+                    - `gemini`: Geminiは画像非対応のため、画像は無視されます
       responses:
         '200':
           description: 成功
@@ -486,13 +491,16 @@ paths:
                   example: "四季折々の花が楽しめる日本庭園"
                 imageUrl:
                   type: string
-                  description: 画像URL（base64エンコードまたはURL形式）
+                  description: 画像URL（base64エンコードまたはURL形式、最大5MB、JPEG/PNG/WebP対応）
                   example: "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
                 models:
                   type: string
                   enum: [qwen, qwen-vl, gemini, both]
                   default: both
-                  description: 使用するモデル（画像がある場合はqwen-vlが自動選択されます）
+                  description: |
+                    使用するモデル。画像指定時の動作:
+                    - `qwen`/`qwen-vl`/`both`: 画像がある場合、Qwen VLモデルを自動使用
+                    - `gemini`: Geminiは画像非対応のため、画像は無視されます
       responses:
         '200':
           description: 成功
@@ -768,7 +776,7 @@ components:
           example: "四季折々の花が楽しめる日本庭園"
         imageUrl:
           type: string
-          description: 画像URL（base64エンコードまたはURL形式）。指定するとQwen VLモデルが使用されます
+          description: 画像URL（base64エンコードまたはURL形式、最大5MB、JPEG/PNG/WebP対応）。指定するとQwen VLモデルが使用されます
           example: "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
 
     SpotScenario:

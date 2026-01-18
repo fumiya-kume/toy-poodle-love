@@ -93,7 +93,9 @@ npm run cli
 3. **並列処理**: Web UIでは有効なモデルのAPIコールを`Promise.all`で並列実行
 
 4. **自動モデル選択**:
-   - 地点情報に画像URLが含まれる場合、QwenはVision-Languageモデル(`qwen3-vl-flash`)を自動使用
+   - 地点情報に画像URLが含まれる場合、`models`が`qwen`/`qwen-vl`/`both`のいずれかであれば、QwenはVision-Languageモデル(`qwen3-vl-flash`)を自動使用
+   - `models=gemini`では画像は無視される(Geminiは画像非対応)
+   - `QWEN_API_KEY`が未設定の場合はVLモデルは使用不可
    - 画像がない場合は通常のテキストモデル(`qwen-turbo`)を使用
    - この切り替えは`generator.ts`で透過的に処理される
 
@@ -103,8 +105,9 @@ npm run cli
 
 - 各地点に画像を追加可能(オプション)
 - 画像がある場合、Qwen VLモデルが自動的に使用され、画像の視覚的特徴を含めたシナリオを生成
-- 画像はブラウザでbase64エンコードされてAPIに送信(最大5MB)
+- 画像はブラウザでbase64エンコードされてAPIに送信(最大5MB: 元ファイルサイズ基準)
 - サポート形式: JPEG, PNG, WebP など主要な画像形式
+- **注意**: Geminiは画像処理に対応していないため、`models=gemini`では画像は無視されます
 
 ### モデル選択ロジック
 

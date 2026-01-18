@@ -1,9 +1,18 @@
 import OpenAI from 'openai';
 
+/**
+ * Qwen APIクライアント（OpenAI互換）
+ * テキスト専用とVision-Languageモデルの両方をサポート
+ */
 export class QwenClient {
   private client: OpenAI;
   private region: 'china' | 'international';
 
+  /**
+   * QwenClientのコンストラクタ
+   * @param apiKey Alibaba Cloud DashScopeのAPIキー
+   * @param region リージョン選択（'china': 中国、'international': 国際）
+   */
   constructor(apiKey: string, region: 'china' | 'international' = 'international') {
     // Qwen uses OpenAI-compatible API via DashScope
     // International (Singapore/Virginia): dashscope-intl.aliyuncs.com
@@ -21,6 +30,11 @@ export class QwenClient {
     this.region = region;
   }
 
+  /**
+   * テキスト専用モデルでチャット
+   * @param message ユーザーメッセージ
+   * @returns レスポンステキスト
+   */
   async chat(message: string): Promise<string> {
     try {
       const response = await this.client.chat.completions.create({

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { RouteInput, RouteSpot, ScenarioOutput, SpotType, ScenarioIntegrationOutput } from '../../src/types/scenario';
 import { predefinedRoutes, getRouteById } from '../../src/data/routes';
 
@@ -568,14 +569,16 @@ export default function ScenarioPage() {
                 />
                 {spot.imageUrl && (
                   <div style={{ marginTop: '8px' }}>
-                    <img
+                    <Image
                       src={spot.imageUrl}
                       alt={`${spot.name}のプレビュー`}
+                      width={200}
+                      height={150}
+                      unoptimized
                       style={{
-                        maxWidth: '200px',
-                        maxHeight: '150px',
                         borderRadius: '6px',
                         border: '2px solid #d1d5db',
+                        objectFit: 'contain',
                       }}
                     />
                     <button

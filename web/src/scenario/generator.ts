@@ -7,10 +7,20 @@ import { GeminiClient } from '../gemini-client';
 import { RouteInput, SpotScenario, ScenarioOutput, ModelSelection, RouteSpot } from '../types/scenario';
 import { buildPrompt, resolveLanguage } from './prompt-builder';
 
+/**
+ * タクシー観光ガイドシナリオジェネレーター
+ * QwenとGeminiの両方のモデルを使用してシナリオを生成
+ */
 export class ScenarioGenerator {
   private qwenClient?: QwenClient;
   private geminiClient?: GeminiClient;
 
+  /**
+   * ScenarioGeneratorのコンストラクタ
+   * @param qwenApiKey QwenのAPIキー（オプション）
+   * @param geminiApiKey GeminiのAPIキー（オプション）
+   * @param qwenRegion Qwenのリージョン設定（オプション）
+   */
   constructor(
     qwenApiKey?: string,
     geminiApiKey?: string,
@@ -26,6 +36,9 @@ export class ScenarioGenerator {
 
   /**
    * ルート全体のシナリオを生成
+   * @param route ルート情報
+   * @param models 使用するモデル（'qwen', 'qwen-vl', 'gemini', 'both'）
+   * @returns シナリオ生成結果
    */
   async generateRoute(
     route: RouteInput,
@@ -70,6 +83,11 @@ export class ScenarioGenerator {
 
   /**
    * 単一地点のシナリオを生成（Qwen/Gemini並列）
+   * @param routeName ルート名
+   * @param spot 地点情報
+   * @param models 使用するモデル（'qwen', 'qwen-vl', 'gemini', 'both'）
+   * @param language 出力言語（'ja'または'en'）
+   * @returns 地点のシナリオ
    */
   async generateSpot(
     routeName: string,
@@ -77,8 +95,6 @@ export class ScenarioGenerator {
     models: ModelSelection = 'both',
     language: 'ja' | 'en' = 'en'
   ): Promise<SpotScenario> {
-    const prompt = buildPrompt(routeName, spot, language);
-
     const result: SpotScenario = {
       name: spot.name,
       type: spot.type,
@@ -92,10 +108,13 @@ export class ScenarioGenerator {
 
     // Qwen呼び出し(画像がある場合はVLモデル、ない場合は通常モデル)
     if ((models === 'qwen' || models === 'qwen-vl' || models === 'both') && this.qwenClient) {
+      // Qwen VL使用時のみ画像指示を含める
+      const qwenPrompt = buildPrompt(routeName, spot, language, useQwenVL);
+
       promises.push(
         (useQwenVL
-          ? this.qwenClient.chatWithImage(prompt, spot.imageUrl!)
-          : this.qwenClient.chat(prompt)
+          ? this.qwenClient.chatWithImage(qwenPrompt, spot.imageUrl!)
+          : this.qwenClient.chat(qwenPrompt)
         )
           .then(response => {
             result.qwen = response;
@@ -106,10 +125,12 @@ export class ScenarioGenerator {
       );
     }
 
-    // Gemini呼び出し
+    // Gemini呼び出し(画像指示は含めない)
     if ((models === 'gemini' || models === 'both') && this.geminiClient) {
+      const geminiPrompt = buildPrompt(routeName, spot, language, false);
+
       promises.push(
-        this.geminiClient.chat(prompt)
+        this.geminiClient.chat(geminiPrompt)
           .then(response => {
             result.gemini = response;
           })
@@ -132,6 +153,12 @@ export class ScenarioGenerator {
 
   /**
    * 単一地点のシナリオを生成（簡易版）
+   * @param routeName ルート名
+   * @param spotName 地点名
+   * @param description 地点の説明（オプション）
+   * @param point 観光ポイント（オプション）
+   * @param models 使用するモデル（'qwen', 'qwen-vl', 'gemini', 'both'）
+   * @returns QwenとGeminiの生成結果
    */
   async generateSingleSpot(
     routeName: string,
