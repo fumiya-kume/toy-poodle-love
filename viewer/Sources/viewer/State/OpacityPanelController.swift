@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import Observation
 
-/// Opacity Control Panelのライフサイクルとウィンドウフォーカスを管理
+/// Manages the overlay control panel lifecycle and window focus.
 @Observable
 @MainActor
 final class OpacityPanelController {
@@ -94,50 +94,44 @@ final class OpacityPanelController {
         }
     }
 
-    // MARK: - Opacity Control
+    // MARK: - Overlay Control
 
-    /// Binding for the opacity slider
+    /// Binding for the overlay visibility control.
     var opacityBinding: Binding<Double> {
         Binding(
             get: { [weak self] in
                 guard let self = self,
                       let windowId = focusedWindowId,
                       let config = appState?.configuration(for: windowId) else {
-                    return 0.5
+                    return 1.0
                 }
                 return config.overlayOpacity
             },
             set: { [weak self] newValue in
                 guard let self = self,
                       let windowId = focusedWindowId else { return }
-                appState?.setOverlayOpacity(at: windowId, opacity: newValue)
+                let normalized = newValue > 0.5 ? 1.0 : 0.0
+                appState?.setOverlayOpacity(at: windowId, opacity: normalized)
             }
         )
     }
 
-    /// Current opacity value (read-only)
+    /// Current overlay opacity (read-only).
     var currentOpacity: Double {
         guard let windowId = focusedWindowId,
               let config = appState?.configuration(for: windowId) else {
-            return 0.5
+            return 1.0
         }
         return config.overlayOpacity
     }
 
-    /// Increase opacity by step (for keyboard shortcut)
-    func increaseOpacity(by step: Double = 0.1) {
+    /// Toggle overlay visibility (for keyboard shortcut)
+    func toggleOverlayVisibility() {
         guard let windowId = focusedWindowId else { return }
-        let currentValue = currentOpacity
-        let newValue = min(1.0, currentValue + step)
-        appState?.setOverlayOpacity(at: windowId, opacity: newValue)
-    }
-
-    /// Decrease opacity by step (for keyboard shortcut)
-    func decreaseOpacity(by step: Double = 0.1) {
-        guard let windowId = focusedWindowId else { return }
-        let currentValue = currentOpacity
-        let newValue = max(0.0, currentValue - step)
-        appState?.setOverlayOpacity(at: windowId, opacity: newValue)
+        let newValue = currentOpacity > 0.5 ? 0.0 : 1.0
+        withAnimation(.easeInOut(duration: 0.2)) {
+            appState?.setOverlayOpacity(at: windowId, opacity: newValue)
+        }
     }
 
     // MARK: - Private Methods
@@ -159,7 +153,7 @@ final class OpacityPanelController {
             defer: false
         )
 
-        panel.title = "Opacity Control"
+        panel.title = "Overlay Control"
         panel.contentViewController = hostingController
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]

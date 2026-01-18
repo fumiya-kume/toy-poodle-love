@@ -24,9 +24,19 @@ final class AppState {
     private let settingsKey = "appSettings"
 
     init() {
+        var needsOverlayOpacityNormalization = false
+
         if let data = UserDefaults.standard.data(forKey: configurationsKey),
            let configs = try? JSONDecoder().decode([VideoConfiguration].self, from: data) {
-            self.videoConfigurations = configs
+            let normalized = configs.map { config in
+                var updated = config
+                if updated.overlayOpacity != 0.0 && updated.overlayOpacity != 1.0 {
+                    updated.overlayOpacity = 1.0
+                    needsOverlayOpacityNormalization = true
+                }
+                return updated
+            }
+            self.videoConfigurations = normalized
         } else {
             self.videoConfigurations = VideoConfiguration.defaultConfigurations()
         }
@@ -51,6 +61,10 @@ final class AppState {
 
         // TTS コントローラーに字幕状態を設定
         self.ttsController.setSubtitleState(self.subtitleState)
+
+        if needsOverlayOpacityNormalization {
+            save()
+        }
     }
 
     func save() {

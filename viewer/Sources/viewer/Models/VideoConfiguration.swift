@@ -12,7 +12,7 @@ struct VideoConfiguration: Identifiable, Codable, Sendable, Equatable {
         windowIndex: Int,
         mainVideoBookmark: Data? = nil,
         overlayVideoBookmark: Data? = nil,
-        overlayOpacity: Double = 0.5
+        overlayOpacity: Double = 1.0
     ) {
         self.id = id
         self.windowIndex = windowIndex

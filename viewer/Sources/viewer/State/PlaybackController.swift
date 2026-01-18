@@ -4,6 +4,7 @@ import Observation
 struct VideoPlaybackState {
     var currentTime: CMTime = .zero
     var duration: CMTime = .zero
+    var isPlaying: Bool = false
 
     var progress: Double {
         guard duration.seconds > 0 else { return 0 }
@@ -40,7 +41,9 @@ final class PlaybackController {
         }
     }
 
-    var isPlaying: Bool { state == .playing }
+    var isPlaying: Bool { isMainPlaying || isOverlayPlaying }
+    var isMainPlaying: Bool { mainVideoState.isPlaying }
+    var isOverlayPlaying: Bool { overlayVideoState.isPlaying }
     var isReady: Bool { state == .ready || state == .playing || state == .paused }
 
     private var playerEntries: [Int: PlayerEntry] = [:]
@@ -116,15 +119,13 @@ final class PlaybackController {
 
     func play() {
         guard isReady else { return }
-        allPlayers.forEach { $0.play() }
-        state = .playing
+        playMain()
+        playOverlay()
     }
 
     func pause() {
-        allPlayers.forEach { $0.pause() }
-        if state == .playing {
-            state = .paused
-        }
+        pauseMain()
+        pauseOverlay()
     }
 
     func togglePlayPause() {
@@ -132,6 +133,52 @@ final class PlaybackController {
             pause()
         } else {
             play()
+        }
+    }
+
+    func playMain() {
+        guard isReady else { return }
+        mainPlayers.forEach { $0.play() }
+        mainVideoState.isPlaying = !mainPlayers.isEmpty
+        updateAggregatePlaybackState()
+    }
+
+    func pauseMain() {
+        mainPlayers.forEach { $0.pause() }
+        mainVideoState.isPlaying = false
+        updateAggregatePlaybackState()
+    }
+
+    func toggleMainPlayPause() {
+        if isMainPlaying {
+            pauseMain()
+        } else {
+            playMain()
+        }
+    }
+
+    func playOverlay() {
+        guard isReady, !overlayPlayers.isEmpty else {
+            overlayVideoState.isPlaying = false
+            updateAggregatePlaybackState()
+            return
+        }
+        overlayPlayers.forEach { $0.play() }
+        overlayVideoState.isPlaying = true
+        updateAggregatePlaybackState()
+    }
+
+    func pauseOverlay() {
+        overlayPlayers.forEach { $0.pause() }
+        overlayVideoState.isPlaying = false
+        updateAggregatePlaybackState()
+    }
+
+    func toggleOverlayPlayPause() {
+        if isOverlayPlaying {
+            pauseOverlay()
+        } else {
+            playOverlay()
         }
     }
 
@@ -229,6 +276,7 @@ final class PlaybackController {
                 state = .ready
             }
         }
+        updateAggregatePlaybackState()
     }
 
     private func setupMainTimeObserver() {
@@ -244,12 +292,19 @@ final class PlaybackController {
         }
 
         let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
-        let observer = firstEntry.mainPlayer.addPeriodicTimeObserver(
+        let mainPlayer = firstEntry.mainPlayer
+        let observer = mainPlayer.addPeriodicTimeObserver(
             forInterval: interval,
             queue: .main
         ) { [weak self] time in
             Task { @MainActor in
                 self?.mainVideoState.currentTime = time
+                // Update duration when it becomes available (async loading)
+                if let duration = mainPlayer.currentItem?.duration,
+                   duration.isValid, !duration.isIndefinite,
+                   self?.mainVideoState.duration != duration {
+                    self?.mainVideoState.duration = duration
+                }
             }
         }
         mainTimeObserver = observer
@@ -261,6 +316,7 @@ final class PlaybackController {
               let overlayPlayer = overlayEntry.overlayPlayer else {
             removeOverlayTimeObserver()
             overlayVideoState.currentTime = .zero
+            overlayVideoState.isPlaying = false
             return
         }
 
@@ -278,6 +334,12 @@ final class PlaybackController {
         ) { [weak self] time in
             Task { @MainActor in
                 self?.overlayVideoState.currentTime = time
+                // Update duration when it becomes available (async loading)
+                if let duration = overlayPlayer.currentItem?.duration,
+                   duration.isValid, !duration.isIndefinite,
+                   self?.overlayVideoState.duration != duration {
+                    self?.overlayVideoState.duration = duration
+                }
             }
         }
         overlayTimeObserver = observer
@@ -295,17 +357,17 @@ final class PlaybackController {
                 queue: .main
             ) { [weak self] _ in
                 Task { @MainActor in
-                    self?.handleLoopRestart()
+                    self?.handleMainLoopRestart()
                 }
             }
             loopObservers.append(observer)
         }
     }
 
-    private func handleLoopRestart() {
-        goToBeginning()
-        if isPlaying {
-            play()
+    private func handleMainLoopRestart() {
+        seekMain(to: .zero)
+        if isMainPlaying {
+            playMain()
         }
     }
 
@@ -334,9 +396,16 @@ final class PlaybackController {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                guard let self else { return }
-                self.overlayVideoState.currentTime = self.overlayVideoState.duration
+                self?.handleOverlayLoopRestart()
             }
+        }
+    }
+
+    private func handleOverlayLoopRestart() {
+        guard !overlayPlayers.isEmpty else { return }
+        seekOverlay(to: .zero)
+        if isOverlayPlaying {
+            playOverlay()
         }
     }
 
@@ -364,6 +433,15 @@ final class PlaybackController {
             return nonNegative
         }
         return CMTimeMinimum(nonNegative, duration)
+    }
+
+    private func updateAggregatePlaybackState() {
+        guard !playerEntries.isEmpty else { return }
+        if isMainPlaying || isOverlayPlaying {
+            state = .playing
+        } else if state == .playing {
+            state = .paused
+        }
     }
 
 }

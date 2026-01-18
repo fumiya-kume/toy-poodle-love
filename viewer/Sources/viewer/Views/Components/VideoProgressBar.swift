@@ -7,6 +7,8 @@ struct VideoProgressBar: View {
     let currentTime: CMTime
     let duration: CMTime
     var onSeek: (CMTime) -> Void
+    var isPlaying: Bool? = nil
+    var onPlayPause: (() -> Void)? = nil
 
     @State private var isDragging = false
     @State private var dragProgress: Double = 0
@@ -38,6 +40,15 @@ struct VideoProgressBar: View {
                     .foregroundStyle(labelColor)
             }
             .frame(minWidth: 70, alignment: .leading)
+
+            if let isPlaying, let onPlayPause {
+                Button(action: onPlayPause) {
+                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(width: 20, height: 20)
+                }
+                .buttonStyle(.plain)
+            }
 
             Slider(
                 value: Binding(

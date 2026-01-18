@@ -3,15 +3,15 @@ import SwiftUI
 /// Scenario Writer メインウィンドウ
 struct ScenarioWriterWindow: View {
     @Environment(AppState.self) private var appState
-    @State private var selectedTab: ScenarioWriterTab = .pipeline
 
     var body: some View {
+        @Bindable var bindableState = appState.scenarioWriterState
         NavigationSplitView {
-            ScenarioWriterSidebar(selection: $selectedTab)
+            ScenarioWriterSidebar(selection: $bindableState.selectedTab)
                 .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 250)
         } detail: {
-            contentView
-                .navigationTitle(selectedTab.rawValue)
+            contentView(selectedTab: bindableState.selectedTab)
+                .navigationTitle(bindableState.selectedTab.rawValue)
         }
         .alert(
             "エラー",
@@ -29,7 +29,7 @@ struct ScenarioWriterWindow: View {
     }
 
     @ViewBuilder
-    private var contentView: some View {
+    private func contentView(selectedTab: ScenarioWriterTab) -> some View {
         switch selectedTab {
         case .pipeline:
             PipelineTab()
@@ -39,6 +39,8 @@ struct ScenarioWriterWindow: View {
             ScenarioGenerateTab()
         case .scenarioIntegrate:
             ScenarioIntegrateTab()
+        case .map:
+            ScenarioMapTab()
         case .textGeneration:
             TextGenerationTab()
         case .geocode:

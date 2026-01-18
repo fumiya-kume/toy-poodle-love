@@ -5,6 +5,10 @@ import Observation
 @Observable
 @MainActor
 final class ScenarioWriterState {
+    // MARK: - ナビゲーション
+
+    var selectedTab: ScenarioWriterTab = .pipeline
+
     // MARK: - ローディング状態
 
     var isLoadingTextGeneration = false
@@ -46,6 +50,9 @@ final class ScenarioWriterState {
     var scenarioLanguage = ""
     var scenarioSpots: [RouteSpot] = []
     var scenarioModels: ScenarioModels = .both
+
+    // マップ
+    var mapSpots: [MapSpot] = []
 
     // MARK: - 結果
 
@@ -239,6 +246,62 @@ final class ScenarioWriterState {
         if let routeName = result.routeGeneration.routeName {
             scenarioRouteName = routeName
         }
+        scenarioModels = pipelineModel.toScenarioModels()
+        scenarioLanguage = "ja"
+        selectedTab = .scenarioGenerate
+    }
+
+    /// パイプライン結果からマップ用スポットを生成
+    func createMapSpotsFromPipeline() {
+        guard let result = pipelineResult else { return }
+
+        let generatedSpots = result.routeGeneration.spots ?? []
+        var descriptionsByName: [String: String] = [:]
+        for spot in generatedSpots {
+            if let description = spot.description {
+                descriptionsByName[spot.name] = description
+            }
+        }
+
+        func spotType(for index: Int, total: Int) -> MapSpot.MapSpotType {
+            if index == 0 { return .start }
+            if index == max(total - 1, 0) { return .destination }
+            return .waypoint
+        }
+
+        if let orderedWaypoints = result.routeOptimization.orderedWaypoints,
+           !orderedWaypoints.isEmpty {
+            let sortedWaypoints = orderedWaypoints.sorted { $0.optimizedOrder < $1.optimizedOrder }
+            mapSpots = sortedWaypoints.enumerated().compactMap { index, waypoint in
+                guard let location = waypoint.waypoint.location else { return nil }
+                let name = waypoint.waypoint.name ?? waypoint.waypoint.address ?? "不明"
+                let address = waypoint.waypoint.address
+                let description = descriptionsByName[name] ?? address.flatMap { descriptionsByName[$0] }
+                return MapSpot(
+                    name: name,
+                    coordinate: location.coordinate,
+                    type: spotType(for: index, total: sortedWaypoints.count),
+                    address: address,
+                    description: description,
+                    order: index + 1
+                )
+            }
+        } else if let places = result.geocoding.places, !places.isEmpty {
+            mapSpots = places.enumerated().map { index, place in
+                MapSpot(
+                    name: place.inputAddress,
+                    coordinate: place.location.coordinate,
+                    type: spotType(for: index, total: places.count),
+                    address: place.formattedAddress,
+                    description: descriptionsByName[place.inputAddress],
+                    order: index + 1
+                )
+            }
+        } else {
+            mapSpots = []
+        }
+
+        selectedTab = .map
     }
 
     /// ルート生成結果からシナリオ用スポットを生成
@@ -255,6 +318,9 @@ final class ScenarioWriterState {
         if let routeName = result.routeName {
             scenarioRouteName = routeName
         }
+        scenarioModels = routeGenerateModel.toScenarioModels()
+        scenarioLanguage = "ja"
+        selectedTab = .scenarioGenerate
     }
 
     /// ウェイポイントを追加

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Opacity Control Panelのコンテンツビュー
+/// Overlay control panel content view.
 struct OpacityPanelView: View {
     @Environment(AppState.self) private var appState
 
@@ -11,7 +11,7 @@ struct OpacityPanelView: View {
         .padding()
         .frame(minWidth: 200, minHeight: 60)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Overlay Opacity Control")
+        .accessibilityLabel("Overlay Visibility Control")
     }
 }
 

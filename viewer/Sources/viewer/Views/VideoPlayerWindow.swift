@@ -16,13 +16,13 @@ struct VideoPlayerWindow: View {
 
     // Load persisted opacity for this window.
     private var overlayOpacity: Double {
-        appState.configuration(for: windowIndex)?.overlayOpacity ?? 0.5
+        appState.configuration(for: windowIndex)?.overlayOpacity ?? 1.0
     }
 
     // Binding to persist opacity changes.
     private var overlayOpacityBinding: Binding<Double> {
         Binding(
-            get: { appState.configuration(for: windowIndex)?.overlayOpacity ?? 0.5 },
+            get: { appState.configuration(for: windowIndex)?.overlayOpacity ?? 1.0 },
             set: { newValue in
                 appState.setOverlayOpacity(at: windowIndex, opacity: newValue)
             }
@@ -57,6 +57,7 @@ struct VideoPlayerWindow: View {
             if let player = overlaySlot.player {
                 VideoPlayerView(player: player, style: .overlay)
                     .opacity(overlayOpacity)
+                    .animation(.easeInOut(duration: 0.2), value: overlayOpacity)
                     .allowsHitTesting(false)
             }
 
@@ -109,6 +110,14 @@ struct VideoPlayerWindow: View {
         .focusable()
         .onKeyPress(.space) {
             appState.playbackController.togglePlayPause()
+            return .handled
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "1")) { _ in
+            appState.playbackController.toggleMainPlayPause()
+            return .handled
+        }
+        .onKeyPress(characters: CharacterSet(charactersIn: "2")) { _ in
+            appState.playbackController.toggleOverlayPlayPause()
             return .handled
         }
         .onKeyPress(.leftArrow) {

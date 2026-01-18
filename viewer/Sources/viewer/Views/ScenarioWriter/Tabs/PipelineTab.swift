@@ -126,10 +126,17 @@ struct PipelineTab: View {
 
                             Divider()
 
-                            Button("このルートでシナリオを生成") {
-                                state.createSpotsFromPipeline()
+                            HStack {
+                                Button("マップで表示") {
+                                    state.createMapSpotsFromPipeline()
+                                }
+                                .buttonStyle(.bordered)
+
+                                Button("このルートでシナリオを生成") {
+                                    state.createSpotsFromPipeline()
+                                }
+                                .buttonStyle(.bordered)
                             }
-                            .buttonStyle(.bordered)
                         }
                         .padding(.vertical, 8)
                     } else {

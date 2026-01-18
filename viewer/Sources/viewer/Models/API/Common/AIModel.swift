@@ -16,3 +16,14 @@ enum AIModel: String, Codable, CaseIterable, Identifiable {
         }
     }
 }
+
+extension AIModel {
+    func toScenarioModels() -> ScenarioModels {
+        switch self {
+        case .gemini:
+            return .gemini
+        case .qwen:
+            return .qwen
+        }
+    }
+}

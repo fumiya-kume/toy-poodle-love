@@ -9,6 +9,8 @@ struct DualProgressControlBar: View {
     @Binding var isMuted: Bool
 
     var onPlayPause: () -> Void
+    var onMainPlayPause: () -> Void
+    var onOverlayPlayPause: () -> Void
     var onSeekMain: (CMTime) -> Void
     var onSeekOverlay: (CMTime) -> Void
     var onSkipBackward: () -> Void
@@ -68,7 +70,9 @@ struct DualProgressControlBar: View {
                 labelColor: .blue,
                 currentTime: mainState.currentTime,
                 duration: mainState.duration,
-                onSeek: onSeekMain
+                onSeek: onSeekMain,
+                isPlaying: mainState.isPlaying,
+                onPlayPause: onMainPlayPause
             )
 
             if showsOverlayBar {
@@ -77,7 +81,9 @@ struct DualProgressControlBar: View {
                     labelColor: .orange,
                     currentTime: overlayState.currentTime,
                     duration: overlayState.duration,
-                    onSeek: onSeekOverlay
+                    onSeek: onSeekOverlay,
+                    isPlaying: overlayState.isPlaying,
+                    onPlayPause: onOverlayPlayPause
                 )
             }
         }
@@ -100,6 +106,8 @@ struct DualProgressControlBar: View {
         hasOverlay: true,
         isMuted: .constant(false),
         onPlayPause: {},
+        onMainPlayPause: {},
+        onOverlayPlayPause: {},
         onSeekMain: { _ in },
         onSeekOverlay: { _ in },
         onSkipBackward: {},

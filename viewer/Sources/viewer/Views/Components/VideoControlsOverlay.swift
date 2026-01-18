@@ -18,6 +18,8 @@ struct VideoControlsOverlay: View {
                     hasOverlay: hasOverlay,
                     isMuted: $playbackController.isMuted,
                     onPlayPause: playbackController.togglePlayPause,
+                    onMainPlayPause: playbackController.toggleMainPlayPause,
+                    onOverlayPlayPause: playbackController.toggleOverlayPlayPause,
                     onSeekMain: playbackController.seekMain(to:),
                     onSeekOverlay: playbackController.seekOverlay(to:),
                     onSkipBackward: { playbackController.skipBackward() },
@@ -33,6 +35,8 @@ struct VideoControlsOverlay: View {
             .padding()
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .contentShape(Rectangle())
+            .onTapGesture { } // Consume tap to prevent propagation to video player
             .padding()
         }
     }

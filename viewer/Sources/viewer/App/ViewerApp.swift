@@ -22,8 +22,8 @@ struct ViewerApp: App {
 
             CommandMenu("View") {
                 Button(appState.opacityPanelController.isVisible
-                       ? "Hide Opacity Panel"
-                       : "Show Opacity Panel") {
+                       ? "Hide Overlay Panel"
+                       : "Show Overlay Panel") {
                     appState.opacityPanelController.toggle()
                 }
                 .keyboardShortcut("o", modifiers: [.command, .shift])
@@ -61,15 +61,10 @@ struct ViewerApp: App {
 
                 Divider()
 
-                Button("Increase Overlay Opacity") {
-                    appState.opacityPanelController.increaseOpacity(by: 0.1)
+                Button("Toggle Overlay") {
+                    appState.opacityPanelController.toggleOverlayVisibility()
                 }
-                .keyboardShortcut("]", modifiers: .command)
-
-                Button("Decrease Overlay Opacity") {
-                    appState.opacityPanelController.decreaseOpacity(by: 0.1)
-                }
-                .keyboardShortcut("[", modifiers: .command)
+                .keyboardShortcut("\\", modifiers: .command)
             }
 
             CommandMenu("Tools") {

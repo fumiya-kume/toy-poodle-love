@@ -6,6 +6,7 @@ enum ScenarioWriterTab: String, CaseIterable, Identifiable {
     case routeGenerate = "ルート生成"
     case scenarioGenerate = "シナリオ生成"
     case scenarioIntegrate = "シナリオ統合"
+    case map = "マップ"
     case textGeneration = "テキスト生成"
     case geocode = "ジオコーディング"
     case routeOptimize = "ルート最適化"
@@ -22,6 +23,8 @@ enum ScenarioWriterTab: String, CaseIterable, Identifiable {
             return "text.bubble"
         case .scenarioIntegrate:
             return "sparkles"
+        case .map:
+            return "map.circle"
         case .textGeneration:
             return "text.alignleft"
         case .geocode:
@@ -38,7 +41,7 @@ struct ScenarioWriterSidebar: View {
     var body: some View {
         List(selection: $selection) {
             Section("メイン") {
-                ForEach([ScenarioWriterTab.pipeline, .routeGenerate, .scenarioGenerate, .scenarioIntegrate], id: \.self) { tab in
+                ForEach([ScenarioWriterTab.pipeline, .routeGenerate, .scenarioGenerate, .scenarioIntegrate, .map], id: \.self) { tab in
                     Label(tab.rawValue, systemImage: tab.icon)
                         .tag(tab)
                 }
