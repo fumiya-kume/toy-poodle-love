@@ -1,0 +1,989 @@
+openapi: 3.0.3
+info:
+  title: Taxi Scenario Writer API
+  description: |
+    タクシールート最適化とシナリオ生成を行うAPIです。
+
+    主な機能:
+    - AI テキスト生成（Qwen / Gemini）
+    - 住所のジオコーディング
+    - ルート最適化
+    - AI によるルート自動生成とシナリオ作成
+
+    ## 環境変数
+    以下の環境変数が必要です:
+    - `GOOGLE_MAPS_API_KEY`: Google Maps API キー（必須）
+    - `QWEN_API_KEY`: Qwen API キー（Qwen使用時）
+    - `GEMINI_API_KEY`: Gemini API キー（Gemini使用時）
+    - `QWEN_REGION`: Qwen のリージョン（`china` または `international`、デフォルト: `international`）
+
+  version: 1.0.0
+  contact:
+    name: API Support
+servers:
+  - url: http://localhost:3000
+    description: ローカル開発環境
+  - url: https://your-production-domain.com
+    description: 本番環境
+
+tags:
+  - name: AI Text Generation
+    description: AI モデルによるテキスト生成
+  - name: Places & Routes
+    description: Google Maps API を使用した地点とルートの処理
+  - name: Pipeline
+    description: E2E パイプライン処理（ルート生成・最適化）
+  - name: Scenario
+    description: タクシーシナリオの生成と統合
+
+paths:
+  /api/qwen:
+    post:
+      tags:
+        - AI Text Generation
+      summary: Qwen AI によるテキスト生成
+      description: Alibaba Cloud の Qwen モデルを使用してテキストを生成します
+      operationId: qwenChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  description: AI に送信するメッセージ
+                  example: "東京の観光スポットを3つ教えてください"
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: string
+                    description: AI からの応答テキスト
+                    example: "東京の人気観光スポット3つをご紹介します..."
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/gemini:
+    post:
+      tags:
+        - AI Text Generation
+      summary: Gemini AI によるテキスト生成
+      description: Google の Gemini モデルを使用してテキストを生成します
+      operationId: geminiChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                  description: AI に送信するメッセージ
+                  example: "東京の観光スポットを3つ教えてください"
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: string
+                    description: AI からの応答テキスト
+                    example: "東京には多くの魅力的な観光スポットがあります..."
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/places/geocode:
+    post:
+      tags:
+        - Places & Routes
+      summary: 住所のジオコーディング
+      description: 住所または場所名から緯度経度を取得します（Google Places API 使用）
+      operationId: geocodeAddresses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - addresses
+              properties:
+                addresses:
+                  type: array
+                  description: ジオコーディングする住所または場所名のリスト
+                  items:
+                    type: string
+                  example: ["東京駅", "浅草寺", "東京スカイツリー"]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  places:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GeocodedPlace'
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/routes/optimize:
+    post:
+      tags:
+        - Places & Routes
+      summary: ルート最適化
+      description: |
+        出発地、目的地、経由地点を指定してルートを最適化します（Google Routes API 使用）
+        経由地点の順序を最適化し、総距離と所要時間を最小化します
+      operationId: optimizeRoute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - origin
+                - destination
+                - intermediates
+              properties:
+                origin:
+                  $ref: '#/components/schemas/RouteWaypoint'
+                destination:
+                  $ref: '#/components/schemas/RouteWaypoint'
+                intermediates:
+                  type: array
+                  description: 経由地点のリスト（順序が最適化されます）
+                  items:
+                    $ref: '#/components/schemas/RouteWaypoint'
+                travelMode:
+                  type: string
+                  enum: [DRIVE, WALK, BICYCLE, TRANSIT]
+                  default: DRIVE
+                  description: 移動手段
+                optimizeWaypointOrder:
+                  type: boolean
+                  default: true
+                  description: 経由地点の順序を最適化するか
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  optimizedRoute:
+                    $ref: '#/components/schemas/OptimizedRoute'
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/pipeline/route-optimize:
+    post:
+      tags:
+        - Pipeline
+      summary: AI ルート最適化パイプライン（E2E）
+      description: |
+        AI によるルート生成、ジオコーディング、ルート最適化を一括で実行します
+
+        実行ステップ:
+        1. AI がテーマに基づいて訪問スポットを生成
+        2. 生成されたスポットの座標を取得（ジオコーディング）
+        3. 最適なルート順序を計算
+      operationId: pipelineRouteOptimize
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - startPoint
+                - purpose
+                - spotCount
+                - model
+              properties:
+                startPoint:
+                  type: string
+                  description: 出発地点
+                  example: "東京駅"
+                purpose:
+                  type: string
+                  description: 目的・テーマ
+                  example: "皇居周辺の観光スポットを巡りたい"
+                spotCount:
+                  type: integer
+                  minimum: 3
+                  maximum: 8
+                  description: 生成する地点数（3〜8）
+                  example: 5
+                model:
+                  type: string
+                  enum: [qwen, gemini]
+                  description: 使用する AI モデル
+                  example: "gemini"
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineResponse'
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/route/generate:
+    post:
+      tags:
+        - Scenario
+      summary: AI によるルート自動生成
+      description: AI が目的とテーマに基づいて訪問スポットのリストを生成します
+      operationId: generateRoute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - input
+              properties:
+                input:
+                  type: object
+                  required:
+                    - startPoint
+                    - purpose
+                    - spotCount
+                    - model
+                  properties:
+                    startPoint:
+                      type: string
+                      example: "東京駅"
+                    purpose:
+                      type: string
+                      example: "皇居周辺を観光したい"
+                    spotCount:
+                      type: integer
+                      minimum: 3
+                      maximum: 8
+                      example: 5
+                    model:
+                      type: string
+                      enum: [qwen, gemini]
+                      example: "gemini"
+                    language:
+                      type: string
+                      enum: [ja, en, auto]
+                      default: auto
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/RouteGenerationOutput'
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/scenario:
+    post:
+      tags:
+        - Scenario
+      summary: タクシーシナリオ生成
+      description: ルート情報からタクシーガイドのシナリオを生成します
+      operationId: generateScenario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - route
+              properties:
+                route:
+                  type: object
+                  required:
+                    - routeName
+                    - spots
+                  properties:
+                    routeName:
+                      type: string
+                      example: "皇居周辺観光ツアー"
+                    spots:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/RouteSpot'
+                    language:
+                      type: string
+                      enum: [ja, en, auto]
+                      default: auto
+                models:
+                  type: string
+                  enum: [qwen, gemini, both]
+                  default: both
+                  description: 使用するモデル
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ScenarioOutput'
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/scenario/spot:
+    post:
+      tags:
+        - Scenario
+      summary: 単一地点のシナリオ生成
+      description: 特定の観光地点に関するタクシーガイドのセリフを生成します
+      operationId: generateSpotScenario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - routeName
+                - spotName
+              properties:
+                routeName:
+                  type: string
+                  description: ルート名（コンテキスト用）
+                  example: "皇居周辺観光ツアー"
+                spotName:
+                  type: string
+                  description: 地点名
+                  example: "皇居東御苑"
+                description:
+                  type: string
+                  description: 地点の説明
+                  example: "旧江戸城の本丸跡地"
+                point:
+                  type: string
+                  description: 観光ポイント
+                  example: "四季折々の花が楽しめる日本庭園"
+                models:
+                  type: string
+                  enum: [qwen, gemini, both]
+                  default: both
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  scenario:
+                    type: object
+                    properties:
+                      qwen:
+                        type: string
+                      gemini:
+                        type: string
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/scenario/integrate:
+    post:
+      tags:
+        - Scenario
+      summary: シナリオ統合
+      description: |
+        複数地点のシナリオを統合して一つの連続したストーリーにします
+        別の LLM を使用してクロスチェックと統合を行います
+      operationId: integrateScenario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - integration
+              properties:
+                integration:
+                  type: object
+                  required:
+                    - routeName
+                    - spots
+                    - sourceModel
+                  properties:
+                    routeName:
+                      type: string
+                      example: "皇居周辺観光ツアー"
+                    spots:
+                      type: array
+                      description: 統合する地点のシナリオ
+                      items:
+                        $ref: '#/components/schemas/SpotScenario'
+                    sourceModel:
+                      type: string
+                      enum: [qwen, gemini]
+                      description: ソースとして使用するモデル
+                      example: "gemini"
+                    integrationLLM:
+                      type: string
+                      enum: [qwen, gemini]
+                      description: 統合処理に使用する LLM（省略時は sourceModel と異なる方）
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ScenarioIntegrationOutput'
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: エラーメッセージ
+          example: "GOOGLE_MAPS_API_KEYが設定されていません"
+
+    LatLng:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          format: double
+          example: 35.681236
+        longitude:
+          type: number
+          format: double
+          example: 139.767125
+
+    GeocodedPlace:
+      type: object
+      required:
+        - inputAddress
+        - formattedAddress
+        - location
+        - placeId
+      properties:
+        inputAddress:
+          type: string
+          description: 入力された住所または場所名
+          example: "東京駅"
+        formattedAddress:
+          type: string
+          description: Google が返す正規化された住所
+          example: "日本、〒100-0005 東京都千代田区丸の内１丁目"
+        location:
+          $ref: '#/components/schemas/LatLng'
+        placeId:
+          type: string
+          description: Google Place ID（一意識別子）
+          example: "ChIJC3Cf2PuLGGARZ7KXBYZWe5k"
+
+    RouteWaypoint:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 地点名（識別用、任意）
+          example: "東京駅"
+        placeId:
+          type: string
+          description: Google Place ID
+          example: "ChIJC3Cf2PuLGGARZ7KXBYZWe5k"
+        location:
+          $ref: '#/components/schemas/LatLng'
+        address:
+          type: string
+          description: 住所（placeId も location もない場合に使用）
+          example: "東京都千代田区丸の内1丁目"
+
+    OptimizedWaypoint:
+      type: object
+      required:
+        - waypoint
+        - waypointIndex
+      properties:
+        waypoint:
+          $ref: '#/components/schemas/RouteWaypoint'
+        waypointIndex:
+          type: integer
+          description: 最適化後の順序インデックス
+          example: 0
+
+    RouteLeg:
+      type: object
+      required:
+        - distanceMeters
+        - durationSeconds
+      properties:
+        startLocation:
+          $ref: '#/components/schemas/LatLng'
+        endLocation:
+          $ref: '#/components/schemas/LatLng'
+        distanceMeters:
+          type: integer
+          description: 区間の距離（メートル）
+          example: 1500
+        durationSeconds:
+          type: integer
+          description: 区間の所要時間（秒）
+          example: 300
+
+    OptimizedRoute:
+      type: object
+      required:
+        - orderedWaypoints
+        - legs
+        - totalDistanceMeters
+        - totalDurationSeconds
+      properties:
+        orderedWaypoints:
+          type: array
+          description: 最適化された地点の順序
+          items:
+            $ref: '#/components/schemas/OptimizedWaypoint'
+        legs:
+          type: array
+          description: 各区間の情報
+          items:
+            $ref: '#/components/schemas/RouteLeg'
+        totalDistanceMeters:
+          type: integer
+          description: 総距離（メートル）
+          example: 8500
+        totalDurationSeconds:
+          type: integer
+          description: 総所要時間（秒）
+          example: 1800
+
+    GeneratedRouteSpot:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+          description: 地点名
+          example: "皇居東御苑"
+        type:
+          type: string
+          enum: [start, intermediate, destination]
+          description: 地点タイプ
+          example: "intermediate"
+        description:
+          type: string
+          description: 地点の説明
+          example: "旧江戸城の本丸跡地"
+        generatedNote:
+          type: string
+          description: AI 生成時の補足情報
+
+    RouteSpot:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+          example: "皇居東御苑"
+        type:
+          type: string
+          enum: [start, waypoint, destination]
+          example: "waypoint"
+        description:
+          type: string
+          example: "旧江戸城の本丸跡地"
+        point:
+          type: string
+          description: 観光ポイント
+          example: "四季折々の花が楽しめる日本庭園"
+
+    SpotScenario:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+          example: "皇居東御苑"
+        type:
+          type: string
+          enum: [start, waypoint, destination]
+          example: "waypoint"
+        qwen:
+          type: string
+          description: Qwen による生成結果
+        gemini:
+          type: string
+          description: Gemini による生成結果
+        error:
+          type: object
+          properties:
+            qwen:
+              type: string
+            gemini:
+              type: string
+
+    RouteGenerationOutput:
+      type: object
+      required:
+        - generatedAt
+        - routeName
+        - spots
+        - model
+        - processingTimeMs
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+          example: "2026-01-18T10:30:00Z"
+        routeName:
+          type: string
+          example: "皇居周辺歴史巡りツアー"
+        spots:
+          type: array
+          items:
+            $ref: '#/components/schemas/GeneratedRouteSpot'
+        model:
+          type: string
+          enum: [qwen, gemini]
+          example: "gemini"
+        processingTimeMs:
+          type: integer
+          example: 2500
+
+    ScenarioOutput:
+      type: object
+      required:
+        - generatedAt
+        - routeName
+        - spots
+        - stats
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+          example: "2026-01-18T10:30:00Z"
+        routeName:
+          type: string
+          example: "皇居周辺観光ツアー"
+        spots:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpotScenario'
+        stats:
+          type: object
+          required:
+            - totalSpots
+            - successCount
+            - processingTimeMs
+          properties:
+            totalSpots:
+              type: integer
+              example: 5
+            successCount:
+              type: object
+              properties:
+                qwen:
+                  type: integer
+                  example: 5
+                gemini:
+                  type: integer
+                  example: 5
+            processingTimeMs:
+              type: integer
+              example: 8500
+
+    ScenarioIntegrationOutput:
+      type: object
+      required:
+        - integratedAt
+        - routeName
+        - sourceModel
+        - integrationLLM
+        - integratedScript
+        - processingTimeMs
+      properties:
+        integratedAt:
+          type: string
+          format: date-time
+          example: "2026-01-18T10:35:00Z"
+        routeName:
+          type: string
+          example: "皇居周辺観光ツアー"
+        sourceModel:
+          type: string
+          enum: [qwen, gemini]
+          example: "gemini"
+        integrationLLM:
+          type: string
+          enum: [qwen, gemini]
+          example: "qwen"
+        integratedScript:
+          type: string
+          description: 統合されたシナリオテキスト
+          example: "本日は皇居周辺を巡る観光ツアーにようこそ..."
+        processingTimeMs:
+          type: integer
+          example: 3500
+
+    PipelineStepResult:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+          example: "completed"
+        processingTimeMs:
+          type: integer
+          example: 2500
+        error:
+          type: string
+
+    PipelineResponse:
+      type: object
+      required:
+        - success
+        - request
+        - routeGeneration
+        - geocoding
+        - routeOptimization
+        - totalProcessingTimeMs
+      properties:
+        success:
+          type: boolean
+          example: true
+        request:
+          type: object
+          required:
+            - startPoint
+            - purpose
+            - spotCount
+            - model
+          properties:
+            startPoint:
+              type: string
+              example: "東京駅"
+            purpose:
+              type: string
+              example: "皇居周辺の観光スポットを巡りたい"
+            spotCount:
+              type: integer
+              example: 5
+            model:
+              type: string
+              enum: [qwen, gemini]
+              example: "gemini"
+        routeGeneration:
+          allOf:
+            - $ref: '#/components/schemas/PipelineStepResult'
+            - type: object
+              properties:
+                routeName:
+                  type: string
+                  example: "皇居周辺歴史巡りツアー"
+                spots:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/GeneratedRouteSpot'
+        geocoding:
+          allOf:
+            - $ref: '#/components/schemas/PipelineStepResult'
+            - type: object
+              properties:
+                places:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/GeocodedPlace'
+                failedSpots:
+                  type: array
+                  items:
+                    type: string
+        routeOptimization:
+          allOf:
+            - $ref: '#/components/schemas/PipelineStepResult'
+            - type: object
+              properties:
+                orderedWaypoints:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/OptimizedWaypoint'
+                legs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/RouteLeg'
+                totalDistanceMeters:
+                  type: integer
+                  example: 8500
+                totalDurationSeconds:
+                  type: integer
+                  example: 1800
+        totalProcessingTimeMs:
+          type: integer
+          description: パイプライン全体の処理時間（ミリ秒）
+          example: 15000
+        error:
+          type: string
+          description: 全体エラーメッセージ
