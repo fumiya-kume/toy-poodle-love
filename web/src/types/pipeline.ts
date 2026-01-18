@@ -2,8 +2,8 @@
  * E2E Place-Route Optimization パイプラインに関する型定義
  */
 
-import { GeocodedPlace, OptimizedWaypoint, RouteLeg } from './place-route';
-import { RouteGenerationOutput, GeneratedRouteSpot } from './route';
+import type { GeocodedPlace, OptimizedWaypoint, RouteLeg } from './place-route';
+import type { RouteGenerationOutput, GeneratedRouteSpot } from './route';
 
 /**
  * パイプラインリクエスト（入力パラメータ）

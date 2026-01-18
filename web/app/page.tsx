@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import {
+import type {
   GeocodedPlace,
   RouteOptimizationResponse,
   OptimizedWaypoint,
   RouteLeg,
 } from '../src/types/place-route';
-import { PipelineResponse } from '../src/types/pipeline';
+import type { PipelineResponse } from '../src/types/pipeline';
 
 type TabType = 'ai' | 'route' | 'ai-route';
 

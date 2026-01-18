@@ -2,7 +2,7 @@
  * ルート自動生成に関する型定義
  */
 
-import { RouteSpot, OutputLanguage, ModelSelection } from './scenario';
+import type { RouteSpot, OutputLanguage, ModelSelection } from './scenario';
 
 /**
  * ルート生成の入力パラメータ

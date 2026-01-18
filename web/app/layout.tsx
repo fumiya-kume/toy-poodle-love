@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 export const metadata = {
   title: 'AI テキスト生成',
   description: 'QwenとGeminiを使ったシンプルなテキスト生成UI',
@@ -6,7 +8,7 @@ export const metadata = {
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <html lang="ja">
