@@ -7,8 +7,9 @@ import {
   OptimizedWaypoint,
   RouteLeg,
 } from '../src/types/place-route';
+import { PipelineResponse } from '../src/types/pipeline';
 
-type TabType = 'ai' | 'route';
+type TabType = 'ai' | 'route' | 'ai-route';
 
 interface ModelResponse {
   qwen?: string;
@@ -23,7 +24,7 @@ interface OptimizedRouteResult {
 }
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<TabType>('route');
+  const [activeTab, setActiveTab] = useState<TabType>('ai-route');
 
   // AI テキスト生成用のstate
   const [message, setMessage] = useState('');
@@ -40,6 +41,15 @@ export default function Home() {
   const [geocodedPlaces, setGeocodedPlaces] = useState<GeocodedPlace[]>([]);
   const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRouteResult | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
+
+  // AI ルート最適化用のstate
+  const [aiRouteStartPoint, setAiRouteStartPoint] = useState('');
+  const [aiRoutePurpose, setAiRoutePurpose] = useState('');
+  const [aiRouteSpotCount, setAiRouteSpotCount] = useState(5);
+  const [aiRouteModel, setAiRouteModel] = useState<'qwen' | 'gemini'>('gemini');
+  const [aiRouteLoading, setAiRouteLoading] = useState(false);
+  const [aiRouteResult, setAiRouteResult] = useState<PipelineResponse | null>(null);
+  const [aiRouteError, setAiRouteError] = useState<string | null>(null);
 
   const handleModelToggle = (model: 'qwen' | 'gemini') => {
     setEnabledModels(prev => ({
@@ -183,6 +193,50 @@ export default function Home() {
     }
   };
 
+  const handleAiRouteOptimize = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!aiRouteStartPoint.trim()) {
+      alert('出発地点を入力してください');
+      return;
+    }
+
+    if (!aiRoutePurpose.trim()) {
+      alert('目的・テーマを入力してください');
+      return;
+    }
+
+    setAiRouteLoading(true);
+    setAiRouteError(null);
+    setAiRouteResult(null);
+
+    try {
+      const res = await fetch('/api/pipeline/route-optimize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startPoint: aiRouteStartPoint,
+          purpose: aiRoutePurpose,
+          spotCount: aiRouteSpotCount,
+          model: aiRouteModel,
+        }),
+      });
+
+      const data: PipelineResponse = await res.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'パイプライン処理に失敗しました');
+      }
+
+      setAiRouteResult(data);
+    } catch (error) {
+      console.error('AI ルート最適化エラー:', error);
+      setAiRouteError(error instanceof Error ? error.message : 'エラーが発生しました');
+    } finally {
+      setAiRouteLoading(false);
+    }
+  };
+
   const formatDistance = (meters: number) => {
     if (meters >= 1000) {
       return `${(meters / 1000).toFixed(1)} km`;
@@ -197,6 +251,24 @@ export default function Home() {
       return `${hours}時間${minutes}分`;
     }
     return `${minutes}分`;
+  };
+
+  const getStepStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return '#22c55e';
+      case 'in_progress': return '#f59e0b';
+      case 'failed': return '#ef4444';
+      default: return '#9ca3af';
+    }
+  };
+
+  const getStepStatusText = (status: string) => {
+    switch (status) {
+      case 'completed': return '完了';
+      case 'in_progress': return '処理中';
+      case 'failed': return '失敗';
+      default: return '待機中';
+    }
   };
 
   return (
@@ -217,6 +289,22 @@ export default function Home() {
         marginBottom: '24px',
         borderBottom: '2px solid #e5e7eb'
       }}>
+        <button
+          onClick={() => setActiveTab('ai-route')}
+          style={{
+            padding: '12px 24px',
+            fontSize: '16px',
+            fontWeight: activeTab === 'ai-route' ? '600' : '400',
+            backgroundColor: 'transparent',
+            color: activeTab === 'ai-route' ? '#8b5cf6' : '#6b7280',
+            border: 'none',
+            borderBottom: activeTab === 'ai-route' ? '2px solid #8b5cf6' : '2px solid transparent',
+            marginBottom: '-2px',
+            cursor: 'pointer',
+          }}
+        >
+          AI ルート最適化
+        </button>
         <button
           onClick={() => setActiveTab('route')}
           style={{
@@ -250,6 +338,395 @@ export default function Home() {
           AI テキスト生成
         </button>
       </div>
+
+      {/* AI ルート最適化タブ */}
+      {activeTab === 'ai-route' && (
+        <div>
+          <form onSubmit={handleAiRouteOptimize}>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '600'
+              }}>
+                出発地点:
+              </label>
+              <input
+                type="text"
+                value={aiRouteStartPoint}
+                onChange={(e) => setAiRouteStartPoint(e.target.value)}
+                placeholder="例: 東京駅"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '16px',
+                  border: '1px solid #ccc',
+                  borderRadius: '8px',
+                  fontFamily: 'inherit'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '600'
+              }}>
+                目的・テーマ:
+              </label>
+              <input
+                type="text"
+                value={aiRoutePurpose}
+                onChange={(e) => setAiRoutePurpose(e.target.value)}
+                placeholder="例: 皇居周辺の観光スポットを巡りたい"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '16px',
+                  border: '1px solid #ccc',
+                  borderRadius: '8px',
+                  fontFamily: 'inherit'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  地点数:
+                </label>
+                <select
+                  value={aiRouteSpotCount}
+                  onChange={(e) => setAiRouteSpotCount(Number(e.target.value))}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontSize: '16px',
+                    border: '1px solid #ccc',
+                    borderRadius: '8px',
+                    fontFamily: 'inherit',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  {[3, 4, 5, 6, 7, 8].map(n => (
+                    <option key={n} value={n}>{n}地点</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '600'
+                }}>
+                  AIモデル:
+                </label>
+                <select
+                  value={aiRouteModel}
+                  onChange={(e) => setAiRouteModel(e.target.value as 'qwen' | 'gemini')}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontSize: '16px',
+                    border: '1px solid #ccc',
+                    borderRadius: '8px',
+                    fontFamily: 'inherit',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="gemini">Gemini</option>
+                  <option value="qwen">Qwen</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={aiRouteLoading}
+              style={{
+                width: '100%',
+                padding: '12px 24px',
+                fontSize: '16px',
+                fontWeight: '600',
+                backgroundColor: aiRouteLoading ? '#ccc' : '#8b5cf6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: aiRouteLoading ? 'not-allowed' : 'pointer',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              {aiRouteLoading ? '処理中...' : 'AI でルートを生成・最適化'}
+            </button>
+          </form>
+
+          {/* エラー表示 */}
+          {aiRouteError && (
+            <div style={{
+              marginTop: '24px',
+              padding: '16px',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              color: '#dc2626'
+            }}>
+              {aiRouteError}
+            </div>
+          )}
+
+          {/* ステップ進捗表示 */}
+          {aiRouteLoading && (
+            <div style={{ marginTop: '24px' }}>
+              <h3 style={{ fontSize: '18px', marginBottom: '12px', fontWeight: '600' }}>
+                処理中...
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    backgroundColor: '#f59e0b',
+                    animation: 'pulse 1s infinite'
+                  }} />
+                  <span>1. AIがルートを生成中...</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    backgroundColor: '#9ca3af'
+                  }} />
+                  <span style={{ color: '#9ca3af' }}>2. 座標を取得</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    backgroundColor: '#9ca3af'
+                  }} />
+                  <span style={{ color: '#9ca3af' }}>3. ルートを最適化</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 結果表示 */}
+          {aiRouteResult && (
+            <div style={{ marginTop: '24px' }}>
+              {/* ステップ完了状況 */}
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                marginBottom: '16px'
+              }}>
+                <h3 style={{ fontSize: '16px', marginBottom: '12px', fontWeight: '600' }}>
+                  処理ステップ
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: getStepStatusColor(aiRouteResult.routeGeneration.status)
+                    }} />
+                    <span>1. AI ルート生成: {getStepStatusText(aiRouteResult.routeGeneration.status)}</span>
+                    {aiRouteResult.routeGeneration.processingTimeMs && (
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                        ({aiRouteResult.routeGeneration.processingTimeMs}ms)
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: getStepStatusColor(aiRouteResult.geocoding.status)
+                    }} />
+                    <span>2. ジオコーディング: {getStepStatusText(aiRouteResult.geocoding.status)}</span>
+                    {aiRouteResult.geocoding.processingTimeMs && (
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                        ({aiRouteResult.geocoding.processingTimeMs}ms)
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: getStepStatusColor(aiRouteResult.routeOptimization.status)
+                    }} />
+                    <span>3. ルート最適化: {getStepStatusText(aiRouteResult.routeOptimization.status)}</span>
+                    {aiRouteResult.routeOptimization.processingTimeMs && (
+                      <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                        ({aiRouteResult.routeOptimization.processingTimeMs}ms)
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <p style={{ marginTop: '12px', fontSize: '14px', color: '#6b7280' }}>
+                  総処理時間: {aiRouteResult.totalProcessingTimeMs}ms
+                </p>
+              </div>
+
+              {/* 生成されたルート名 */}
+              {aiRouteResult.routeGeneration.routeName && (
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: '#ede9fe',
+                  border: '2px solid #8b5cf6',
+                  borderRadius: '8px',
+                  marginBottom: '16px'
+                }}>
+                  <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#5b21b6', margin: 0 }}>
+                    {aiRouteResult.routeGeneration.routeName}
+                  </h3>
+                </div>
+              )}
+
+              {/* 生成されたスポット一覧 */}
+              {aiRouteResult.routeGeneration.spots && (
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '18px', marginBottom: '12px', fontWeight: '600' }}>
+                    AI が生成したスポット
+                  </h3>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    {aiRouteResult.routeGeneration.spots.map((spot, i) => (
+                      <li key={i} style={{
+                        padding: '12px',
+                        backgroundColor: '#f9fafb',
+                        borderRadius: '8px',
+                        marginBottom: '8px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            backgroundColor: spot.type === 'start' ? '#22c55e' : spot.type === 'destination' ? '#ef4444' : '#3b82f6',
+                            color: 'white',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}>
+                            {i + 1}
+                          </span>
+                          <strong>{spot.name}</strong>
+                          <span style={{
+                            fontSize: '12px',
+                            padding: '2px 8px',
+                            backgroundColor: spot.type === 'start' ? '#dcfce7' : spot.type === 'destination' ? '#fee2e2' : '#dbeafe',
+                            color: spot.type === 'start' ? '#166534' : spot.type === 'destination' ? '#991b1b' : '#1e40af',
+                            borderRadius: '12px'
+                          }}>
+                            {spot.type === 'start' ? '出発' : spot.type === 'destination' ? '到着' : '経由'}
+                          </span>
+                        </div>
+                        {spot.description && (
+                          <p style={{ margin: '8px 0 0 32px', fontSize: '14px', color: '#6b7280' }}>
+                            {spot.description}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* 最適化されたルート */}
+              {aiRouteResult.routeOptimization.orderedWaypoints && (
+                <div>
+                  <h3 style={{ fontSize: '20px', marginBottom: '16px', fontWeight: '600' }}>
+                    最適化されたルート
+                  </h3>
+
+                  <div style={{
+                    padding: '16px',
+                    backgroundColor: '#f0fdf4',
+                    border: '2px solid #22c55e',
+                    borderRadius: '8px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ display: 'flex', gap: '24px', justifyContent: 'center' }}>
+                      <div>
+                        <span style={{ fontSize: '14px', color: '#6b7280' }}>総距離</span>
+                        <p style={{ fontSize: '24px', fontWeight: '700', margin: '4px 0 0', color: '#166534' }}>
+                          {formatDistance(aiRouteResult.routeOptimization.totalDistanceMeters!)}
+                        </p>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '14px', color: '#6b7280' }}>総所要時間</span>
+                        <p style={{ fontSize: '24px', fontWeight: '700', margin: '4px 0 0', color: '#166534' }}>
+                          {formatDuration(aiRouteResult.routeOptimization.totalDurationSeconds!)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    {aiRouteResult.routeOptimization.orderedWaypoints.map((wp, i) => (
+                      <li key={i} style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px',
+                        padding: '16px 0',
+                        borderBottom: i < aiRouteResult.routeOptimization.orderedWaypoints!.length - 1 ? '1px solid #e5e7eb' : 'none'
+                      }}>
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          backgroundColor: i === 0 ? '#22c55e' : i === aiRouteResult.routeOptimization.orderedWaypoints!.length - 1 ? '#ef4444' : '#3b82f6',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: '600',
+                          flexShrink: 0
+                        }}>
+                          {i + 1}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ margin: 0, fontWeight: '600', fontSize: '16px' }}>
+                            {wp.waypoint.name || `地点 ${i + 1}`}
+                          </p>
+                          <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#6b7280' }}>
+                            {i === 0 ? '出発地点' : i === aiRouteResult.routeOptimization.orderedWaypoints!.length - 1 ? '到着地点' : '経由地点'}
+                          </p>
+                        </div>
+                        {aiRouteResult.routeOptimization.legs && aiRouteResult.routeOptimization.legs[i] && (
+                          <div style={{ textAlign: 'right', fontSize: '14px', color: '#6b7280' }}>
+                            <p style={{ margin: 0 }}>
+                              {formatDistance(aiRouteResult.routeOptimization.legs[i].distanceMeters)}
+                            </p>
+                            <p style={{ margin: '2px 0 0' }}>
+                              {formatDuration(aiRouteResult.routeOptimization.legs[i].durationSeconds)}
+                            </p>
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ルート最適化タブ */}
       {activeTab === 'route' && (
