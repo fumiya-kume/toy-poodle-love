@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ScenarioGenerator } from '../../../src/scenario/generator';
 import { ScenarioRequest, ScenarioResponse } from '../../../src/types/api';
+import { getEnv, requireApiKey } from '../../../src/config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,41 +18,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 環境変数からAPIキーを取得
-    const qwenApiKey = process.env.QWEN_API_KEY;
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    const qwenRegion = (process.env.QWEN_REGION as 'china' | 'international') || 'international';
-
     // 必要なAPIキーが設定されているか確認
     if (models === 'qwen' || models === 'both') {
-      if (!qwenApiKey) {
-        return NextResponse.json<ScenarioResponse>(
-          {
-            success: false,
-            error: 'QWEN_API_KEYが設定されていません',
-          },
-          { status: 500 }
-        );
-      }
+      const keyError = requireApiKey('qwen');
+      if (keyError) return keyError;
     }
 
     if (models === 'gemini' || models === 'both') {
-      if (!geminiApiKey) {
-        return NextResponse.json<ScenarioResponse>(
-          {
-            success: false,
-            error: 'GEMINI_API_KEYが設定されていません',
-          },
-          { status: 500 }
-        );
-      }
+      const keyError = requireApiKey('gemini');
+      if (keyError) return keyError;
     }
+
+    const env = getEnv();
 
     // ScenarioGeneratorを初期化
     const generator = new ScenarioGenerator(
-      qwenApiKey,
-      geminiApiKey,
-      qwenRegion
+      env.qwenApiKey,
+      env.geminiApiKey,
+      env.qwenRegion
     );
 
     // シナリオ生成

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { QwenClient } from '../../../src/qwen-client';
+import { getEnv, requireApiKey } from '../../../src/config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,20 +13,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.QWEN_API_KEY;
-    const region = (process.env.QWEN_REGION as 'china' | 'international') || 'international';
+    const keyError = requireApiKey('qwen');
+    if (keyError) return keyError;
 
-    if (!apiKey) {
-      console.error('QWEN_API_KEY not configured');
-      return NextResponse.json(
-        { error: 'QWEN_API_KEYが設定されていません。環境変数を確認してください。' },
-        { status: 500 }
-      );
-    }
+    const env = getEnv();
 
-    console.log('Qwen API call starting...', { region, hasApiKey: !!apiKey });
+    console.log('Qwen API call starting...', { region: env.qwenRegion, hasApiKey: !!env.qwenApiKey });
 
-    const qwenClient = new QwenClient(apiKey, region);
+    const qwenClient = new QwenClient(env.qwenApiKey!, env.qwenRegion);
     const response = await qwenClient.chat(message);
 
     console.log('Qwen API call successful');

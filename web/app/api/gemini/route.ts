@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GeminiClient } from '../../../src/gemini-client';
+import { getEnv, requireApiKey } from '../../../src/config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,16 +13,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const keyError = requireApiKey('gemini');
+    if (keyError) return keyError;
 
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'GEMINI_API_KEYが設定されていません' },
-        { status: 500 }
-      );
-    }
-
-    const geminiClient = new GeminiClient(apiKey);
+    const env = getEnv();
+    const geminiClient = new GeminiClient(env.geminiApiKey!);
     const response = await geminiClient.chat(message);
 
     return NextResponse.json({ response });

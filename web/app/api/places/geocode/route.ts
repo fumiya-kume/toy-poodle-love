@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GooglePlacesClient } from '../../../../src/google-places-client';
 import { GeocodeRequest, GeocodeResponse } from '../../../../src/types/place-route';
+import { getEnv, requireApiKey } from '../../../../src/config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,21 +19,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 環境変数からAPIキーを取得
-    const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const keyError = requireApiKey('googleMaps');
+    if (keyError) return keyError;
 
-    if (!googleApiKey) {
-      return NextResponse.json<GeocodeResponse>(
-        {
-          success: false,
-          error: 'GOOGLE_MAPS_API_KEYが設定されていません',
-        },
-        { status: 500 }
-      );
-    }
+    const env = getEnv();
 
     // ジオコーディング実行
-    const client = new GooglePlacesClient(googleApiKey);
+    const client = new GooglePlacesClient(env.googleMapsApiKey!);
     const places = await client.geocodeBatch(addresses);
 
     return NextResponse.json<GeocodeResponse>({

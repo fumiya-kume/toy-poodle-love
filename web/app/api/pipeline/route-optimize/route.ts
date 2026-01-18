@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { RouteOptimizerPipeline } from '../../../../src/pipeline/route-optimizer';
 import { PipelineRequest } from '../../../../src/types/pipeline';
+import { getEnv, requireApiKey } from '../../../../src/config';
 
 export async function POST(request: Request) {
   try {
@@ -28,37 +29,27 @@ export async function POST(request: Request) {
     };
 
     // 環境変数チェック
-    const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
-    if (!googleMapsApiKey) {
-      return NextResponse.json(
-        { success: false, error: 'Google Maps API key is not configured' },
-        { status: 500 }
-      );
+    const googleMapsKeyError = requireApiKey('googleMaps');
+    if (googleMapsKeyError) return googleMapsKeyError;
+
+    if (pipelineRequest.model === 'qwen') {
+      const keyError = requireApiKey('qwen');
+      if (keyError) return keyError;
     }
 
-    const qwenApiKey = process.env.QWEN_API_KEY;
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-
-    if (pipelineRequest.model === 'qwen' && !qwenApiKey) {
-      return NextResponse.json(
-        { success: false, error: 'Qwen API key is not configured' },
-        { status: 500 }
-      );
+    if (pipelineRequest.model === 'gemini') {
+      const keyError = requireApiKey('gemini');
+      if (keyError) return keyError;
     }
 
-    if (pipelineRequest.model === 'gemini' && !geminiApiKey) {
-      return NextResponse.json(
-        { success: false, error: 'Gemini API key is not configured' },
-        { status: 500 }
-      );
-    }
+    const env = getEnv();
 
     // パイプライン実行
     const pipeline = new RouteOptimizerPipeline({
-      qwenApiKey,
-      geminiApiKey,
-      googleMapsApiKey,
-      qwenRegion: (process.env.QWEN_REGION as 'china' | 'international') || 'international',
+      qwenApiKey: env.qwenApiKey,
+      geminiApiKey: env.geminiApiKey,
+      googleMapsApiKey: env.googleMapsApiKey!,
+      qwenRegion: env.qwenRegion,
     });
 
     const result = await pipeline.execute(pipelineRequest);

@@ -4,6 +4,7 @@ import {
   RouteOptimizationRequest,
   RouteOptimizationResponse,
 } from '../../../../src/types/place-route';
+import { getEnv, requireApiKey } from '../../../../src/config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,21 +42,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 環境変数からAPIキーを取得
-    const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const keyError = requireApiKey('googleMaps');
+    if (keyError) return keyError;
 
-    if (!googleApiKey) {
-      return NextResponse.json<RouteOptimizationResponse>(
-        {
-          success: false,
-          error: 'GOOGLE_MAPS_API_KEYが設定されていません',
-        },
-        { status: 500 }
-      );
-    }
+    const env = getEnv();
 
     // ルート最適化実行
-    const client = new GoogleRoutesClient(googleApiKey);
+    const client = new GoogleRoutesClient(env.googleMapsApiKey!);
     const optimizedRoute = await client.optimizeRoute({
       origin,
       destination,

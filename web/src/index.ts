@@ -1,28 +1,23 @@
-import * as dotenv from 'dotenv';
+import { initializeDotenv, getEnv, validateRequiredKeys } from './config';
 import { QwenClient } from './qwen-client';
 import { GeminiClient } from './gemini-client';
 
 // Load environment variables
-dotenv.config();
+initializeDotenv();
 
 async function main() {
-  const qwenApiKey = process.env.QWEN_API_KEY;
-  const qwenRegion = (process.env.QWEN_REGION as 'china' | 'international') || 'international';
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-
-  if (!qwenApiKey) {
-    console.error('Error: QWEN_API_KEY is not set in .env file');
+  try {
+    validateRequiredKeys(['qwen', 'gemini']);
+  } catch (error) {
+    console.error('Error:', (error as Error).message);
     process.exit(1);
   }
 
-  if (!geminiApiKey) {
-    console.error('Error: GEMINI_API_KEY is not set in .env file');
-    process.exit(1);
-  }
+  const env = getEnv();
 
   // Initialize clients
-  const qwenClient = new QwenClient(qwenApiKey, qwenRegion);
-  const geminiClient = new GeminiClient(geminiApiKey);
+  const qwenClient = new QwenClient(env.qwenApiKey!, env.qwenRegion);
+  const geminiClient = new GeminiClient(env.geminiApiKey!);
 
   const testMessage = 'Hello! Please introduce yourself briefly.';
 
