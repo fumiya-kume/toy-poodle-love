@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct ViewerApp: App {
     @State private var appState: AppState = AppState()
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
         WindowGroup("Video Player") {
@@ -70,7 +71,21 @@ struct ViewerApp: App {
                 }
                 .keyboardShortcut("[", modifiers: .command)
             }
+
+            CommandMenu("Tools") {
+                Button("Scenario Writer") {
+                    openWindow(id: "scenario-writer")
+                }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+            }
         }
+
+        // Scenario Writer ウィンドウ
+        Window("Scenario Writer", id: "scenario-writer") {
+            ScenarioWriterWindow()
+                .environment(appState)
+        }
+        .defaultSize(width: 900, height: 700)
 
         Settings {
             SettingsView()

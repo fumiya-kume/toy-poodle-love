@@ -1,28 +1,30 @@
 import SwiftUI
 import AVKit
 import AVFoundation
+import UniformTypeIdentifiers
 
 struct VideoPlayerWindow: View {
     @Environment(AppState.self) private var appState
     @State private var showControls = true
     @State private var controlsTimer: Timer?
-    @State private var mainPlayer: AVPlayer?
-    @State private var overlayPlayer: AVPlayer?
-    @State private var mainAccessedURL: URL?
-    @State private var overlayAccessedURL: URL?
+    @State private var controlsTimerTarget = ControlsTimerTarget()
+    @State private var mainSlot = VideoSlot()
+    @State private var overlaySlot = VideoSlot()
     @State private var windowId = UUID()
 
-    /// VideoConfigurationから透明度を取得（永続化対応）
+    private var windowIndex: Int { windowId.hashValue }
+
+    // Load persisted opacity for this window.
     private var overlayOpacity: Double {
-        appState.configuration(for: windowId.hashValue)?.overlayOpacity ?? 0.5
+        appState.configuration(for: windowIndex)?.overlayOpacity ?? 0.5
     }
 
-    /// 透明度を変更するためのBinding
+    // Binding to persist opacity changes.
     private var overlayOpacityBinding: Binding<Double> {
         Binding(
-            get: { appState.configuration(for: windowId.hashValue)?.overlayOpacity ?? 0.5 },
+            get: { appState.configuration(for: windowIndex)?.overlayOpacity ?? 0.5 },
             set: { newValue in
-                appState.setOverlayOpacity(at: windowId.hashValue, opacity: newValue)
+                appState.setOverlayOpacity(at: windowIndex, opacity: newValue)
             }
         )
     }
@@ -31,8 +33,8 @@ struct VideoPlayerWindow: View {
         ZStack {
             Color.black
 
-            if let player = mainPlayer {
-                MainVideoPlayerView(player: player)
+            if let player = mainSlot.player {
+                VideoPlayerView(player: player, style: .main)
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "video.badge.plus")
@@ -43,44 +45,29 @@ struct VideoPlayerWindow: View {
 
                     HStack(spacing: 12) {
                         Button("Select Main Video") {
-                            selectMainVideo()
+                            selectVideo(.main)
                         }
                         Button("Select Overlay Video") {
-                            selectOverlayVideo()
+                            selectVideo(.overlay)
                         }
                     }
                 }
             }
 
-            if let player = overlayPlayer {
-                OverlayVideoPlayerView(player: player)
+            if let player = overlaySlot.player {
+                VideoPlayerView(player: player, style: .overlay)
                     .opacity(overlayOpacity)
                     .allowsHitTesting(false)
             }
 
+            // 字幕オーバーレイ
+            SubtitleOverlayView()
+
             if showControls || !appState.playbackController.isPlaying {
                 VideoControlsOverlay(
                     opacity: overlayOpacityBinding,
-                    isPlaying: Binding(
-                        get: { appState.playbackController.isPlaying },
-                        set: { _ in }
-                    ),
-                    currentTime: Binding(
-                        get: { appState.playbackController.currentTime },
-                        set: { _ in }
-                    ),
-                    duration: Binding(
-                        get: { appState.playbackController.duration },
-                        set: { _ in }
-                    ),
-                    isMuted: Binding(
-                        get: { appState.playbackController.isMuted },
-                        set: { appState.playbackController.isMuted = $0 }
-                    ),
-                    onPlayPause: { appState.playbackController.togglePlayPause() },
-                    onSeek: { appState.playbackController.seek(to: $0) },
-                    onSkipBackward: { appState.playbackController.skipBackward() },
-                    onSkipForward: { appState.playbackController.skipForward() }
+                    playbackController: appState.playbackController,
+                    hasOverlay: overlaySlot.player != nil
                 )
                 .transition(.opacity.animation(.easeInOut(duration: 0.2)))
             }
@@ -95,23 +82,29 @@ struct VideoPlayerWindow: View {
             }
         }
         .onTapGesture {
-            // ウィンドウクリック時にフォーカスを更新
-            appState.opacityPanelController.setFocusedWindow(windowId.hashValue)
+            // Update focus when the window is clicked.
+            appState.opacityPanelController.setFocusedWindow(windowIndex)
             appState.playbackController.togglePlayPause()
         }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleDrop(providers: providers)
         }
         .onAppear {
-            // ウィンドウ用の設定を確保（存在しなければ作成）
-            appState.ensureConfiguration(for: windowId.hashValue)
-            // パネルにフォーカスを通知
-            appState.opacityPanelController.setFocusedWindow(windowId.hashValue)
+            // Ensure configuration exists for this window.
+            appState.ensureConfiguration(for: windowIndex)
+            // Notify the opacity panel which window is active.
+            appState.opacityPanelController.setFocusedWindow(windowIndex)
+            // Track open window count
+            appState.openVideoPlayerCount += 1
         }
         .onDisappear {
             unloadVideos()
-            // パネルからフォーカスをクリア
-            appState.opacityPanelController.clearFocusedWindow(windowId.hashValue)
+            controlsTimer?.invalidate()
+            controlsTimer = nil
+            // Clear focus when the window closes.
+            appState.opacityPanelController.clearFocusedWindow(windowIndex)
+            // Track open window count
+            appState.openVideoPlayerCount -= 1
         }
         .focusable()
         .onKeyPress(.space) {
@@ -132,12 +125,12 @@ struct VideoPlayerWindow: View {
         }
         .toolbar {
             ToolbarItemGroup {
-                Button(action: selectMainVideo) {
+                Button(action: { selectVideo(.main) }) {
                     Label("Main Video", systemImage: "film")
                 }
                 .help("Select main video file")
 
-                Button(action: selectOverlayVideo) {
+                Button(action: { selectVideo(.overlay) }) {
                     Label("Overlay", systemImage: "square.stack")
                 }
                 .help("Select overlay video file")
@@ -145,77 +138,48 @@ struct VideoPlayerWindow: View {
         }
     }
 
-    private func selectMainVideo() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.movie, .video, .mpeg4Movie, .quickTimeMovie]
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.message = "Select main video"
-
+    private func selectVideo(_ kind: VideoKind) {
+        let panel = makeOpenPanel(message: kind.openPanelMessage)
         if panel.runModal() == .OK, let url = panel.url {
-            loadMainVideo(url: url)
+            loadVideo(url: url, kind: kind)
         }
     }
 
-    private func selectOverlayVideo() {
+    private func makeOpenPanel(message: String) -> NSOpenPanel {
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.movie, .video, .mpeg4Movie, .quickTimeMovie]
+        panel.allowedContentTypes = Self.allowedContentTypes
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        panel.message = "Select overlay video"
+        panel.message = message
+        return panel
+    }
 
-        if panel.runModal() == .OK, let url = panel.url {
-            loadOverlayVideo(url: url)
+    private func loadVideo(url: URL, kind: VideoKind) {
+        switch kind {
+        case .main:
+            mainSlot.load(url: url)
+        case .overlay:
+            overlaySlot.load(url: url)
         }
-    }
-
-    private func loadMainVideo(url: URL) {
-        mainAccessedURL?.stopAccessingSecurityScopedResource()
-
-        guard url.startAccessingSecurityScopedResource() else { return }
-        mainAccessedURL = url
-        mainPlayer = AVPlayer(url: url)
-
-        registerPlayers()
-    }
-
-    private func loadOverlayVideo(url: URL) {
-        overlayAccessedURL?.stopAccessingSecurityScopedResource()
-
-        guard url.startAccessingSecurityScopedResource() else { return }
-        overlayAccessedURL = url
-        overlayPlayer = AVPlayer(url: url)
-
         registerPlayers()
     }
 
     private func registerPlayers() {
-        if let main = mainPlayer {
-            appState.playbackController.register(
-                mainPlayer: main,
-                overlayPlayer: overlayPlayer,
-                for: windowId.hashValue,
-                mainURL: mainAccessedURL,
-                overlayURL: overlayAccessedURL
-            )
-        }
+        guard let mainPlayer = mainSlot.player else { return }
+        appState.playbackController.register(
+            mainPlayer: mainPlayer,
+            overlayPlayer: overlaySlot.player,
+            for: windowIndex,
+            mainURL: mainSlot.accessedURL,
+            overlayURL: overlaySlot.accessedURL
+        )
     }
 
     private func unloadVideos() {
-        appState.playbackController.unregister(for: windowId.hashValue)
-
-        mainPlayer?.pause()
-        overlayPlayer?.pause()
-
-        mainAccessedURL?.stopAccessingSecurityScopedResource()
-        overlayAccessedURL?.stopAccessingSecurityScopedResource()
-
-        mainPlayer = nil
-        overlayPlayer = nil
-        mainAccessedURL = nil
-        overlayAccessedURL = nil
+        appState.playbackController.unregister(for: windowIndex)
+        mainSlot.unload()
+        overlaySlot.unload()
     }
 
     private func handleDrop(providers: [NSItemProvider]) -> Bool {
@@ -229,10 +193,10 @@ struct VideoPlayerWindow: View {
             guard videoExtensions.contains(url.pathExtension.lowercased()) else { return }
 
             DispatchQueue.main.async {
-                if mainPlayer == nil {
-                    loadMainVideo(url: url)
+                if mainSlot.player == nil {
+                    loadVideo(url: url, kind: .main)
                 } else {
-                    loadOverlayVideo(url: url)
+                    loadVideo(url: url, kind: .overlay)
                 }
             }
         }
@@ -241,10 +205,62 @@ struct VideoPlayerWindow: View {
 
     private func resetControlsTimer() {
         controlsTimer?.invalidate()
-        controlsTimer = Timer.scheduledTimer(withTimeInterval: appState.appSettings.controlHideDelay, repeats: false) { _ in
-            if appState.playbackController.isPlaying {
-                showControls = false
+        controlsTimerTarget.isPlaying = { appState.playbackController.isPlaying }
+        controlsTimerTarget.hideControls = { showControls = false }
+        controlsTimer = Timer.scheduledTimer(
+            timeInterval: appState.appSettings.controlHideDelay,
+            target: controlsTimerTarget,
+            selector: #selector(ControlsTimerTarget.handleTimer(_:)),
+            userInfo: nil,
+            repeats: false
+        )
+    }
+}
+
+@MainActor
+private final class ControlsTimerTarget: NSObject {
+    var isPlaying: (() -> Bool)?
+    var hideControls: (() -> Void)?
+
+    @objc func handleTimer(_ timer: Timer) {
+        guard isPlaying?() == true else { return }
+        hideControls?()
+    }
+}
+
+private extension VideoPlayerWindow {
+    static let allowedContentTypes: [UTType] = [.movie, .video, .mpeg4Movie, .quickTimeMovie]
+
+    enum VideoKind {
+        case main
+        case overlay
+
+        var openPanelMessage: String {
+            switch self {
+            case .main:
+                return "Select main video"
+            case .overlay:
+                return "Select overlay video"
             }
+        }
+    }
+
+    struct VideoSlot {
+        var player: AVPlayer?
+        var accessedURL: URL?
+
+        mutating func load(url: URL) {
+            accessedURL?.stopAccessingSecurityScopedResource()
+            guard url.startAccessingSecurityScopedResource() else { return }
+            accessedURL = url
+            player = AVPlayer(url: url)
+        }
+
+        mutating func unload() {
+            player?.pause()
+            accessedURL?.stopAccessingSecurityScopedResource()
+            player = nil
+            accessedURL = nil
         }
     }
 }

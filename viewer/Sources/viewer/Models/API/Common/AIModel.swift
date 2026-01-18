@@ -1,0 +1,18 @@
+import Foundation
+
+/// 使用可能なAIモデル
+enum AIModel: String, Codable, CaseIterable, Identifiable {
+    case gemini
+    case qwen
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .gemini:
+            return "Gemini"
+        case .qwen:
+            return "Qwen"
+        }
+    }
+}

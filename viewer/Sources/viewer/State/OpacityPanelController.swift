@@ -29,7 +29,6 @@ final class OpacityPanelController {
     // MARK: - Panel Visibility
 
     func toggle() {
-        print("[OpacityPanel] toggle() called, isVisible=\(isVisible)")
         if isVisible {
             hide()
         } else {
@@ -38,22 +37,17 @@ final class OpacityPanelController {
     }
 
     func show() {
-        print("[OpacityPanel] show() called, isVisible=\(isVisible), appState=\(appState != nil ? "set" : "nil")")
         guard !isVisible else {
-            print("[OpacityPanel] Already visible, returning")
             return
         }
 
         if panel == nil {
-            print("[OpacityPanel] Creating panel...")
             createPanel()
         }
 
         guard let panel = panel else {
-            print("[OpacityPanel] Panel is nil after createPanel(), returning")
             return
         }
-        print("[OpacityPanel] Panel exists, showing...")
 
         // Restore saved position/size or center on screen
         if let frameData = UserDefaults.standard.data(forKey: panelFrameKey),
@@ -149,12 +143,9 @@ final class OpacityPanelController {
     // MARK: - Private Methods
 
     private func createPanel() {
-        print("[OpacityPanel] createPanel() called, appState=\(appState != nil ? "set" : "nil")")
         guard let appState = appState else {
-            print("[OpacityPanel] appState is nil, cannot create panel")
             return
         }
-        print("[OpacityPanel] Creating NSPanel...")
 
         let panelView = OpacityPanelView()
             .environment(appState)

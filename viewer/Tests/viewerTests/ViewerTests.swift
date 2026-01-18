@@ -1,5 +1,5 @@
 import XCTest
-@testable import viewer
+@testable import VideoOverlayViewer
 
 final class VideoConfigurationTests: XCTestCase {
     func testDefaultConfigurations() {

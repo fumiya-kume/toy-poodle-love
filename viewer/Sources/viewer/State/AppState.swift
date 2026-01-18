@@ -9,6 +9,17 @@ final class AppState {
     var playbackController: PlaybackController
     var opacityPanelController: OpacityPanelController
 
+    // Scenario Writer 関連
+    var scenarioWriterState: ScenarioWriterState
+    var subtitleState: SubtitleState
+    var ttsController: TTSController
+
+    /// 開いている Video Player ウィンドウの数
+    var openVideoPlayerCount: Int = 0
+
+    /// Video Player が1つ以上開いているか
+    var hasVideoPlayers: Bool { openVideoPlayerCount > 0 }
+
     private let configurationsKey = "videoConfigurations"
     private let settingsKey = "appSettings"
 
@@ -30,8 +41,16 @@ final class AppState {
         self.playbackController = PlaybackController()
         self.opacityPanelController = OpacityPanelController()
 
+        // Scenario Writer 関連の初期化
+        self.scenarioWriterState = ScenarioWriterState()
+        self.subtitleState = SubtitleState()
+        self.ttsController = TTSController()
+
         // Initialize opacity panel controller with self reference
         self.opacityPanelController.initialize(appState: self)
+
+        // TTS コントローラーに字幕状態を設定
+        self.ttsController.setSubtitleState(self.subtitleState)
     }
 
     func save() {

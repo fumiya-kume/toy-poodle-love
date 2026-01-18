@@ -1,32 +1,28 @@
 import SwiftUI
-import AVFoundation
+import Observation
 
 struct VideoControlsOverlay: View {
     @Binding var opacity: Double
-    @Binding var isPlaying: Bool
-    @Binding var currentTime: CMTime
-    @Binding var duration: CMTime
-    @Binding var isMuted: Bool
-
-    var onPlayPause: () -> Void
-    var onSeek: (CMTime) -> Void
-    var onSkipBackward: () -> Void
-    var onSkipForward: () -> Void
+    @Bindable var playbackController: PlaybackController
+    let hasOverlay: Bool
 
     var body: some View {
         VStack {
             Spacer()
 
             VStack(spacing: 12) {
-                PlaybackControlBar(
-                    isPlaying: $isPlaying,
-                    currentTime: $currentTime,
-                    duration: $duration,
-                    isMuted: $isMuted,
-                    onPlayPause: onPlayPause,
-                    onSeek: onSeek,
-                    onSkipBackward: onSkipBackward,
-                    onSkipForward: onSkipForward
+                DualProgressControlBar(
+                    isPlaying: playbackController.isPlaying,
+                    mainState: playbackController.mainVideoState,
+                    overlayState: playbackController.overlayVideoState,
+                    hasOverlay: hasOverlay,
+                    isMuted: $playbackController.isMuted,
+                    onPlayPause: playbackController.togglePlayPause,
+                    onSeekMain: playbackController.seekMain(to:),
+                    onSeekOverlay: playbackController.seekOverlay(to:),
+                    onSkipBackward: { playbackController.skipBackward() },
+                    onSkipForward: { playbackController.skipForward() },
+                    onSyncOverlay: playbackController.syncOverlayToMain
                 )
 
                 Divider()
@@ -48,14 +44,8 @@ struct VideoControlsOverlay: View {
 
         VideoControlsOverlay(
             opacity: .constant(0.5),
-            isPlaying: .constant(false),
-            currentTime: .constant(CMTime(seconds: 30, preferredTimescale: 600)),
-            duration: .constant(CMTime(seconds: 180, preferredTimescale: 600)),
-            isMuted: .constant(false),
-            onPlayPause: {},
-            onSeek: { _ in },
-            onSkipBackward: {},
-            onSkipForward: {}
+            playbackController: PlaybackController(),
+            hasOverlay: true
         )
     }
     .frame(width: 600, height: 400)

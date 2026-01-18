@@ -1,12 +1,32 @@
 import AVFoundation
 import Observation
 
+struct VideoPlaybackState {
+    var currentTime: CMTime = .zero
+    var duration: CMTime = .zero
+
+    var progress: Double {
+        guard duration.seconds > 0 else { return 0 }
+        return currentTime.seconds / duration.seconds
+    }
+}
+
 @Observable
 @MainActor
 final class PlaybackController {
     private(set) var state: PlaybackState = .stopped
-    private(set) var currentTime: CMTime = .zero
-    private(set) var duration: CMTime = .zero
+    private(set) var mainVideoState = VideoPlaybackState()
+    private(set) var overlayVideoState = VideoPlaybackState()
+
+    private(set) var currentTime: CMTime {
+        get { mainVideoState.currentTime }
+        set { mainVideoState.currentTime = newValue }
+    }
+
+    private(set) var duration: CMTime {
+        get { mainVideoState.duration }
+        set { mainVideoState.duration = newValue }
+    }
 
     var isMuted: Bool = false {
         didSet {
@@ -24,8 +44,12 @@ final class PlaybackController {
     var isReady: Bool { state == .ready || state == .playing || state == .paused }
 
     private var playerEntries: [Int: PlayerEntry] = [:]
-    private var timeObserver: Any?
-    private nonisolated(unsafe) var loopObservers: [NSObjectProtocol] = []
+    private var mainTimeObserver: Any?
+    private var mainTimeObserverPlayer: AVPlayer?
+    private var overlayTimeObserver: Any?
+    private var overlayTimeObserverPlayer: AVPlayer?
+    private var loopObservers: [NSObjectProtocol] = []
+    private var overlayEndObserver: NSObjectProtocol?
 
     struct PlayerEntry {
         let mainPlayer: AVPlayer
@@ -48,17 +72,46 @@ final class PlaybackController {
             overlayAccessedURL: overlayURL
         )
         updateState()
-        setupTimeObserver()
+        setupMainTimeObserver()
+        setupOverlayTimeObserver()
         setupLoopObservers()
     }
 
     func unregister(for windowIndex: Int) {
-        if let entry = playerEntries[windowIndex] {
-            entry.mainAccessedURL?.stopAccessingSecurityScopedResource()
-            entry.overlayAccessedURL?.stopAccessingSecurityScopedResource()
+        guard let entry = playerEntries[windowIndex] else { return }
+
+        // 削除されるプレイヤーがタイムオブザーバーの対象なら先にオブザーバーを解除
+        let isObservedMainPlayer = mainTimeObserverPlayer === entry.mainPlayer
+        if isObservedMainPlayer {
+            removeMainTimeObserver()
         }
+        let isObservedOverlayPlayer = {
+            guard let overlayPlayer = entry.overlayPlayer,
+                  let observerPlayer = overlayTimeObserverPlayer else {
+                return false
+            }
+            return observerPlayer === overlayPlayer
+        }()
+        if isObservedOverlayPlayer {
+            removeOverlayTimeObserver()
+        }
+
+        entry.mainAccessedURL?.stopAccessingSecurityScopedResource()
+        entry.overlayAccessedURL?.stopAccessingSecurityScopedResource()
         playerEntries.removeValue(forKey: windowIndex)
+
         updateState()
+
+        // 他のプレイヤーが残っていれば新しいオブザーバーを設定
+        if !playerEntries.isEmpty {
+            if isObservedMainPlayer {
+                setupMainTimeObserver()
+                setupLoopObservers()
+            }
+            if isObservedOverlayPlayer {
+                setupOverlayTimeObserver()
+            }
+        }
     }
 
     func play() {
@@ -87,6 +140,35 @@ final class PlaybackController {
             player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
         }
         currentTime = time
+        if !overlayPlayers.isEmpty {
+            overlayVideoState.currentTime = clampedTime(time, to: overlayVideoState.duration)
+        }
+    }
+
+    func seekMain(to time: CMTime) {
+        let targetTime = clampedTime(time, to: mainVideoState.duration)
+        mainPlayers.forEach { player in
+            player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero)
+        }
+        mainVideoState.currentTime = targetTime
+    }
+
+    func seekOverlay(to time: CMTime) {
+        guard !overlayPlayers.isEmpty else { return }
+        let targetTime = clampedTime(time, to: overlayVideoState.duration)
+        overlayPlayers.forEach { player in
+            player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero)
+        }
+        overlayVideoState.currentTime = targetTime
+    }
+
+    func syncOverlayToMain() {
+        guard !overlayPlayers.isEmpty else { return }
+        let targetTime = clampedTime(mainVideoState.currentTime, to: overlayVideoState.duration)
+        overlayPlayers.forEach { player in
+            player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero)
+        }
+        overlayVideoState.currentTime = targetTime
     }
 
     func skipForward(seconds: Double = 10) {
@@ -105,27 +187,42 @@ final class PlaybackController {
         seek(to: .zero)
     }
 
+    private var mainPlayers: [AVPlayer] {
+        playerEntries.values.map(\.mainPlayer)
+    }
+
+    private var overlayPlayers: [AVPlayer] {
+        playerEntries.values.compactMap(\.overlayPlayer)
+    }
+
     private var allPlayers: [AVPlayer] {
-        playerEntries.values.flatMap { entry -> [AVPlayer] in
-            var players = [entry.mainPlayer]
-            if let overlay = entry.overlayPlayer {
-                players.append(overlay)
-            }
-            return players
-        }
+        mainPlayers + overlayPlayers
     }
 
     private func updateState() {
         if playerEntries.isEmpty {
             state = .stopped
-            duration = .zero
+            mainVideoState = VideoPlaybackState()
+            overlayVideoState = VideoPlaybackState()
+            removeMainTimeObserver()
+            removeOverlayTimeObserver()
+            removeLoopObservers()
         } else {
             let maxDuration = playerEntries.values.compactMap { entry -> CMTime? in
                 entry.mainPlayer.currentItem?.duration
             }.max() ?? .zero
 
             if maxDuration.isValid && !maxDuration.isIndefinite {
-                duration = maxDuration
+                mainVideoState.duration = maxDuration
+            }
+
+            let overlayDurations = playerEntries.values.compactMap { entry -> CMTime? in
+                entry.overlayPlayer?.currentItem?.duration
+            }
+            if let maxOverlayDuration = overlayDurations.max(), maxOverlayDuration.isValid && !maxOverlayDuration.isIndefinite {
+                overlayVideoState.duration = maxOverlayDuration
+            } else if overlayDurations.isEmpty {
+                overlayVideoState = VideoPlaybackState()
             }
 
             if state == .stopped {
@@ -134,23 +231,62 @@ final class PlaybackController {
         }
     }
 
-    private func setupTimeObserver() {
-        guard timeObserver == nil, let firstEntry = playerEntries.values.first else { return }
+    private func setupMainTimeObserver() {
+        guard let firstEntry = playerEntries.values.first else { return }
+
+        if let timeObserver = mainTimeObserver, let observerPlayer = mainTimeObserverPlayer {
+            if observerPlayer === firstEntry.mainPlayer {
+                return
+            }
+            observerPlayer.removeTimeObserver(timeObserver)
+            mainTimeObserver = nil
+            mainTimeObserverPlayer = nil
+        }
 
         let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
-        timeObserver = firstEntry.mainPlayer.addPeriodicTimeObserver(
+        let observer = firstEntry.mainPlayer.addPeriodicTimeObserver(
             forInterval: interval,
             queue: .main
         ) { [weak self] time in
             Task { @MainActor in
-                self?.currentTime = time
+                self?.mainVideoState.currentTime = time
             }
         }
+        mainTimeObserver = observer
+        mainTimeObserverPlayer = firstEntry.mainPlayer
+    }
+
+    private func setupOverlayTimeObserver() {
+        guard let overlayEntry = playerEntries.values.first(where: { $0.overlayPlayer != nil }),
+              let overlayPlayer = overlayEntry.overlayPlayer else {
+            removeOverlayTimeObserver()
+            overlayVideoState.currentTime = .zero
+            return
+        }
+
+        if let timeObserver = overlayTimeObserver, let observerPlayer = overlayTimeObserverPlayer {
+            if observerPlayer === overlayPlayer {
+                return
+            }
+            removeOverlayTimeObserver()
+        }
+
+        let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
+        let observer = overlayPlayer.addPeriodicTimeObserver(
+            forInterval: interval,
+            queue: .main
+        ) { [weak self] time in
+            Task { @MainActor in
+                self?.overlayVideoState.currentTime = time
+            }
+        }
+        overlayTimeObserver = observer
+        overlayTimeObserverPlayer = overlayPlayer
+        setupOverlayEndObserver(for: overlayPlayer)
     }
 
     private func setupLoopObservers() {
-        loopObservers.forEach { NotificationCenter.default.removeObserver($0) }
-        loopObservers.removeAll()
+        removeLoopObservers()
 
         for entry in playerEntries.values {
             let observer = NotificationCenter.default.addObserver(
@@ -181,7 +317,53 @@ final class PlaybackController {
         allPlayers.forEach { $0.volume = volume }
     }
 
-    deinit {
+    private func removeLoopObservers() {
         loopObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        loopObservers.removeAll()
     }
+
+    private func setupOverlayEndObserver(for player: AVPlayer) {
+        if let overlayEndObserver {
+            NotificationCenter.default.removeObserver(overlayEndObserver)
+            self.overlayEndObserver = nil
+        }
+
+        overlayEndObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: player.currentItem,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.overlayVideoState.currentTime = self.overlayVideoState.duration
+            }
+        }
+    }
+
+    private func removeMainTimeObserver() {
+        guard let observer = mainTimeObserver, let player = mainTimeObserverPlayer else { return }
+        player.removeTimeObserver(observer)
+        mainTimeObserver = nil
+        mainTimeObserverPlayer = nil
+    }
+
+    private func removeOverlayTimeObserver() {
+        if let overlayEndObserver {
+            NotificationCenter.default.removeObserver(overlayEndObserver)
+            self.overlayEndObserver = nil
+        }
+        guard let observer = overlayTimeObserver, let player = overlayTimeObserverPlayer else { return }
+        player.removeTimeObserver(observer)
+        overlayTimeObserver = nil
+        overlayTimeObserverPlayer = nil
+    }
+
+    private func clampedTime(_ time: CMTime, to duration: CMTime) -> CMTime {
+        let nonNegative = CMTimeMaximum(time, .zero)
+        guard duration.isValid, !duration.isIndefinite else {
+            return nonNegative
+        }
+        return CMTimeMinimum(nonNegative, duration)
+    }
+
 }
