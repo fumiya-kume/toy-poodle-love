@@ -16,20 +16,25 @@ export async function POST(request: NextRequest) {
     const region = (process.env.QWEN_REGION as 'china' | 'international') || 'international';
 
     if (!apiKey) {
+      console.error('QWEN_API_KEY not configured');
       return NextResponse.json(
-        { error: 'QWEN_API_KEYが設定されていません' },
+        { error: 'QWEN_API_KEYが設定されていません。環境変数を確認してください。' },
         { status: 500 }
       );
     }
 
+    console.log('Qwen API call starting...', { region, hasApiKey: !!apiKey });
+
     const qwenClient = new QwenClient(apiKey, region);
     const response = await qwenClient.chat(message);
 
+    console.log('Qwen API call successful');
     return NextResponse.json({ response });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Qwen API エラー:', error);
+    const errorMessage = error.message || 'Qwen APIの呼び出しに失敗しました';
     return NextResponse.json(
-      { error: 'Qwen APIの呼び出しに失敗しました' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
