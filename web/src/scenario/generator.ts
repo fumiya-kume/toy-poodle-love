@@ -13,7 +13,7 @@ import { buildPrompt, resolveLanguage } from './prompt-builder';
  */
 function parseLLMResponse(response: string): { scenario: string; imagePrompt?: string } {
   // JSONコードブロックを抽出（```json ... ```）
-  const jsonMatch = response.match(/```json\s*\n([\s\S]*?)\n```/);
+  const jsonMatch = response.match(/```json\s*\n?([\s\S]*?)\n?```/);
 
   if (jsonMatch) {
     try {

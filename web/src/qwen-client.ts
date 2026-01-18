@@ -17,7 +17,6 @@ export class QwenClient {
       region,
       baseURL,
       hasApiKey: !!apiKey,
-      apiKeyPrefix: apiKey?.substring(0, 8) + '...',
     });
 
     this.client = new OpenAI({

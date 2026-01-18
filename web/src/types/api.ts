@@ -58,6 +58,11 @@ export interface SpotScenarioResponse {
     qwen?: string;
     gemini?: string;
   };
+  /** 画像生成プロンプト */
+  imagePrompt?: {
+    qwen?: string;
+    gemini?: string;
+  };
   /** エラーメッセージ */
   error?: string;
 }
