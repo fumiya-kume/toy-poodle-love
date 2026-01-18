@@ -7,6 +7,8 @@ import OpenAI from 'openai';
 export class QwenClient {
   private client: OpenAI;
   private region: 'china' | 'international';
+  private timeout: number;
+  private maxRetries: number;
 
   /**
    * QwenClientのコンストラクタ
@@ -21,11 +23,15 @@ export class QwenClient {
       ? 'https://dashscope.aliyuncs.com/compatible-mode/v1'
       : 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';
 
+    this.timeout = 60000; // 60秒のタイムアウトを設定（接続安定性向上）
+    this.maxRetries = 3; // リトライ回数を3回に増やす（接続安定性向上）
+
     this.client = new OpenAI({
       apiKey: apiKey,
       baseURL: baseURL,
-      timeout: 30000, // 30秒のタイムアウトを設定
-      maxRetries: 2, // リトライ回数を設定
+      timeout: this.timeout,
+      maxRetries: 0, // カスタムリトライロジックを使用するため0に設定
+      fetch: fetch, // 明示的にfetchを指定
     });
     this.region = region;
   }
@@ -36,21 +42,22 @@ export class QwenClient {
    * @returns レスポンステキスト
    */
   async chat(message: string): Promise<string> {
-    try {
-      const response = await this.client.chat.completions.create({
-        model: 'qwen-turbo',
-        messages: [
-          {
-            role: 'user',
-            content: message,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-      });
+    return this.executeWithRetry(async () => {
+      try {
+        const response = await this.client.chat.completions.create({
+          model: 'qwen-turbo',
+          messages: [
+            {
+              role: 'user',
+              content: message,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 2000,
+        });
 
-      return response.choices[0]?.message?.content || 'No response';
-    } catch (error: any) {
+        return response.choices[0]?.message?.content || 'No response';
+      } catch (error: any) {
       console.error('Qwen API detailed error:', {
         message: error.message,
         status: error.status,
@@ -77,7 +84,8 @@ export class QwenClient {
       // より詳細なエラーメッセージを提供
       const errorDetails = error.message || JSON.stringify(error);
       throw new Error(`Qwen API error: ${errorDetails}. リージョン: ${this.region}`);
-    }
+      }
+    });
   }
 
   /**
@@ -87,32 +95,33 @@ export class QwenClient {
    * @returns レスポンステキスト
    */
   async chatWithImage(message: string, imageUrl: string): Promise<string> {
-    try {
-      const response = await this.client.chat.completions.create({
-        model: 'qwen3-vl-flash',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: message,
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageUrl,
+    return this.executeWithRetry(async () => {
+      try {
+        const response = await this.client.chat.completions.create({
+          model: 'qwen3-vl-flash',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: message,
                 },
-              },
-            ],
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-      });
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: imageUrl,
+                  },
+                },
+              ],
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 2000,
+        });
 
-      return response.choices[0]?.message?.content || 'No response';
-    } catch (error: any) {
+        return response.choices[0]?.message?.content || 'No response';
+      } catch (error: any) {
       console.error('Qwen VL API detailed error:', {
         message: error.message,
         status: error.status,
@@ -139,6 +148,48 @@ export class QwenClient {
       // より詳細なエラーメッセージを提供
       const errorDetails = error.message || JSON.stringify(error);
       throw new Error(`Qwen VL API error: ${errorDetails}. リージョン: ${this.region}`);
+      }
+    });
+  }
+
+  /**
+   * リトライロジック付きで関数を実行
+   * @param fn 実行する非同期関数
+   * @returns 関数の実行結果
+   */
+  private async executeWithRetry<T>(fn: () => Promise<T>): Promise<T> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error: any) {
+        lastError = error;
+
+        // リトライ可能なエラーかチェック
+        const isRetryable =
+          error.status === 500 ||
+          error.status === 503 ||
+          error.code === 'ECONNABORTED' ||
+          error.code === 'ETIMEDOUT' ||
+          error.code === 'ESOCKETTIMEDOUT' ||
+          error.code === 'ECONNREFUSED' ||
+          error.code === 'ENOTFOUND' ||
+          error.message?.includes('Connection error') ||
+          error.message?.includes('timeout');
+
+        if (!isRetryable || attempt === this.maxRetries) {
+          // リトライ不可能なエラー、または最後の試行
+          throw error;
+        }
+
+        // 指数バックオフで待機（2^attempt * 1000ms、最大8秒）
+        const backoffMs = Math.min(Math.pow(2, attempt) * 1000, 8000);
+        console.log(`Qwen API: リトライ ${attempt + 1}/${this.maxRetries} (${backoffMs}ms後) - ${error.message}`);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+      }
     }
+
+    throw lastError || new Error('Qwen API: 予期しないエラー');
   }
 }
