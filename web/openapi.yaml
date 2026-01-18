@@ -385,7 +385,9 @@ paths:
       tags:
         - Scenario
       summary: タクシーシナリオ生成
-      description: ルート情報からタクシーガイドのシナリオを生成します
+      description: |
+        ルート情報からタクシーガイドのシナリオを生成します
+        オプションで画像生成用プロンプトも同時に作成できます
       operationId: generateScenario
       requestBody:
         required: true
@@ -418,6 +420,12 @@ paths:
                   enum: [qwen, gemini, both]
                   default: both
                   description: 使用するモデル
+                includeImagePrompt:
+                  type: boolean
+                  default: false
+                  description: |
+                    画像生成用プロンプトも生成するか
+                    true の場合、シナリオと画像プロンプトを同時に生成します（DALL-E、Midjourney、Stable Diffusion等で使用可能な汎用形式）
       responses:
         '200':
           description: 成功
@@ -451,7 +459,9 @@ paths:
       tags:
         - Scenario
       summary: 単一地点のシナリオ生成
-      description: 特定の観光地点に関するタクシーガイドのセリフを生成します
+      description: |
+        特定の観光地点に関するタクシーガイドのセリフを生成します
+        オプションで画像生成用プロンプトも同時に作成できます
       operationId: generateSpotScenario
       requestBody:
         required: true
@@ -483,6 +493,12 @@ paths:
                   type: string
                   enum: [qwen, gemini, both]
                   default: both
+                includeImagePrompt:
+                  type: boolean
+                  default: false
+                  description: |
+                    画像生成用プロンプトも生成するか
+                    true の場合、シナリオと画像プロンプトを同時に生成します
       responses:
         '200':
           description: 成功
@@ -501,8 +517,20 @@ paths:
                     properties:
                       qwen:
                         type: string
+                        example: "こちらは皇居東御苑です..."
                       gemini:
                         type: string
+                        example: "皇居東御苑にようこそ..."
+                      imagePrompt:
+                        type: object
+                        description: 画像生成用プロンプト（includeImagePrompt=true の場合のみ）
+                        properties:
+                          qwen:
+                            type: string
+                            example: "Beautiful Japanese garden at Imperial Palace..."
+                          gemini:
+                            type: string
+                            example: "Historic Imperial Palace East Gardens..."
         '400':
           description: リクエストエラー
           content:
@@ -773,9 +801,23 @@ components:
         qwen:
           type: string
           description: Qwen による生成結果
+          example: "こちらは皇居東御苑です。左手に見えるのが..."
         gemini:
           type: string
           description: Gemini による生成結果
+          example: "皇居東御苑にようこそ。この美しい庭園は..."
+        imagePrompt:
+          type: object
+          description: 画像生成用プロンプト（includeImagePrompt=true の場合のみ）
+          properties:
+            qwen:
+              type: string
+              description: Qwen が生成した画像プロンプト（英語、100語以内）
+              example: "Beautiful Japanese garden at Imperial Palace East Gardens, cherry blossoms in full bloom, traditional architecture, serene atmosphere, photorealistic"
+            gemini:
+              type: string
+              description: Gemini が生成した画像プロンプト（英語、100語以内）
+              example: "Historic Imperial Palace East Gardens, lush greenery, traditional Japanese landscaping, peaceful setting, natural lighting"
         error:
           type: object
           properties:

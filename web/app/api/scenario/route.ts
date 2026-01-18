@@ -6,7 +6,7 @@ import { getEnv, requireApiKey } from '../../../src/config';
 export async function POST(request: NextRequest) {
   try {
     const body: ScenarioRequest = await request.json();
-    const { route, models = 'both' } = body;
+    const { route, models = 'both', includeImagePrompt = false } = body;
 
     if (!route || !route.routeName || !route.spots) {
       return NextResponse.json<ScenarioResponse>(
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     );
 
     // シナリオ生成
-    const result = await generator.generateRoute(route, models);
+    const result = await generator.generateRoute(route, models, includeImagePrompt);
 
     return NextResponse.json<ScenarioResponse>({
       success: true,
