@@ -87,10 +87,16 @@ export class ScenarioGenerator {
 
     const promises: Promise<void>[] = [];
 
-    // Qwen呼び出し
-    if ((models === 'qwen' || models === 'both') && this.qwenClient) {
+    // 画像がある場合はQwen VLモデルを使用
+    const useQwenVL = spot.imageUrl && this.qwenClient;
+
+    // Qwen呼び出し(画像がある場合はVLモデル、ない場合は通常モデル)
+    if ((models === 'qwen' || models === 'qwen-vl' || models === 'both') && this.qwenClient) {
       promises.push(
-        this.qwenClient.chat(prompt)
+        (useQwenVL
+          ? this.qwenClient.chatWithImage(prompt, spot.imageUrl!)
+          : this.qwenClient.chat(prompt)
+        )
           .then(response => {
             result.qwen = response;
           })

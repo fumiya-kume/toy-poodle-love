@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 
 export class QwenClient {
   private client: OpenAI;
+  private region: 'china' | 'international';
 
   constructor(apiKey: string, region: 'china' | 'international' = 'international') {
     // Qwen uses OpenAI-compatible API via DashScope
@@ -17,6 +18,7 @@ export class QwenClient {
       timeout: 30000, // 30秒のタイムアウトを設定
       maxRetries: 2, // リトライ回数を設定
     });
+    this.region = region;
   }
 
   async chat(message: string): Promise<string> {
@@ -51,6 +53,58 @@ export class QwenClient {
       }
 
       throw new Error(`Qwen API error: ${error.message || error}`);
+    }
+  }
+
+  /**
+   * Vision-Language モデルで画像を含むチャット
+   * @param message テキストメッセージ
+   * @param imageUrl 画像URL (base64エンコードまたはURL)
+   * @returns レスポンステキスト
+   */
+  async chatWithImage(message: string, imageUrl: string): Promise<string> {
+    try {
+      const response = await this.client.chat.completions.create({
+        model: 'qwen3-vl-flash',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: message,
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageUrl,
+                },
+              },
+            ],
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+
+      return response.choices[0]?.message?.content || 'No response';
+    } catch (error: any) {
+      console.error('Qwen VL API detailed error:', {
+        message: error.message,
+        status: error.status,
+        type: error.type,
+        code: error.code,
+      });
+
+      if (error.status === 401) {
+        throw new Error('Qwen VL API: APIキーが無効です。QWEN_API_KEYを確認してください。');
+      } else if (error.status === 429) {
+        throw new Error('Qwen VL API: レート制限に達しました。しばらく待ってから再試行してください。');
+      } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+        throw new Error('Qwen VL API: ネットワーク接続エラー。リージョン設定(QWEN_REGION)を確認してください。');
+      }
+
+      throw new Error(`Qwen VL API error: ${error.message || error}`);
     }
   }
 }

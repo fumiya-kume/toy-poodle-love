@@ -19,6 +19,8 @@ export interface RouteSpot {
   description?: string;
   /** 観光ポイント */
   point?: string;
+  /** 画像URL (base64エンコードまたはURL) */
+  imageUrl?: string;
 }
 
 /**
@@ -89,7 +91,7 @@ export interface ScenarioOutput {
 /**
  * モデル選択
  */
-export type ModelSelection = 'qwen' | 'gemini' | 'both';
+export type ModelSelection = 'qwen' | 'qwen-vl' | 'gemini' | 'both';
 
 /**
  * シナリオ統合の入力データ

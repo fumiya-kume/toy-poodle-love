@@ -47,7 +47,7 @@ export function buildPrompt(
   spot: RouteSpot,
   language: 'ja' | 'en' = 'en'
 ): string {
-  const { name, type, description, point } = spot;
+  const { name, type, description, point, imageUrl } = spot;
   const typeContext = getTypeContext(type, language);
 
   if (language === 'ja') {
@@ -57,13 +57,17 @@ export function buildPrompt(
       point && `ポイント: ${point}`,
     ].filter(Boolean).join('\n');
 
+    const imageInstruction = imageUrl
+      ? '\n\n# 画像について\n提供された画像を参照して、視覚的な特徴や見どころを具体的に説明してください。画像に写っている建物、風景、特徴的な要素などを織り交ぜながら、臨場感のあるガイドを作成してください。'
+      : '';
+
     return `あなたは旅行ガイドのシナリオライターです。「${routeName}」というタクシー観光ルートで、乗客に観光ガイドをしています。
 このシナリオは音声合成AI（TTS）で読み上げられます。
 
 ${typeContext}
 
 # 地点情報
-${spotInfo}
+${spotInfo}${imageInstruction}
 
 # 指示
 この地点について、乗客に地点を説明するガイドのシナリオを生成してください。
@@ -100,13 +104,17 @@ ${spotInfo}
     point && `Highlight: ${point}`,
   ].filter(Boolean).join('\n');
 
+  const imageInstruction = imageUrl
+    ? '\n\n# About the Image\nRefer to the provided image and describe visual features and highlights in detail. Create an immersive guide by incorporating elements such as buildings, landscapes, and distinctive features shown in the image.'
+    : '';
+
   return `You are a scenario writer for travel guides. You are providing a tour guide for passengers on a taxi sightseeing route called "${routeName}".
 This script will be read aloud by a text-to-speech AI (TTS).
 
 ${typeContext}
 
 # Location Information
-${spotInfo}
+${spotInfo}${imageInstruction}
 
 # Instructions
 Generate a guide script explaining this location to passengers.
