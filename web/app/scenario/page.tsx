@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { RouteInput, RouteSpot, ScenarioOutput, SpotType, ScenarioIntegrationOutput } from '../../src/types/scenario';
 import { predefinedRoutes, getRouteById } from '../../src/data/routes';
 
-interface SpotFormData extends RouteSpot {
+interface SpotFormData extends Omit<RouteSpot, 'imageUrl'> {
   id: string;
+  imageUrl?: string;
 }
 
 interface ImportSpot {
@@ -72,6 +74,36 @@ export default function ScenarioPage() {
     setSpots(spots.map(spot =>
       spot.id === id ? { ...spot, [field]: value } : spot
     ));
+  };
+
+  const handleImageUpload = (id: string, file: File | null) => {
+    if (!file) {
+      updateSpot(id, 'imageUrl', '');
+      return;
+    }
+
+    // 画像ファイルかチェック
+    if (!file.type.startsWith('image/')) {
+      alert('画像ファイルを選択してください');
+      return;
+    }
+
+    // ファイルサイズチェック (5MB以下)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('画像サイズは5MB以下にしてください');
+      return;
+    }
+
+    // base64エンコード
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      updateSpot(id, 'imageUrl', base64);
+    };
+    reader.onerror = () => {
+      alert('画像の読み込みに失敗しました');
+    };
+    reader.readAsDataURL(file);
   };
 
   const importFromJson = () => {
@@ -515,6 +547,58 @@ export default function ScenarioPage() {
                     }}
                   />
                 </div>
+              </div>
+
+              {/* 画像アップロード */}
+              <div style={{ marginTop: '12px' }}>
+                <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', color: '#6b7280' }}>
+                  画像 (オプション - Qwen VLモデルを使用)
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleImageUpload(spot.id, e.target.files?.[0] || null)}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    fontSize: '14px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    backgroundColor: 'white',
+                  }}
+                />
+                {spot.imageUrl && (
+                  <div style={{ marginTop: '8px' }}>
+                    <Image
+                      src={spot.imageUrl}
+                      alt={`${spot.name}のプレビュー`}
+                      width={200}
+                      height={150}
+                      unoptimized
+                      style={{
+                        borderRadius: '6px',
+                        border: '2px solid #d1d5db',
+                        objectFit: 'contain',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updateSpot(spot.id, 'imageUrl', '')}
+                      style={{
+                        marginLeft: '8px',
+                        padding: '4px 8px',
+                        backgroundColor: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                      }}
+                    >
+                      削除
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}

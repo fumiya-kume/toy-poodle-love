@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 必要なAPIキーが設定されているか確認
-    if (models === 'qwen' || models === 'both') {
+    if (models === 'qwen' || models === 'qwen-vl' || models === 'both') {
       const keyError = requireApiKey('qwen');
       if (keyError) return keyError;
     }

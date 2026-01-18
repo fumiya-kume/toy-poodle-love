@@ -60,9 +60,11 @@ npm run cli
 #### APIクライアント (`src/`)
 
 - **`qwen-client.ts`**: OpenAI互換のDashScope APIを使用
-  - OpenAI SDKを利用して`qwen-flash`モデルを呼び出し
+  - テキスト専用: `qwen-turbo`モデル
+  - Vision-Language対応: `qwen3-vl-flash`モデル (画像がある場合に自動切り替え)
   - リージョン選択可能(中国 vs 国際)
   - ベースURLが異なるため、regionパラメータで切り替え
+  - 画像はbase64エンコードまたはURLで送信可能
 
 - **`gemini-client.ts`**: Google Generative AI SDKを使用
   - `gemini-2.5-flash-lite`モデルを使用
@@ -90,9 +92,39 @@ npm run cli
 
 3. **並列処理**: Web UIでは有効なモデルのAPIコールを`Promise.all`で並列実行
 
+4. **自動モデル選択**:
+   - 地点情報に画像URLが含まれる場合、`models`が`qwen`/`qwen-vl`/`both`のいずれかであれば、QwenはVision-Languageモデル(`qwen3-vl-flash`)を自動使用
+   - `models=gemini`では画像は無視される(Geminiは画像非対応)
+   - `QWEN_API_KEY`が未設定の場合はVLモデルは使用不可
+   - 画像がない場合は通常のテキストモデル(`qwen-turbo`)を使用
+   - この切り替えは`generator.ts`で透過的に処理される
+
+## Vision-Language機能
+
+### 画像入力サポート
+
+- 各地点に画像を追加可能(オプション)
+- 画像がある場合、Qwen VLモデルが自動的に使用され、画像の視覚的特徴を含めたシナリオを生成
+- 画像はブラウザでbase64エンコードされてAPIに送信(最大5MB: 元ファイルサイズ基準)
+- サポート形式: JPEG, PNG, WebP など主要な画像形式
+- **注意**: Geminiは画像処理に対応していないため、`models=gemini`では画像は無視されます
+
+### モデル選択ロジック
+
+```typescript
+// generator.ts内での自動切り替え
+const useQwenVL = spot.imageUrl && this.qwenClient;
+if (useQwenVL) {
+  await this.qwenClient.chatWithImage(prompt, spot.imageUrl);
+} else {
+  await this.qwenClient.chat(prompt);
+}
+```
+
 ## コード変更時の注意点
 
 - APIクライアント(`src/`)を変更する場合、CLIとWeb両方の動作を確認
 - 新しいモデルパラメータを追加する場合、両方のクライアントで整合性を保つ
 - API Routesは各クライアントの薄いラッパーとして保つ
 - tsconfig.jsonのパスエイリアス`@/*`は現在ルート相対パスを指す
+- 画像機能はQwenのみ対応(Geminiは現在テキスト専用)
