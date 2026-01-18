@@ -5,7 +5,8 @@
       "WebSearch",
       "Bash(npm run type-check:*)",
       "Bash(npm run build:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

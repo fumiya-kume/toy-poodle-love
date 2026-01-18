@@ -1,56 +1,82 @@
-import OpenAI from 'openai';
-
 export class QwenClient {
-  private client: OpenAI;
+  private apiKey: string;
+  private baseURL: string;
 
   constructor(apiKey: string, region: 'china' | 'international' = 'international') {
     // Qwen uses OpenAI-compatible API via DashScope
     // International (Singapore/Virginia): dashscope-intl.aliyuncs.com
     // China (Beijing): dashscope.aliyuncs.com
-    const baseURL = region === 'china'
+    this.apiKey = apiKey;
+    this.baseURL = region === 'china'
       ? 'https://dashscope.aliyuncs.com/compatible-mode/v1'
       : 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';
-
-    this.client = new OpenAI({
-      apiKey: apiKey,
-      baseURL: baseURL,
-      timeout: 30000, // 30秒のタイムアウトを設定
-      maxRetries: 2, // リトライ回数を設定
-    });
   }
 
   async chat(message: string): Promise<string> {
+    const url = `${this.baseURL}/chat/completions`;
+
     try {
-      const response = await this.client.chat.completions.create({
-        model: 'qwen-turbo',
-        messages: [
-          {
-            role: 'user',
-            content: message,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
+      console.log('Qwen API Request:', {
+        url,
+        hasApiKey: !!this.apiKey,
+        apiKeyPrefix: this.apiKey.substring(0, 8) + '...',
       });
 
-      return response.choices[0]?.message?.content || 'No response';
-    } catch (error: any) {
-      console.error('Qwen API detailed error:', {
-        message: error.message,
-        status: error.status,
-        type: error.type,
-        code: error.code,
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'qwen-turbo',
+          messages: [
+            {
+              role: 'user',
+              content: message,
+            },
+          ],
+          temperature: 0.7,
+          max_tokens: 2000,
+        }),
+        signal: AbortSignal.timeout(30000), // 30秒のタイムアウト
       });
 
-      if (error.status === 401) {
-        throw new Error('Qwen API: APIキーが無効です。QWEN_API_KEYを確認してください。');
-      } else if (error.status === 429) {
-        throw new Error('Qwen API: レート制限に達しました。しばらく待ってから再試行してください。');
-      } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-        throw new Error('Qwen API: ネットワーク接続エラー。リージョン設定(QWEN_REGION)を確認してください。');
+      console.log('Qwen API Response Status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Qwen API Error Response:', errorText);
+
+        if (response.status === 401) {
+          throw new Error('Qwen API: APIキーが無効です。QWEN_API_KEYを確認してください。');
+        } else if (response.status === 429) {
+          throw new Error('Qwen API: レート制限に達しました。しばらく待ってから再試行してください。');
+        } else if (response.status === 400) {
+          throw new Error(`Qwen API: リクエストが無効です。${errorText}`);
+        }
+
+        throw new Error(`Qwen API: HTTP ${response.status} - ${errorText}`);
       }
 
-      throw new Error(`Qwen API error: ${error.message || error}`);
+      const data = await response.json();
+      console.log('Qwen API Success:', { hasChoices: !!data.choices, choicesLength: data.choices?.length });
+
+      return data.choices[0]?.message?.content || 'No response';
+    } catch (error: any) {
+      console.error('Qwen API Fetch Error:', {
+        name: error.name,
+        message: error.message,
+        cause: error.cause,
+      });
+
+      if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+        throw new Error('Qwen API: リクエストがタイムアウトしました。ネットワーク接続を確認してください。');
+      } else if (error.message && error.message.includes('fetch')) {
+        throw new Error(`Qwen API: ネットワークエラー。${error.message}`);
+      }
+
+      throw error;
     }
   }
 }
