@@ -25,15 +25,17 @@ export class QwenClient {
 
     this.timeout = 60000; // 60秒のタイムアウトを設定（接続安定性向上）
     this.maxRetries = 3; // リトライ回数を3回に増やす（接続安定性向上）
+    this.region = region;
+
+    console.log(`[QwenClient] 初期化: region=${region}, baseURL=${baseURL}, timeout=${this.timeout}ms`);
 
     this.client = new OpenAI({
       apiKey: apiKey,
       baseURL: baseURL,
       timeout: this.timeout,
-      maxRetries: 0, // カスタムリトライロジックを使用するため0に設定
-      fetch: fetch, // 明示的にfetchを指定
+      maxRetries: 2, // SDK内部のリトライも併用（SDK:2回 × カスタム:3回 = 最大6回）
+      dangerouslyAllowBrowser: true, // ブラウザからの呼び出しを許可
     });
-    this.region = region;
   }
 
   /**
@@ -162,30 +164,50 @@ export class QwenClient {
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
+        if (attempt > 0) {
+          console.log(`[QwenClient] リトライ試行 ${attempt}/${this.maxRetries}`);
+        }
         return await fn();
       } catch (error: any) {
         lastError = error;
+
+        // より詳細なエラーログ
+        console.error(`[QwenClient] エラー発生 (試行 ${attempt + 1}/${this.maxRetries + 1}):`, {
+          message: error.message,
+          status: error.status,
+          code: error.code,
+          type: error.type,
+          cause: error.cause,
+          stack: error.stack?.split('\n')[0],
+        });
 
         // リトライ可能なエラーかチェック
         const isRetryable =
           error.status === 500 ||
           error.status === 503 ||
+          error.status === 502 ||
           error.code === 'ECONNABORTED' ||
           error.code === 'ETIMEDOUT' ||
           error.code === 'ESOCKETTIMEDOUT' ||
           error.code === 'ECONNREFUSED' ||
           error.code === 'ENOTFOUND' ||
+          error.code === 'ECONNRESET' ||
           error.message?.includes('Connection error') ||
-          error.message?.includes('timeout');
+          error.message?.includes('timeout') ||
+          error.message?.includes('ETIMEDOUT') ||
+          error.message?.includes('fetch failed');
+
+        console.log(`[QwenClient] リトライ可能: ${isRetryable}, 最後の試行: ${attempt === this.maxRetries}`);
 
         if (!isRetryable || attempt === this.maxRetries) {
           // リトライ不可能なエラー、または最後の試行
+          console.error(`[QwenClient] リトライ終了: region=${this.region}`);
           throw error;
         }
 
         // 指数バックオフで待機（2^attempt * 1000ms、最大8秒）
         const backoffMs = Math.min(Math.pow(2, attempt) * 1000, 8000);
-        console.log(`Qwen API: リトライ ${attempt + 1}/${this.maxRetries} (${backoffMs}ms後) - ${error.message}`);
+        console.log(`[QwenClient] ${backoffMs}ms待機後にリトライします...`);
         await new Promise(resolve => setTimeout(resolve, backoffMs));
       }
     }
