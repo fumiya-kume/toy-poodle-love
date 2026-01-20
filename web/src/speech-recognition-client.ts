@@ -233,7 +233,7 @@ export class SpeechRecognitionClient {
         });
 
         this.ws.on('message', (data: Buffer) => {
-          this.handleMessage(data, () => safeResolve(sessionCreationTimeout), (err) => safeReject(sessionCreationTimeout, err));
+          this.handleMessage(data, () => safeResolve(sessionCreationTimeout), (err) => safeReject(sessionCreationTimeout, err ?? new Error('Unknown error')));
         });
 
         this.ws.on('error', (error) => {
