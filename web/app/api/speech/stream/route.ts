@@ -6,8 +6,8 @@
  */
 
 import { NextRequest } from 'next/server';
-import { SpeechRecognitionClient, SpeechRecognitionConfig } from '../../../../src/speech-recognition-client';
-import { getEnv } from '../../../../src/config';
+import { SpeechRecognitionClient, SpeechRecognitionConfig } from '@/src/speech-recognition-client';
+import { getEnv } from '@/src/config';
 
 interface StreamRequest {
   audio: string; // Base64エンコードされた音声データ
@@ -62,20 +62,50 @@ export async function POST(request: NextRequest) {
   });
 
   // ReadableStreamを使ってSSEを実装
+  const abortSignal = request.signal;
+
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
+      let client: SpeechRecognitionClient | null = null;
+      let isAborted = false;
 
       const sendEvent = (event: SSEEvent) => {
-        controller.enqueue(encoder.encode(formatSSE(event)));
+        if (!isAborted) {
+          try {
+            controller.enqueue(encoder.encode(formatSSE(event)));
+          } catch {
+            // Controller already closed
+          }
+        }
       };
+
+      // abort時のクリーンアップ
+      const handleAbort = () => {
+        isAborted = true;
+        if (client) {
+          try {
+            client.disconnect();
+          } catch {
+            // Ignore disconnect errors
+          }
+        }
+        sendEvent({ type: 'error', data: { message: 'リクエストが中断されました' } });
+        try {
+          controller.close();
+        } catch {
+          // Controller already closed
+        }
+      };
+
+      abortSignal.addEventListener('abort', handleAbort);
 
       try {
         // 音声データをデコード
         const audioBuffer = Buffer.from(body.audio, 'base64');
 
         // クライアント作成
-        const client = new SpeechRecognitionClient(env.qwenApiKey!, env.qwenRegion, config);
+        client = new SpeechRecognitionClient(env.qwenApiKey!, env.qwenRegion, config);
 
         // コールバック設定
         client.setCallbacks({
@@ -105,19 +135,25 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        // abort済みなら接続しない
+        if (isAborted) return;
+
         // 接続
         await client.connect();
 
         // 音声データを送信（チャンクに分割）
         const CHUNK_SIZE = 3200;
         for (let i = 0; i < audioBuffer.length; i += CHUNK_SIZE) {
+          if (isAborted) break;
           const chunk = audioBuffer.subarray(i, Math.min(i + CHUNK_SIZE, audioBuffer.length));
           client.sendAudio(chunk);
           await new Promise((resolve) => setTimeout(resolve, 50));
         }
 
-        // 完了
-        await client.finish();
+        // abort済みでなければ完了処理
+        if (!isAborted) {
+          await client.finish();
+        }
       } catch (error) {
         console.error('Stream recognition error:', error);
         sendEvent({
@@ -127,7 +163,14 @@ export async function POST(request: NextRequest) {
           },
         });
       } finally {
-        controller.close();
+        abortSignal.removeEventListener('abort', handleAbort);
+        if (!isAborted) {
+          try {
+            controller.close();
+          } catch {
+            // Controller already closed
+          }
+        }
       }
     },
   });

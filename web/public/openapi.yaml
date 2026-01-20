@@ -176,6 +176,7 @@ paths:
                     example: "こんにちは、東京駅に行きたいです"
                   transcriptions:
                     type: array
+                    maxItems: 50
                     description: 個別の認識結果（複数の発話がある場合）
                     items:
                       type: string

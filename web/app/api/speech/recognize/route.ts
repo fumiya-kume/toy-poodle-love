@@ -6,8 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { SpeechRecognitionClient, SpeechRecognitionConfig } from '../../../../src/speech-recognition-client';
-import { getEnv } from '../../../../src/config';
+import { SpeechRecognitionClient, SpeechRecognitionConfig } from '@/src/speech-recognition-client';
+import { getEnv } from '@/src/config';
 
 interface RecognitionResult {
   text: string;
@@ -60,6 +60,9 @@ export async function POST(request: NextRequest) {
     // 結果を蓄積
     const transcriptions: string[] = [];
 
+    // ASRエラーを追跡
+    let asrError: Error | null = null;
+
     // コールバック設定
     client.setCallbacks({
       onTranscriptionText: (text: string, isPartial: boolean) => {
@@ -72,6 +75,11 @@ export async function POST(request: NextRequest) {
       },
       onError: (error) => {
         console.error('Speech recognition error:', error);
+        if ('code' in error) {
+          asrError = new Error(`ASR Error [${error.code}]: ${error.message}`);
+        } else {
+          asrError = error instanceof Error ? error : new Error(String(error));
+        }
       },
     });
 
@@ -89,6 +97,11 @@ export async function POST(request: NextRequest) {
 
     // 送信完了を通知
     await client.finish();
+
+    // ASRエラーが発生していた場合は例外をスロー
+    if (asrError) {
+      throw asrError;
+    }
 
     // 結果を組み立て
     const result: RecognitionResult = {

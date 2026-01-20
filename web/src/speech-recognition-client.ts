@@ -187,6 +187,28 @@ export class SpeechRecognitionClient {
     });
 
     return new Promise((resolve, reject) => {
+      let isResolved = false;
+
+      const cleanup = (timeout: NodeJS.Timeout) => {
+        clearTimeout(timeout);
+      };
+
+      const safeResolve = (timeout: NodeJS.Timeout) => {
+        if (!isResolved) {
+          isResolved = true;
+          cleanup(timeout);
+          resolve();
+        }
+      };
+
+      const safeReject = (timeout: NodeJS.Timeout, error: Error) => {
+        if (!isResolved) {
+          isResolved = true;
+          cleanup(timeout);
+          reject(error);
+        }
+      };
+
       try {
         this.ws = new WebSocket(url, {
           headers: {
@@ -194,38 +216,43 @@ export class SpeechRecognitionClient {
           },
         });
 
-        const connectionTimeout = setTimeout(() => {
-          if (this.state === 'connecting') {
+        // session.created を含む全体のタイムアウト（30秒）
+        const sessionCreationTimeout = setTimeout(() => {
+          if (!isResolved) {
             this.ws?.close();
             this.state = 'disconnected';
-            reject(new Error('WebSocket connection timeout (30s)'));
+            safeReject(sessionCreationTimeout, new Error('Session creation timeout (30s): session.created not received'));
           }
         }, 30000);
 
         this.ws.on('open', () => {
           console.log('WebSocket connection opened');
-          clearTimeout(connectionTimeout);
           this.state = 'connected';
           // セッション設定を送信
           this.sendSessionUpdate();
         });
 
         this.ws.on('message', (data: Buffer) => {
-          this.handleMessage(data, resolve, reject);
+          this.handleMessage(data, () => safeResolve(sessionCreationTimeout), (err) => safeReject(sessionCreationTimeout, err));
         });
 
         this.ws.on('error', (error) => {
           console.error('WebSocket error:', error);
-          clearTimeout(connectionTimeout);
           this.state = 'disconnected';
           this.callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
-          reject(error);
+          safeReject(sessionCreationTimeout, error instanceof Error ? error : new Error(String(error)));
         });
 
         this.ws.on('close', (code, reason) => {
           console.log('WebSocket connection closed:', { code, reason: reason.toString() });
+          const prevState = this.state;
           this.state = 'closed';
           this.callbacks.onConnectionClosed?.();
+
+          // session.created前にcloseした場合はreject
+          if (prevState !== 'running' && prevState !== 'finishing' && prevState !== 'closed') {
+            safeReject(sessionCreationTimeout, new Error(`WebSocket closed before session.created (code: ${code}, reason: ${reason.toString()})`));
+          }
         });
       } catch (error) {
         this.state = 'disconnected';
@@ -404,10 +431,10 @@ export class SpeechRecognitionClient {
       throw new Error('WebSocket not connected');
     }
 
-    this.state = 'finishing';
-
-    // まず音声バッファをコミット
+    // まず音声バッファをコミット（state が 'running' の間に実行）
     this.commitAudio();
+
+    this.state = 'finishing';
 
     // セッション終了を送信
     const finishEvent: SessionFinishEvent = {

@@ -197,6 +197,7 @@ export default function SpeechPage() {
       }
 
       let buffer = '';
+      let currentEvent = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -208,14 +209,25 @@ export default function SpeechPage() {
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
+        for (const line of lines) {
+          // event: 行を検出
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7);
+            continue;
+          }
+
+          // 空行でイベント区切りをリセット
+          if (line === '') {
+            currentEvent = '';
+            continue;
+          }
+
+          // data: 行を処理
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
-              const eventType = lines[i - 1]?.replace('event: ', '');
 
-              if (eventType === 'partial') {
+              if (currentEvent === 'partial') {
                 setResults((prev) => {
                   const newResults = [...prev];
                   // 最後の部分結果を更新
@@ -229,17 +241,21 @@ export default function SpeechPage() {
                   }
                   return newResults;
                 });
-              } else if (eventType === 'final') {
+              } else if (currentEvent === 'final') {
                 setResults((prev) => {
                   const newResults = prev.filter((r) => !r.isPartial);
                   newResults.push({ text: data.text, isPartial: false });
                   return newResults;
                 });
-              } else if (eventType === 'error') {
+              } else if (currentEvent === 'error') {
                 throw new Error(data.message || 'ストリーム処理エラー');
               }
-            } catch {
-              // JSONパースエラーは無視
+            } catch (e) {
+              // errorイベントのJSONパースエラーは再スロー
+              if (currentEvent === 'error' && e instanceof Error) {
+                throw e;
+              }
+              // その他のJSONパースエラーは無視
             }
           }
         }
