@@ -6,6 +6,7 @@ info:
 
     主な機能:
     - AI テキスト生成（Qwen / Gemini）
+    - リアルタイム音声認識（Qwen3-ASR）
     - 住所のジオコーディング
     - ルート最適化
     - AI によるルート自動生成とシナリオ作成
@@ -13,7 +14,7 @@ info:
     ## 環境変数
     以下の環境変数が必要です:
     - `GOOGLE_MAPS_API_KEY`: Google Maps API キー（必須）
-    - `QWEN_API_KEY`: Qwen API キー（Qwen使用時）
+    - `QWEN_API_KEY`: Qwen API キー（Qwen テキスト生成・音声認識使用時）
     - `GEMINI_API_KEY`: Gemini API キー（Gemini使用時）
     - `QWEN_REGION`: Qwen のリージョン（`china` または `international`、デフォルト: `international`）
 
@@ -29,6 +30,8 @@ servers:
 tags:
   - name: AI Text Generation
     description: AI モデルによるテキスト生成
+  - name: Speech Recognition
+    description: Qwen3-ASR によるリアルタイム音声認識
   - name: Places & Routes
     description: Google Maps API を使用した地点とルートの処理
   - name: Pipeline
@@ -114,6 +117,157 @@ paths:
                     type: string
                     description: AI からの応答テキスト
                     example: "東京には多くの魅力的な観光スポットがあります..."
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/speech/recognize:
+    post:
+      tags:
+        - Speech Recognition
+      summary: バッチ音声認識
+      description: |
+        PCM16形式の音声データを受け取り、テキストに変換します（バッチ処理）
+
+        音声フォーマット要件:
+        - フォーマット: PCM16（Signed 16-bit Little-endian）
+        - サンプルレート: 16000 Hz
+        - チャンネル: モノラル（1ch）
+      operationId: recognizeSpeechBatch
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - audio
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                  description: PCM16形式の音声ファイル（16kHz、モノラル）
+                config:
+                  type: string
+                  description: JSON形式の設定（SpeechRecognitionConfig）
+                  example: '{"model":"qwen3-asr-flash-realtime","sampleRate":16000}'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - text
+                properties:
+                  text:
+                    type: string
+                    description: 認識されたテキスト（全体）
+                    example: "こんにちは、東京駅に行きたいです"
+                  transcriptions:
+                    type: array
+                    maxItems: 50
+                    description: 個別の認識結果（複数の発話がある場合）
+                    items:
+                      type: string
+                    example: ["こんにちは", "東京駅に行きたいです"]
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/speech/stream:
+    post:
+      tags:
+        - Speech Recognition
+      summary: ストリーミング音声認識（SSE）
+      description: |
+        PCM16形式の音声データを受け取り、Server-Sent Events でリアルタイムに認識結果を返します
+
+        ## 音声フォーマット要件
+        - フォーマット: PCM16（Signed 16-bit Little-endian）
+        - サンプルレート: 16000 Hz
+        - チャンネル: モノラル（1ch）
+        - エンコーディング: Base64
+
+        ## SSE イベント
+        | イベント | データ | 説明 |
+        |---------|--------|------|
+        | `started` | `{ sessionId: string }` | セッション作成完了 |
+        | `partial` | `{ text: string }` | 暫定認識結果（リアルタイム更新） |
+        | `final` | `{ text: string }` | 確定認識結果 |
+        | `finished` | `{ text: string }` | セッション終了、最終結果 |
+        | `error` | `{ code?: string, message: string }` | エラー発生 |
+
+        ## フロントエンド実装例
+        ```javascript
+        const response = await fetch('/api/speech/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audio: base64Audio, config: { sampleRate: 16000 } })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          // SSE イベントをパース...
+        }
+        ```
+      operationId: recognizeSpeechStream
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpeechStreamRequest'
+      responses:
+        '200':
+          description: Server-Sent Events ストリーム
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  SSE形式のイベントストリーム
+
+                  例:
+                  ```
+                  event: started
+                  data: {"sessionId":"sess_abc123"}
+
+                  event: partial
+                  data: {"text":"こんに"}
+
+                  event: partial
+                  data: {"text":"こんにちは"}
+
+                  event: final
+                  data: {"text":"こんにちは"}
+
+                  event: finished
+                  data: {"text":"こんにちは"}
+                  ```
         '400':
           description: リクエストエラー
           content:
@@ -625,6 +779,104 @@ components:
           type: string
           description: エラーメッセージ
           example: "GOOGLE_MAPS_API_KEYが設定されていません"
+
+    SpeechRecognitionConfig:
+      type: object
+      description: 音声認識の設定
+      properties:
+        model:
+          type: string
+          enum:
+            - qwen3-asr-flash-realtime
+            - qwen3-asr-flash-realtime-2025-10-27
+          default: qwen3-asr-flash-realtime
+          description: 使用するASRモデル
+          example: "qwen3-asr-flash-realtime"
+        sampleRate:
+          type: integer
+          enum: [8000, 16000]
+          default: 16000
+          description: 音声のサンプルレート（Hz）
+          example: 16000
+        language:
+          type: string
+          description: 認識言語（省略時は自動検出）
+          example: "ja"
+        turnDetection:
+          type: object
+          nullable: true
+          description: |
+            VAD（Voice Activity Detection）設定
+            - null: Manualモード（明示的にcommitが必要）
+            - object: Server VADモード（自動で発話区間を検出）
+          properties:
+            type:
+              type: string
+              enum: [server_vad]
+              description: VADタイプ
+            threshold:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: VAD検出閾値
+            prefix_padding_ms:
+              type: integer
+              description: 発話開始前のパディング（ミリ秒）
+            silence_duration_ms:
+              type: integer
+              description: 無音判定時間（ミリ秒）
+
+    SpeechStreamRequest:
+      type: object
+      required:
+        - audio
+      properties:
+        audio:
+          type: string
+          format: byte
+          description: |
+            Base64エンコードされたPCM16音声データ
+
+            PCM16形式要件:
+            - Signed 16-bit Little-endian
+            - サンプルレート: 16000 Hz（または8000 Hz）
+            - チャンネル: モノラル（1ch）
+            - バイトレート: 32000 bytes/sec（16kHzの場合）
+          example: "UklGRiQAAABXQVZFZm10IBAAAAABAAEA..."
+        config:
+          $ref: '#/components/schemas/SpeechRecognitionConfig'
+
+    SpeechSSEEvent:
+      type: object
+      description: SSEイベントのデータ構造
+      properties:
+        type:
+          type: string
+          enum: [started, partial, final, finished, error]
+          description: イベントタイプ
+        data:
+          oneOf:
+            - type: object
+              description: started イベント
+              properties:
+                sessionId:
+                  type: string
+                  example: "sess_abc123def456"
+            - type: object
+              description: partial/final/finished イベント
+              properties:
+                text:
+                  type: string
+                  example: "こんにちは"
+            - type: object
+              description: error イベント
+              properties:
+                code:
+                  type: string
+                  example: "InternalError"
+                message:
+                  type: string
+                  example: "Internal service error"
 
     LatLng:
       type: object
