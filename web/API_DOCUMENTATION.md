@@ -588,9 +588,178 @@ if (data.success) {
 
 ---
 
-### 4. シナリオ生成 API
+### 4. 音声合成 API (TTS)
 
-#### 4.1 ルート自動生成
+#### 4.1 テキスト音声合成
+
+**エンドポイント:** `POST /api/tts`
+
+**説明:** Qwen TTS（Text-to-Speech）を使用してテキストを音声に変換します。WebSocket ベースのリアルタイム音声合成を行い、バイナリ音声データを返します。
+
+**リクエスト:**
+```json
+{
+  "text": "こんにちは、東京観光へようこそ！",
+  "model": "qwen3-tts-flash-realtime",
+  "voice": "Cherry",
+  "format": "pcm",
+  "sampleRate": 24000
+}
+```
+
+**リクエストパラメータ:**
+
+| パラメータ | 型 | 必須 | デフォルト | 説明 |
+|-----------|-----|------|-----------|------|
+| text | string | ✓ | - | 音声合成するテキスト |
+| model | string | - | `qwen3-tts-flash-realtime` | 使用する TTS モデル |
+| voice | string | - | `Cherry` | 音声の種類 |
+| format | string | - | `pcm` | 出力音声フォーマット |
+| sampleRate | number | - | `24000` | サンプルレート (Hz) |
+
+**利用可能なモデル:**
+- `qwen3-tts-flash-realtime` (推奨)
+- `qwen3-tts-flash-realtime-2025-11-27`
+- `qwen3-tts-vc-realtime` (ボイスクローン)
+- `qwen3-tts-vc-realtime-2026-01-15`
+- `qwen3-tts-vd-realtime` (ボイスデザイン)
+- `qwen3-tts-vd-realtime-2025-12-16`
+
+**利用可能なフォーマット:**
+- `pcm` - PCM 形式（WAV ヘッダー付きで返却）
+- `wav` - WAV 形式
+- `mp3` - MP3 形式
+- `opus` - Opus 形式
+
+**レスポンス:**
+- **Content-Type:** `audio/wav`（pcm/wav の場合）、`audio/mpeg`（mp3 の場合）、`audio/opus`（opus の場合）
+- **Body:** バイナリ音声データ
+
+**エラーレスポンス:**
+```json
+{
+  "success": false,
+  "error": "テキストが必要です"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "QWEN_API_KEYが設定されていません"
+}
+```
+
+**TypeScript 型定義:**
+```typescript
+type QwenTTSModel =
+  | 'qwen3-tts-flash-realtime'
+  | 'qwen3-tts-flash-realtime-2025-11-27'
+  | 'qwen3-tts-vc-realtime'
+  | 'qwen3-tts-vc-realtime-2026-01-15'
+  | 'qwen3-tts-vd-realtime'
+  | 'qwen3-tts-vd-realtime-2025-12-16';
+
+type AudioFormat = 'pcm' | 'wav' | 'mp3' | 'opus';
+
+interface TTSRequest {
+  text: string;
+  model?: QwenTTSModel;
+  voice?: string;
+  format?: AudioFormat;
+  sampleRate?: number;
+}
+```
+
+**TypeScript 呼び出し例:**
+```typescript
+// テキストを音声に変換してブラウザで再生
+const response = await fetch('/api/tts', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    text: 'こんにちは、東京観光へようこそ！',
+    voice: 'Cherry',
+    format: 'pcm',
+    sampleRate: 24000
+  })
+});
+
+if (response.ok) {
+  const audioBlob = await response.blob();
+  const audioUrl = URL.createObjectURL(audioBlob);
+  const audio = new Audio(audioUrl);
+  audio.play();
+}
+```
+
+**HTML での使用例:**
+```html
+<button id="playBtn">音声を再生</button>
+<audio id="audioPlayer" controls></audio>
+
+<script>
+document.getElementById('playBtn').addEventListener('click', async () => {
+  const res = await fetch('/api/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text: 'タクシーでの観光をお楽しみください。'
+    })
+  });
+
+  if (res.ok) {
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const player = document.getElementById('audioPlayer');
+    player.src = url;
+    player.play();
+  }
+});
+</script>
+```
+
+**シナリオとの連携例:**
+```typescript
+// シナリオ生成後、音声に変換
+const scenarioRes = await fetch('/api/scenario/spot', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    routeName: '皇居周辺観光ツアー',
+    spotName: '東京駅',
+    description: '赤レンガ駅舎',
+    models: 'gemini'
+  })
+});
+const scenarioData = await scenarioRes.json();
+
+// 生成されたシナリオを音声に変換
+const ttsRes = await fetch('/api/tts', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    text: scenarioData.scenario.gemini,
+    voice: 'Cherry'
+  })
+});
+
+if (ttsRes.ok) {
+  const audioBlob = await ttsRes.blob();
+  // 音声ファイルとして保存またはダウンロード
+  const url = URL.createObjectURL(audioBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'scenario-audio.wav';
+  a.click();
+}
+```
+
+---
+
+### 5. シナリオ生成 API
+
+#### 5.1 ルート自動生成
 
 **エンドポイント:** `POST /api/route/generate`
 
@@ -637,7 +806,7 @@ if (data.success) {
 
 ---
 
-#### 4.2 タクシーシナリオ生成
+#### 5.2 タクシーシナリオ生成
 
 **エンドポイント:** `POST /api/scenario`
 
@@ -703,7 +872,7 @@ if (data.success) {
 
 ---
 
-#### 4.3 単一地点シナリオ生成
+#### 5.3 単一地点シナリオ生成
 
 **エンドポイント:** `POST /api/scenario/spot`
 
@@ -733,7 +902,7 @@ if (data.success) {
 
 ---
 
-#### 4.4 シナリオ統合
+#### 5.4 シナリオ統合
 
 **エンドポイント:** `POST /api/scenario/integrate`
 
