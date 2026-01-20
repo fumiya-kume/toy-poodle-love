@@ -303,7 +303,8 @@ export class SpeechRecognitionClient {
       const message = JSON.parse(data.toString()) as ServerEvent;
       const eventType = message.type;
 
-      console.log('Received event:', eventType, JSON.stringify(message, null, 2));
+      // イベント種別のみログ出力（文字起こし内容はPII/機微情報を含む可能性があるため出力しない）
+      console.log('Received event:', eventType);
 
       switch (eventType) {
         case 'session.created': {
