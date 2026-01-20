@@ -68,10 +68,11 @@ export default function TTSPage() {
       <h1 style={{ marginBottom: '20px' }}>Qwen TTS</h1>
 
       <div style={{ marginBottom: '15px' }}>
-        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+        <label htmlFor="tts-text" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
           テキスト
         </label>
         <textarea
+          id="tts-text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="音声に変換するテキストを入力..."
@@ -87,10 +88,11 @@ export default function TTSPage() {
       </div>
 
       <div style={{ marginBottom: '15px' }}>
-        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+        <label htmlFor="tts-model" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
           モデル
         </label>
         <select
+          id="tts-model"
           value={model}
           onChange={(e) => setModel(e.target.value as QwenTTSModel)}
           style={{
@@ -111,10 +113,11 @@ export default function TTSPage() {
       </div>
 
       <div style={{ marginBottom: '15px' }}>
-        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+        <label htmlFor="tts-voice" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
           Voice
         </label>
         <input
+          id="tts-voice"
           type="text"
           value={voice}
           onChange={(e) => setVoice(e.target.value)}

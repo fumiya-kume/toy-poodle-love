@@ -47,9 +47,10 @@ export async function POST(request: NextRequest) {
     if (keyError) return keyError;
 
     const { text, model, voice, format, sampleRate } = await request.json();
+    const normalizedText = typeof text === 'string' ? text.trim() : '';
 
     // Validate required parameter
-    if (!text) {
+    if (!normalizedText) {
       return NextResponse.json(
         { success: false, error: 'テキストが必要です' },
         { status: 400 }
@@ -73,21 +74,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate sampleRate parameter
+    let parsedSampleRate: number | undefined;
     if (sampleRate !== undefined) {
       const rate = Number(sampleRate);
-      if (isNaN(rate) || rate < MIN_SAMPLE_RATE || rate > MAX_SAMPLE_RATE) {
+      if (!Number.isFinite(rate) || rate < MIN_SAMPLE_RATE || rate > MAX_SAMPLE_RATE) {
         return NextResponse.json(
           { success: false, error: `Sample rate must be between ${MIN_SAMPLE_RATE} and ${MAX_SAMPLE_RATE}` },
           { status: 400 }
         );
       }
+      parsedSampleRate = rate;
     }
 
     const env = getEnv();
-    const actualSampleRate = sampleRate || 24000;
+    const actualSampleRate = parsedSampleRate ?? 24000;
 
     console.log('TTS API call starting...', {
-      textLength: text.length,
+      textLength: normalizedText.length,
       model: model || 'qwen3-tts-flash-realtime',
       voice: voice || 'Cherry',
       format: format || 'pcm',
@@ -96,7 +99,7 @@ export async function POST(request: NextRequest) {
     });
 
     const ttsClient = new QwenTTSClient(env.qwenApiKey!, env.qwenRegion);
-    const audioBuffer = await ttsClient.synthesize(text, {
+    const audioBuffer = await ttsClient.synthesize(normalizedText, {
       model: model as QwenTTSModel,
       voice: voice || 'Cherry',
       format: (format as AudioFormat) || 'pcm',

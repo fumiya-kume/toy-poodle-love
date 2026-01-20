@@ -183,7 +183,7 @@ export class QwenTTSClient {
               ws.send(JSON.stringify(sessionFinishMessage));
               break;
 
-            case 'session.finished':
+            case 'session.finished': {
               console.log('QwenTTS session finished');
               sessionFinished = true;
               clearTimeoutIfSet();
@@ -191,6 +191,7 @@ export class QwenTTSClient {
               const finalBuffer = Buffer.concat(audioChunks);
               resolve(finalBuffer);
               break;
+            }
 
             case 'error': {
               const errorEvent = message as ErrorEvent;

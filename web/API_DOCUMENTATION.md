@@ -638,12 +638,14 @@ if (data.success) {
 **エラーレスポンス:**
 ```json
 {
+  "success": false,
   "error": "テキストが必要です"
 }
 ```
 
 ```json
 {
+  "success": false,
   "error": "QWEN_API_KEYが設定されていません"
 }
 ```
