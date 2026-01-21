@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Play button triangle - Tesla Blue accent -->
+    <path
+        android:fillColor="#3399FF"
+        android:pathData="M40,32 L40,76 L76,54 Z" />
+
+    <!-- Edit pen icon - smaller, positioned at bottom right -->
+    <path
+        android:fillColor="#FF9933"
+        android:pathData="M68,60 L78,70 L74,74 L64,64 Z M79,71 L75,75 L77,77 L81,73 Z" />
+
+</vector>

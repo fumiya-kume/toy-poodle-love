@@ -56,3 +56,16 @@ handheld/.sourcepackages/
 # Swift Package Manager
 .build/
 .swiftpm/
+
+# Android
+local.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+.gradle/
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
