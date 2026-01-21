@@ -1,7 +1,7 @@
 import Foundation
 
 /// パイプライン実行レスポンス
-struct PipelineResponse: Codable {
+struct PipelineResponse: Codable, Sendable {
     let success: Bool
     let request: PipelineRequestInfo
     let routeGeneration: RouteGenerationStep
@@ -12,7 +12,7 @@ struct PipelineResponse: Codable {
 }
 
 /// リクエスト情報
-struct PipelineRequestInfo: Codable {
+struct PipelineRequestInfo: Codable, Sendable {
     let startPoint: String
     let purpose: String
     let spotCount: Int
@@ -20,7 +20,7 @@ struct PipelineRequestInfo: Codable {
 }
 
 /// ルート生成ステップの結果
-struct RouteGenerationStep: Codable {
+struct RouteGenerationStep: Codable, Sendable {
     let status: String
     let processingTimeMs: Int?
     let routeName: String?
@@ -29,7 +29,7 @@ struct RouteGenerationStep: Codable {
 }
 
 /// パイプラインで生成されたスポット
-struct PipelineGeneratedSpot: Codable, Identifiable {
+struct PipelineGeneratedSpot: Codable, Identifiable, Sendable {
     let name: String
     let type: String
     let description: String?
@@ -39,7 +39,7 @@ struct PipelineGeneratedSpot: Codable, Identifiable {
 }
 
 /// ジオコーディングステップの結果
-struct GeocodingStep: Codable {
+struct GeocodingStep: Codable, Sendable {
     let status: String
     let processingTimeMs: Int?
     let places: [PipelineGeocodedPlace]?
@@ -48,7 +48,7 @@ struct GeocodingStep: Codable {
 }
 
 /// ジオコーディングされた場所
-struct PipelineGeocodedPlace: Codable, Identifiable {
+struct PipelineGeocodedPlace: Codable, Identifiable, Sendable {
     let inputAddress: String
     let formattedAddress: String
     let location: PipelineLatLng
@@ -58,13 +58,13 @@ struct PipelineGeocodedPlace: Codable, Identifiable {
 }
 
 /// 緯度経度（パイプライン用）
-struct PipelineLatLng: Codable {
+struct PipelineLatLng: Codable, Sendable {
     let latitude: Double
     let longitude: Double
 }
 
 /// ルート最適化ステップの結果
-struct RouteOptimizationStep: Codable {
+struct RouteOptimizationStep: Codable, Sendable {
     let status: String
     let processingTimeMs: Int?
     let orderedWaypoints: [PipelineOrderedWaypoint]?
@@ -75,7 +75,7 @@ struct RouteOptimizationStep: Codable {
 }
 
 /// 最適化されたウェイポイント
-struct PipelineOrderedWaypoint: Codable, Identifiable {
+struct PipelineOrderedWaypoint: Codable, Identifiable, Sendable {
     let originalIndex: Int
     let optimizedOrder: Int
     let waypoint: PipelineWaypoint
@@ -84,7 +84,7 @@ struct PipelineOrderedWaypoint: Codable, Identifiable {
 }
 
 /// ウェイポイント
-struct PipelineWaypoint: Codable {
+struct PipelineWaypoint: Codable, Sendable {
     let name: String?
     let placeId: String?
     let location: PipelineLatLng?
@@ -92,7 +92,7 @@ struct PipelineWaypoint: Codable {
 }
 
 /// ルート区間
-struct PipelineRouteLeg: Codable {
+struct PipelineRouteLeg: Codable, Sendable {
     let fromIndex: Int
     let toIndex: Int
     let distanceMeters: Int

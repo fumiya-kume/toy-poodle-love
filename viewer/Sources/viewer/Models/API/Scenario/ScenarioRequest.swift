@@ -1,18 +1,18 @@
 import Foundation
 
 /// シナリオ生成リクエスト
-struct ScenarioRequest: Codable {
+struct ScenarioRequest: Codable, Sendable {
     let route: ScenarioRoute
     let models: ScenarioModels
 }
 
-struct ScenarioRoute: Codable {
+struct ScenarioRoute: Codable, Sendable {
     let routeName: String
     let spots: [RouteSpot]
     let language: String?
 }
 
-enum ScenarioModels: String, Codable, CaseIterable, Identifiable {
+enum ScenarioModels: String, Codable, CaseIterable, Identifiable, Sendable {
     case qwen
     case gemini
     case both

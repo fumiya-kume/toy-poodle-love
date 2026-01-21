@@ -1,7 +1,7 @@
 import Foundation
 
 /// シナリオ統合レスポンス
-struct ScenarioIntegrationOutput: Codable {
+struct ScenarioIntegrationOutput: Codable, Sendable {
     let integratedAt: String
     let routeName: String
     let sourceModel: String

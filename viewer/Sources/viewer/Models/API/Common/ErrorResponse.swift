@@ -1,6 +1,6 @@
 import Foundation
 
 /// APIエラーレスポンス
-struct ErrorResponse: Codable {
+struct ErrorResponse: Codable, Sendable {
     let error: String
 }

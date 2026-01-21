@@ -1,7 +1,7 @@
 import AVFoundation
 import Observation
 
-struct VideoPlaybackState {
+struct VideoPlaybackState: Sendable {
     var currentTime: CMTime = .zero
     var duration: CMTime = .zero
     var isPlaying: Bool = false
@@ -297,7 +297,7 @@ final class PlaybackController {
             forInterval: interval,
             queue: .main
         ) { [weak self] time in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 self?.mainVideoState.currentTime = time
                 // Update duration when it becomes available (async loading)
                 if let duration = mainPlayer.currentItem?.duration,
@@ -332,7 +332,7 @@ final class PlaybackController {
             forInterval: interval,
             queue: .main
         ) { [weak self] time in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 self?.overlayVideoState.currentTime = time
                 // Update duration when it becomes available (async loading)
                 if let duration = overlayPlayer.currentItem?.duration,
@@ -356,7 +356,7 @@ final class PlaybackController {
                 object: entry.mainPlayer.currentItem,
                 queue: .main
             ) { [weak self] _ in
-                Task { @MainActor in
+                MainActor.assumeIsolated {
                     self?.handleMainLoopRestart()
                 }
             }
@@ -395,7 +395,7 @@ final class PlaybackController {
             object: player.currentItem,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 self?.handleOverlayLoopRestart()
             }
         }

@@ -1,14 +1,14 @@
 import Foundation
 
 /// ルート生成APIレスポンス（ラッパー）
-struct RouteGenerationResponse: Codable {
+struct RouteGenerationResponse: Codable, Sendable {
     let success: Bool
     let data: RouteGenerationOutput?
     let error: String?
 }
 
 /// ルート生成結果データ
-struct RouteGenerationOutput: Codable {
+struct RouteGenerationOutput: Codable, Sendable {
     /// 生成日時
     let generatedAt: String?
     /// 生成されたルート名

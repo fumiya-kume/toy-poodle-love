@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Scenario Writerのサイドバーナビゲーション
-enum ScenarioWriterTab: String, CaseIterable, Identifiable {
+enum ScenarioWriterTab: String, CaseIterable, Identifiable, Sendable {
     case pipeline = "Pipeline"
     case routeGenerate = "ルート生成"
     case scenarioGenerate = "シナリオ生成"

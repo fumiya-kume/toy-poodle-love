@@ -1,7 +1,7 @@
 import Foundation
 
 /// ジオコーディングレスポンス
-struct GeocodeResponse: Codable {
+struct GeocodeResponse: Codable, Sendable {
     /// 成功フラグ
     let success: Bool
     /// ジオコーディングされた場所の配列

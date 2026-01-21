@@ -1,7 +1,7 @@
 import Foundation
 
 /// API呼び出し時に発生するエラー
-enum APIError: LocalizedError {
+enum APIError: LocalizedError, Sendable {
     case invalidURL
     case invalidResponse
     case httpError(statusCode: Int, message: String?)

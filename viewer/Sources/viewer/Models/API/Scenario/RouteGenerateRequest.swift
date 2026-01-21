@@ -1,7 +1,7 @@
 import Foundation
 
 /// ルート生成入力パラメータ
-struct RouteGenerateInput: Codable {
+struct RouteGenerateInput: Codable, Sendable {
     /// スタート地点（例: 東京駅）
     let startPoint: String
     /// 目的・テーマ（例: 皇居周辺を観光したい）
@@ -13,6 +13,6 @@ struct RouteGenerateInput: Codable {
 }
 
 /// ルート生成リクエスト
-struct RouteGenerateRequest: Codable {
+struct RouteGenerateRequest: Codable, Sendable {
     let input: RouteGenerateInput
 }

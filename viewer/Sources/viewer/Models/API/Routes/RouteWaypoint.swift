@@ -1,7 +1,7 @@
 import Foundation
 
 /// ルート最適化用のウェイポイント
-struct RouteWaypoint: Codable, Equatable, Identifiable {
+struct RouteWaypoint: Codable, Equatable, Identifiable, Sendable {
     let name: String?
     let placeId: String?
     let address: String?

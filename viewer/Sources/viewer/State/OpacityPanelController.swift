@@ -191,24 +191,25 @@ final class OpacityPanelController {
 // MARK: - Panel Delegate
 
 /// NSPanel delegate to intercept close button
-private class PanelDelegate: NSObject, NSWindowDelegate {
+@MainActor
+private final class PanelDelegate: NSObject, NSWindowDelegate {
     weak var controller: OpacityPanelController?
 
     init(controller: OpacityPanelController) {
         self.controller = controller
     }
 
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
+    nonisolated func windowShouldClose(_ sender: NSWindow) -> Bool {
         // Hide instead of close
-        Task { @MainActor in
+        MainActor.assumeIsolated {
             controller?.hide()
         }
         return false
     }
 
-    func windowWillClose(_ notification: Notification) {
+    nonisolated func windowWillClose(_ notification: Notification) {
         // ESC key triggers this - mark as not visible
-        Task { @MainActor in
+        MainActor.assumeIsolated {
             controller?.markAsHidden()
         }
     }
