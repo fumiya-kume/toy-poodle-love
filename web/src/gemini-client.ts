@@ -1,9 +1,11 @@
 import { GoogleGenerativeAI, RequestOptions } from '@google/generative-ai';
+import { traceLLMCall, type LLMCallResult } from './telemetry';
 
 export class GeminiClient {
   private genAI: GoogleGenerativeAI;
   private model: any;
   private requestOptions: RequestOptions;
+  private modelName: string = 'gemini-2.5-flash-lite';
 
   constructor(apiKey: string) {
     console.log('Gemini Client initialized:', {
@@ -13,7 +15,7 @@ export class GeminiClient {
     this.genAI = new GoogleGenerativeAI(apiKey);
     // Using Gemini 1.5 Flash model (faster and more cost-effective)
     // Alternative: 'gemini-1.5-pro' for more advanced capabilities
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    this.model = this.genAI.getGenerativeModel({ model: this.modelName });
 
     // タイムアウトとリトライの設定
     this.requestOptions = {
@@ -22,6 +24,27 @@ export class GeminiClient {
   }
 
   async chat(message: string): Promise<string> {
+    // ARMS LLMOpsトレーシングでラップ
+    return traceLLMCall(
+      {
+        provider: 'google',
+        model: this.modelName,
+        operation: 'chat',
+      },
+      message,
+      async (span) => {
+        const result = await this.chatInternal(message);
+        return {
+          content: result.content,
+          promptTokens: result.promptTokens,
+          completionTokens: result.completionTokens,
+          totalTokens: result.totalTokens,
+        };
+      }
+    ).then((result) => result.content);
+  }
+
+  private async chatInternal(message: string): Promise<LLMCallResult> {
     let lastError: any = null;
     const maxRetries = 3;
 
@@ -39,14 +62,28 @@ export class GeminiClient {
         const response = await result.response;
         const text = response.text();
 
+        // トークン使用量を取得（利用可能な場合）
+        const usageMetadata = response.usageMetadata;
+        const promptTokens = usageMetadata?.promptTokenCount;
+        const completionTokens = usageMetadata?.candidatesTokenCount;
+        const totalTokens = usageMetadata?.totalTokenCount;
+
         console.log('Gemini API Response received:', {
           hasContent: !!text,
           contentLength: text?.length,
+          promptTokens,
+          completionTokens,
+          totalTokens,
           attempt,
           timestamp: new Date().toISOString(),
         });
 
-        return text;
+        return {
+          content: text,
+          promptTokens,
+          completionTokens,
+          totalTokens,
+        };
       } catch (error: any) {
         lastError = error;
 

@@ -50,6 +50,11 @@ function validateAndTransform(): ValidatedEnv {
     geminiApiKey: process.env.GEMINI_API_KEY || undefined,
     googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || undefined,
     qwenRegion,
+    // ARMS LLMOps設定
+    armsEndpoint: process.env.ARMS_ENDPOINT || undefined,
+    armsAuthToken: process.env.ARMS_AUTH_TOKEN || undefined,
+    armsTracingDisabled: process.env.ARMS_TRACING_DISABLED === 'true',
+    otelServiceName: process.env.OTEL_SERVICE_NAME || ENV_DEFAULTS.OTEL_SERVICE_NAME,
   };
 }
 

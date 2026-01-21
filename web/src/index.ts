@@ -1,9 +1,19 @@
 import { initializeDotenv, getEnv, validateRequiredKeys } from './config';
+import { initARMSTracing } from './telemetry';
 import { QwenClient } from './qwen-client';
 import { GeminiClient } from './gemini-client';
 
 // Load environment variables
 initializeDotenv();
+
+// Initialize ARMS LLMOps tracing (must be called before any LLM API calls)
+const env = getEnv();
+initARMSTracing({
+  endpoint: env.armsEndpoint,
+  authToken: env.armsAuthToken,
+  serviceName: env.otelServiceName,
+  disabled: env.armsTracingDisabled,
+});
 
 async function main() {
   try {
@@ -12,8 +22,6 @@ async function main() {
     console.error('Error:', (error as Error).message);
     process.exit(1);
   }
-
-  const env = getEnv();
 
   // Initialize clients
   const qwenClient = new QwenClient(env.qwenApiKey!, env.qwenRegion);
