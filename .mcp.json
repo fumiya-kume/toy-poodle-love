@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mobile-mcp": {
+      "command": "npx",
+      "args": ["-y", "@mobilenext/mobile-mcp@latest"]
+    },
+    "xcodebuildmcp": {
+      "command": "npx",
+      "args": ["-y", "xcodebuildmcp"]
+    }
+  }
+}
