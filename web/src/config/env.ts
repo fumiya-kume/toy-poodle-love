@@ -45,11 +45,23 @@ function validateAndTransform(): ValidatedEnv {
     );
   }
 
+  // Langfuse有効化フラグを解析
+  const langfuseEnabledRaw = process.env.LANGFUSE_ENABLED;
+  let langfuseEnabled = ENV_DEFAULTS.LANGFUSE_ENABLED;
+  if (langfuseEnabledRaw !== undefined) {
+    langfuseEnabled = langfuseEnabledRaw !== 'false' && langfuseEnabledRaw !== '0';
+  }
+
   return {
     qwenApiKey: process.env.QWEN_API_KEY || undefined,
     geminiApiKey: process.env.GEMINI_API_KEY || undefined,
     googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || undefined,
     qwenRegion,
+    // Langfuse LLMOps設定
+    langfuseEnabled,
+    langfuseSecretKey: process.env.LANGFUSE_SECRET_KEY || undefined,
+    langfusePublicKey: process.env.LANGFUSE_PUBLIC_KEY || undefined,
+    langfuseBaseUrl: process.env.LANGFUSE_BASE_URL || ENV_DEFAULTS.LANGFUSE_BASE_URL,
   };
 }
 
@@ -74,6 +86,19 @@ export function hasGeminiApiKey(): boolean {
 
 export function hasGoogleMapsApiKey(): boolean {
   return !!getEnv().googleMapsApiKey;
+}
+
+export function hasLangfuseKeys(): boolean {
+  const env = getEnv();
+  return !!env.langfuseSecretKey && !!env.langfusePublicKey;
+}
+
+/**
+ * Langfuseが有効かどうかを確認
+ */
+export function isLangfuseEnabled(): boolean {
+  const env = getEnv();
+  return env.langfuseEnabled && hasLangfuseKeys();
 }
 
 /**
