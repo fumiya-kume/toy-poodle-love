@@ -1,8 +1,10 @@
 import OpenAI from 'openai';
+import { traceLLMCall } from './telemetry';
 
 export class QwenClient {
   private client: OpenAI;
   private region: string;
+  private modelName: string = 'qwen-turbo';
 
   constructor(apiKey: string, region: 'china' | 'international' = 'international') {
     // Qwen uses OpenAI-compatible API via DashScope
@@ -29,6 +31,29 @@ export class QwenClient {
   }
 
   async chat(message: string): Promise<string> {
+    // ARMS LLMOpsトレーシングでラップ
+    return traceLLMCall(
+      {
+        provider: 'qwen',
+        model: this.modelName,
+        operation: 'chat',
+        temperature: 0.7,
+        maxTokens: 2000,
+      },
+      message,
+      async () => {
+        const result = await this.chatInternal(message);
+        return result;
+      }
+    ).then((result) => result.content);
+  }
+
+  private async chatInternal(message: string): Promise<{
+    content: string;
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+  }> {
     try {
       console.log('Qwen API Request starting:', {
         messageLength: message.length,
@@ -36,7 +61,7 @@ export class QwenClient {
       });
 
       const completion = await this.client.chat.completions.create({
-        model: 'qwen-turbo',
+        model: this.modelName,
         messages: [
           {
             role: 'user',
@@ -47,14 +72,25 @@ export class QwenClient {
         max_tokens: 2000,
       });
 
+      // トークン使用量を取得
+      const usage = completion.usage;
+
       console.log('Qwen API Response received:', {
         hasContent: !!completion.choices[0]?.message?.content,
         contentLength: completion.choices[0]?.message?.content?.length,
         model: completion.model,
+        promptTokens: usage?.prompt_tokens,
+        completionTokens: usage?.completion_tokens,
+        totalTokens: usage?.total_tokens,
         timestamp: new Date().toISOString(),
       });
 
-      return completion.choices[0]?.message?.content || 'No response';
+      return {
+        content: completion.choices[0]?.message?.content || 'No response',
+        promptTokens: usage?.prompt_tokens,
+        completionTokens: usage?.completion_tokens,
+        totalTokens: usage?.total_tokens,
+      };
     } catch (error: any) {
       // 非常に詳細なエラーログ
       console.error('Qwen API Error (詳細ログ):', {
