@@ -41,7 +41,24 @@ actor MockAPIClient {
 
 /// URLProtocol を使ったネットワークモック
 class MockURLProtocol: URLProtocol {
-    static var mockResponse: (Data?, URLResponse?, Error?)?
+    private final class ResponseStorage: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value: (Data?, URLResponse?, Error?)?
+
+        func get() -> (Data?, URLResponse?, Error?)? {
+            lock.lock()
+            defer { lock.unlock() }
+            return value
+        }
+
+        func set(_ newValue: (Data?, URLResponse?, Error?)?) {
+            lock.lock()
+            defer { lock.unlock() }
+            value = newValue
+        }
+    }
+
+    private static let responseStorage = ResponseStorage()
 
     override class func canInit(with request: URLRequest) -> Bool {
         true
@@ -52,7 +69,7 @@ class MockURLProtocol: URLProtocol {
     }
 
     override func startLoading() {
-        if let (data, response, error) = MockURLProtocol.mockResponse {
+        if let (data, response, error) = Self.responseStorage.get() {
             if let error = error {
                 client?.urlProtocol(self, didFailWithError: error)
             } else {
@@ -76,10 +93,10 @@ class MockURLProtocol: URLProtocol {
             httpVersion: nil,
             headerFields: nil
         )
-        mockResponse = (data, response, error)
+        responseStorage.set((data, response, error))
     }
 
     static func reset() {
-        mockResponse = nil
+        responseStorage.set(nil)
     }
 }
