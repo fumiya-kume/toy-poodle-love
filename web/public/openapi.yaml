@@ -623,7 +623,11 @@ components:
       properties:
         inputAddress:
           type: string
-          description: 入力された住所または場所名
+          description: 入力された住所または場所名（ジオコーディングクエリとして使用）
+          example: "東京都千代田区丸の内1丁目"
+        spotName:
+          type: string
+          description: 元のスポット名（iOS側のキャッシュキーとして使用）
           example: "東京駅"
         formattedAddress:
           type: string
@@ -723,6 +727,10 @@ components:
           type: string
           description: 地点名
           example: "皇居東御苑"
+        address:
+          type: string
+          description: 住所（ジオコーディング用、AIが生成）
+          example: "東京都千代田区千代田1-1"
         type:
           type: string
           enum: [start, intermediate, destination]
@@ -732,6 +740,10 @@ components:
           type: string
           description: 地点の説明
           example: "旧江戸城の本丸跡地"
+        point:
+          type: string
+          description: 観光ポイント・見どころ
+          example: "四季折々の花が楽しめる日本庭園"
         generatedNote:
           type: string
           description: AI 生成時の補足情報
@@ -744,7 +756,12 @@ components:
       properties:
         name:
           type: string
+          description: 地点名
           example: "皇居東御苑"
+        address:
+          type: string
+          description: 住所（ジオコーディング用、オプション）
+          example: "東京都千代田区千代田1-1"
         type:
           type: string
           enum: [start, waypoint, destination]
@@ -754,7 +771,7 @@ components:
           example: "旧江戸城の本丸跡地"
         point:
           type: string
-          description: 観光ポイント
+          description: 観光ポイント・見どころ
           example: "四季折々の花が楽しめる日本庭園"
 
     SpotScenario:
