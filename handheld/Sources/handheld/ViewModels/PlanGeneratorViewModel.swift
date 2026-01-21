@@ -342,8 +342,15 @@ final class PlanGeneratorViewModel {
                     return
                 }
 
-                // GeneratedSpotInfoとPlaceを組み合わせる
-                matchedSpots = zip(generated.spots, places).map { (spot: $0, place: $1) }
+                // GeneratedSpotInfoとPlaceを名前でマッチング（ジオコーディング失敗でスキップされたスポットに対応）
+                matchedSpots = generated.spots.compactMap { spot in
+                    // スポット名でPlaceを検索
+                    guard let place = places.first(where: { $0.name == spot.name }) else {
+                        AppLogger.ai.warning("スポット '\(spot.name)' に対応するPlaceが見つかりませんでした")
+                        return nil
+                    }
+                    return (spot: spot, place: place)
+                }
             } else {
                 // Foundation Models使用時: 候補地リストとマッチング
                 AppLogger.ai.info("候補地リストとマッチング")
