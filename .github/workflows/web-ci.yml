@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - master
-    paths:
-      - 'web/**'
-      - '.github/workflows/web-ci.yml'
   pull_request:
     branches:
       - master
