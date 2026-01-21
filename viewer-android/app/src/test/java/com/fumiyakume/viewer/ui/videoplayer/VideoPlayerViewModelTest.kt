@@ -138,10 +138,10 @@ class VideoPlayerViewModelTest {
     @Test
     fun overlayOpacity_isClampedToValidRange() {
         viewModel.setOverlayOpacity(-1f)
-        assertEquals(0f, viewModel.uiState.value.overlayOpacity)
+        assertEquals(0f, viewModel.uiState.value.overlayOpacity, 0.001f)
 
         viewModel.setOverlayOpacity(2f)
-        assertEquals(1f, viewModel.uiState.value.overlayOpacity)
+        assertEquals(1f, viewModel.uiState.value.overlayOpacity, 0.001f)
     }
 
     @Test

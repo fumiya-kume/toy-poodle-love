@@ -3,11 +3,14 @@ package com.fumiyakume.viewer.data.local
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -37,6 +40,13 @@ class SettingsDataStore @Inject constructor(
      * コントロール非表示の遅延時間 (ミリ秒)
      */
     val controlHideDelayMs: Flow<Long> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
         .map { preferences ->
             preferences[PreferencesKeys.CONTROL_HIDE_DELAY_MS] ?: DEFAULT_CONTROL_HIDE_DELAY_MS
         }
@@ -51,6 +61,13 @@ class SettingsDataStore @Inject constructor(
      * デフォルトのオーバーレイ透明度
      */
     val defaultOverlayOpacity: Flow<Float> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
         .map { preferences ->
             preferences[PreferencesKeys.DEFAULT_OVERLAY_OPACITY] ?: DEFAULT_OVERLAY_OPACITY_VALUE
         }
@@ -65,6 +82,13 @@ class SettingsDataStore @Inject constructor(
      * デフォルトのAIモデル
      */
     val defaultAIModel: Flow<String> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
         .map { preferences ->
             preferences[PreferencesKeys.DEFAULT_AI_MODEL] ?: DEFAULT_AI_MODEL_VALUE
         }
