@@ -12,7 +12,7 @@ final class VideoConfigurationTests: XCTestCase {
 
     func testDefaultOpacity() {
         let config = VideoConfiguration(windowIndex: 0)
-        XCTAssertEqual(config.overlayOpacity, 0.5)
+        XCTAssertEqual(config.overlayOpacity, 1.0)
     }
 
     func testNilURLsWithoutBookmarks() {
