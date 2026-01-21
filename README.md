@@ -1,37 +1,245 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# toy-poodle-love
 
-## Getting Started
+A multi-platform AI-powered route planning and scenario generation system.
 
-First, run the development server:
+> *The name "toy-poodle-love" comes from the WAN video generation example: "A cute toy poodle running in a sunny park"*
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Overview
+
+**toy-poodle-love** is an end-to-end platform for AI-driven route optimization and scenario writing. It combines multiple AI services to generate tourist routes with narratives, and can even create videos from the generated scenarios.
+
+### Key Capabilities
+
+- **AI Text Generation** - Compare responses from Qwen (Alibaba) and Gemini (Google) models
+- **Route Optimization** - Generate and optimize tourist routes using Google Maps APIs
+- **Scenario Generation** - Create themed narratives for each location
+- **Video Generation** - Transform scenarios into videos using WAN2.6 T2V/I2V models
+- **Speech Integration** - Voice input and text-to-speech output
+
+## Architecture
+
+```mermaid
+graph TB
+    subgraph Clients
+        WEB[Web App<br/>Next.js]
+        MAC[macOS Viewer<br/>SwiftUI]
+        IOS[iOS Handheld<br/>SwiftUI]
+        AND[Android Viewer<br/>Jetpack Compose]
+    end
+
+    subgraph "Web Backend"
+        API[Next.js API Routes]
+        QWEN[Qwen Client]
+        GEMINI[Gemini Client]
+        MAPS[Google Maps Client]
+    end
+
+    subgraph "External Services"
+        QWEN_API[Alibaba DashScope]
+        GEMINI_API[Google AI]
+        GOOGLE_API[Google Maps Platform]
+        WAN_API[WAN2.6 Video API]
+    end
+
+    WEB --> API
+    MAC --> API
+    IOS --> API
+    AND --> API
+
+    API --> QWEN --> QWEN_API
+    API --> GEMINI --> GEMINI_API
+    API --> MAPS --> GOOGLE_API
+
+    API -.-> WAN_API
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Platform Overview
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Platform | Directory | Technology | Min Version |
+|----------|-----------|------------|-------------|
+| Web | `web/` | Next.js 16, React 19, TypeScript | Node.js 18+ |
+| macOS | `viewer/` | Swift 6, SwiftUI | macOS 14.0+ |
+| iOS | `handheld/` | Swift 5.9, SwiftUI | iOS 17.0+ |
+| Android | `viewer-android/` | Kotlin, Jetpack Compose | Android 9 (API 28) |
+| Video Gen | `wan2_6_i2v/` | Python 3.x | Python 3.8+ |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Quick Start
 
-## Learn More
+### Prerequisites
 
-To learn more about Next.js, take a look at the following resources:
+- Node.js 18+
+- API keys for:
+  - [Alibaba DashScope](https://dashscope.console.aliyun.com/) (Qwen)
+  - [Google AI Studio](https://makersuite.google.com/app/apikey) (Gemini)
+  - [Google Cloud Console](https://console.cloud.google.com/) (Maps APIs)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Web Application Setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# Navigate to web directory
+cd web
 
-## Deploy on Vercel
+# Install dependencies
+npm install
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Create environment file
+cp .env.example .env
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# toy-poodle-love
+Edit `.env` with your API keys:
+
+```env
+QWEN_API_KEY=your_qwen_api_key
+GEMINI_API_KEY=your_gemini_api_key
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+```
+
+```bash
+# Start development server
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) to access the web interface.
+
+### macOS Viewer Setup
+
+```bash
+cd viewer
+
+# Generate Xcode project (requires xcodegen)
+xcodegen generate
+
+# Open in Xcode
+open viewer.xcodeproj
+```
+
+### iOS Handheld Setup
+
+```bash
+cd handheld
+
+# Generate Xcode project
+xcodegen generate
+
+# Open in Xcode
+open handheld.xcodeproj
+```
+
+### Android Viewer Setup
+
+```bash
+cd viewer-android
+
+# Open in Android Studio or build via Gradle
+./gradlew assembleDebug
+```
+
+### Video Generation (Python)
+
+```bash
+cd wan2_6_i2v
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Generate a video from text
+python wan_video.py "A cute toy poodle running in a sunny park"
+```
+
+## API Reference
+
+The web application exposes a RESTful API with the following endpoints:
+
+| Category | Endpoint | Description |
+|----------|----------|-------------|
+| **AI** | `POST /api/qwen` | Call Qwen model |
+| | `POST /api/gemini` | Call Gemini model |
+| **Places** | `POST /api/places/geocode` | Geocode addresses |
+| **Routes** | `POST /api/routes/optimize` | Optimize route order |
+| | `POST /api/route/generate` | AI-generated route |
+| **Scenario** | `POST /api/scenario` | Generate scenario |
+| | `POST /api/scenario/integrate` | Merge scenarios |
+| | `POST /api/scenario/spot` | Spot-specific scenario |
+| **Pipeline** | `POST /api/pipeline/route-optimize` | End-to-end pipeline |
+| **Speech** | `POST /api/speech/recognize` | Speech recognition |
+| | `POST /api/tts` | Text-to-speech |
+
+### API Documentation
+
+- **Swagger UI**: Available at `/api-docs.html` when running the dev server
+- **OpenAPI Spec**: See [`web/openapi.yaml`](web/openapi.yaml)
+
+## Documentation
+
+- **[Quick Start Guide](web/QUICKSTART.md)** - Get up and running in 5 minutes
+- **[API Documentation](web/API_DOCUMENTATION.md)** - Comprehensive API reference
+- **[Development Guide](web/CLAUDE.md)** - Architecture and contribution guidelines
+
+## Development
+
+### Web Development
+
+```bash
+cd web
+
+# Development server
+npm run dev
+
+# Type checking
+npm run type-check
+
+# Linting
+npm run lint
+
+# Production build
+npm run build
+```
+
+### Running Tests
+
+```bash
+# Web tests
+cd web && npm test
+
+# macOS viewer tests
+cd viewer && xcodebuild test -scheme viewer
+
+# Android tests
+cd viewer-android && ./gradlew test
+```
+
+### CI/CD
+
+This project uses GitHub Actions for continuous integration:
+
+- **web-ci.yml** - Web application build and tests
+- **viewer-ci.yml** - macOS viewer build and tests
+- **ios-ci.yml** - iOS handheld app build and tests
+
+## Tech Stack
+
+### Web
+- **Framework**: Next.js 16 with App Router
+- **Language**: TypeScript 5
+- **UI**: React 19
+- **AI SDKs**: OpenAI SDK (for Qwen), Google Generative AI SDK
+
+### Apple Platforms
+- **Language**: Swift 6 (viewer), Swift 5.9 (handheld)
+- **UI**: SwiftUI
+- **Concurrency**: Swift Strict Concurrency
+- **Build**: XcodeGen
+
+### Android
+- **Language**: Kotlin
+- **UI**: Jetpack Compose
+- **DI**: Hilt
+- **Networking**: Retrofit + OkHttp
+- **Video**: Media3 ExoPlayer
+
+### Python
+- **Video Generation**: Alibaba WAN2.6 API
+
+## License
+
+ISC
