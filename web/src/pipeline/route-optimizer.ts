@@ -129,11 +129,16 @@ export class RouteOptimizerPipeline {
     const stepStartTime = Date.now();
 
     try {
-      // spotのnameからアドレスリストを作成
-      // pointがあればpoint（より具体的な住所）を優先
-      const addresses = spots.map(spot => spot.point || spot.name);
+      // spotからアドレスリストを作成
+      // addressがあればaddress（正確な住所）を優先、なければnameを使用
+      const addresses = spots.map(spot => spot.address || spot.name);
 
       const places = await this.placesClient.geocodeBatch(addresses);
+
+      // iOS側のキャッシュキーとして使用するため、spotNameを設定
+      places.forEach((place, index) => {
+        place.spotName = spots[index].name;
+      });
 
       // 失敗したスポットを特定
       const successfulAddresses = new Set(places.map(p => p.inputAddress));
@@ -184,7 +189,7 @@ export class RouteOptimizerPipeline {
       // （一部のスポットがジオコードに失敗している可能性があるため）
       const orderedPlaces: GeocodedPlace[] = [];
       for (const spot of spots) {
-        const address = spot.point || spot.name;
+        const address = spot.address || spot.name;
         const place = placeMap.get(address);
         if (place) {
           orderedPlaces.push(place);

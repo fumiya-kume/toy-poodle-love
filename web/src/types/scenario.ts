@@ -13,6 +13,8 @@ export type SpotType = 'start' | 'waypoint' | 'destination';
 export interface RouteSpot {
   /** 地点名 */
   name: string;
+  /** 住所（ジオコーディング用） */
+  address?: string;
   /** 地点タイプ */
   type: SpotType;
   /** 地点の説明・特徴 */
