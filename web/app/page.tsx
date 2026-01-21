@@ -8,6 +8,8 @@ import {
   RouteLeg,
 } from '../src/types/place-route';
 import { PipelineResponse } from '../src/types/pipeline';
+import { ScenarioOutput, SpotScenario, RouteSpot } from '../src/types/scenario';
+import { ScenarioResponse } from '../src/types/api';
 
 type TabType = 'ai' | 'route' | 'ai-route';
 
@@ -50,6 +52,12 @@ export default function Home() {
   const [aiRouteLoading, setAiRouteLoading] = useState(false);
   const [aiRouteResult, setAiRouteResult] = useState<PipelineResponse | null>(null);
   const [aiRouteError, setAiRouteError] = useState<string | null>(null);
+
+  // シナリオガイド用のstate
+  const [scenarioData, setScenarioData] = useState<ScenarioOutput | null>(null);
+  const [scenarioLoading, setScenarioLoading] = useState(false);
+  const [selectedSpotIndex, setSelectedSpotIndex] = useState<number | null>(null);
+  const [spotModalOpen, setSpotModalOpen] = useState(false);
 
   const handleModelToggle = (model: 'qwen' | 'gemini') => {
     setEnabledModels(prev => ({
@@ -269,6 +277,76 @@ export default function Home() {
       case 'failed': return '失敗';
       default: return '待機中';
     }
+  };
+
+  // シナリオガイドを生成する関数
+  const handleGenerateScenario = async () => {
+    if (!aiRouteResult?.routeGeneration.spots || !aiRouteResult?.routeGeneration.routeName) {
+      alert('ルートデータがありません');
+      return;
+    }
+
+    setScenarioLoading(true);
+
+    try {
+      // パイプライン結果からRouteSpot配列を作成
+      const spots: RouteSpot[] = aiRouteResult.routeGeneration.spots.map((spot) => ({
+        name: spot.name,
+        type: spot.type,
+        description: spot.description,
+        point: spot.point,
+      }));
+
+      const response = await fetch('/api/scenario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          route: {
+            routeName: aiRouteResult.routeGeneration.routeName,
+            spots,
+          },
+          models: 'both',
+          includeImagePrompt: false,
+        }),
+      });
+
+      const data: ScenarioResponse = await response.json();
+
+      if (!data.success || !data.data) {
+        throw new Error(data.error || 'シナリオ生成に失敗しました');
+      }
+
+      setScenarioData(data.data);
+    } catch (error) {
+      console.error('シナリオ生成エラー:', error);
+      alert(error instanceof Error ? error.message : 'シナリオ生成に失敗しました');
+    } finally {
+      setScenarioLoading(false);
+    }
+  };
+
+  // 地点クリック時にモーダルを開く
+  const handleSpotClick = (index: number) => {
+    setSelectedSpotIndex(index);
+    setSpotModalOpen(true);
+  };
+
+  // モーダルを閉じる
+  const closeSpotModal = () => {
+    setSpotModalOpen(false);
+    setSelectedSpotIndex(null);
+  };
+
+  // 選択した地点のシナリオを取得
+  const getSelectedSpotScenario = (): SpotScenario | null => {
+    if (selectedSpotIndex === null || !scenarioData) return null;
+
+    // 最適化後の順序に基づいてシナリオを検索
+    const orderedWaypoints = aiRouteResult?.routeOptimization.orderedWaypoints;
+    if (!orderedWaypoints || selectedSpotIndex >= orderedWaypoints.length) return null;
+
+    const waypointName = orderedWaypoints[selectedSpotIndex].waypoint.name;
+    return scenarioData.spots.find(s => s.name === waypointName) || null;
   };
 
   return (
@@ -650,9 +728,27 @@ export default function Home() {
               {/* 最適化されたルート */}
               {aiRouteResult.routeOptimization.orderedWaypoints && (
                 <div>
-                  <h3 style={{ fontSize: '20px', marginBottom: '16px', fontWeight: '600' }}>
-                    最適化されたルート
-                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '20px', fontWeight: '600', margin: 0 }}>
+                      最適化されたルート
+                    </h3>
+                    <button
+                      onClick={handleGenerateScenario}
+                      disabled={scenarioLoading}
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        backgroundColor: scenarioLoading ? '#ccc' : scenarioData ? '#22c55e' : '#8b5cf6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: scenarioLoading ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {scenarioLoading ? '生成中...' : scenarioData ? '✓ ガイド生成済み' : '🎤 ガイドを一括生成'}
+                    </button>
+                  </div>
 
                   <div style={{
                     padding: '16px',
@@ -677,49 +773,82 @@ export default function Home() {
                     </div>
                   </div>
 
+                  {scenarioData && (
+                    <p style={{ marginBottom: '12px', fontSize: '14px', color: '#6b7280' }}>
+                      💡 地点をクリックすると観光ガイドを確認できます
+                    </p>
+                  )}
+
                   <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {aiRouteResult.routeOptimization.orderedWaypoints.map((wp, i) => (
-                      <li key={i} style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '12px',
-                        padding: '16px 0',
-                        borderBottom: i < aiRouteResult.routeOptimization.orderedWaypoints!.length - 1 ? '1px solid #e5e7eb' : 'none'
-                      }}>
-                        <div style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          backgroundColor: i === 0 ? '#22c55e' : i === aiRouteResult.routeOptimization.orderedWaypoints!.length - 1 ? '#ef4444' : '#3b82f6',
-                          color: 'white',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: '600',
-                          flexShrink: 0
-                        }}>
-                          {i + 1}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <p style={{ margin: 0, fontWeight: '600', fontSize: '16px' }}>
-                            {wp.waypoint.name || `地点 ${i + 1}`}
-                          </p>
-                          <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#6b7280' }}>
-                            {i === 0 ? '出発地点' : i === aiRouteResult.routeOptimization.orderedWaypoints!.length - 1 ? '到着地点' : '経由地点'}
-                          </p>
-                        </div>
-                        {aiRouteResult.routeOptimization.legs && aiRouteResult.routeOptimization.legs[i] && (
-                          <div style={{ textAlign: 'right', fontSize: '14px', color: '#6b7280' }}>
-                            <p style={{ margin: 0 }}>
-                              {formatDistance(aiRouteResult.routeOptimization.legs[i].distanceMeters)}
+                    {aiRouteResult.routeOptimization.orderedWaypoints.map((wp, i) => {
+                      const hasScenario = scenarioData?.spots.some(s => s.name === wp.waypoint.name);
+                      return (
+                        <li
+                          key={i}
+                          onClick={() => hasScenario && handleSpotClick(i)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '12px',
+                            padding: '16px',
+                            marginBottom: '8px',
+                            borderRadius: '8px',
+                            backgroundColor: hasScenario ? '#faf5ff' : '#f9fafb',
+                            border: hasScenario ? '2px solid #c4b5fd' : '1px solid #e5e7eb',
+                            cursor: hasScenario ? 'pointer' : 'default',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (hasScenario) {
+                              e.currentTarget.style.backgroundColor = '#ede9fe';
+                              e.currentTarget.style.borderColor = '#8b5cf6';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (hasScenario) {
+                              e.currentTarget.style.backgroundColor = '#faf5ff';
+                              e.currentTarget.style.borderColor = '#c4b5fd';
+                            }
+                          }}
+                        >
+                          <div style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            backgroundColor: i === 0 ? '#22c55e' : i === aiRouteResult.routeOptimization.orderedWaypoints!.length - 1 ? '#ef4444' : '#3b82f6',
+                            color: 'white',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: '600',
+                            flexShrink: 0
+                          }}>
+                            {i + 1}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <p style={{ margin: 0, fontWeight: '600', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              {wp.waypoint.name || `地点 ${i + 1}`}
+                              {hasScenario && (
+                                <span style={{ fontSize: '12px', color: '#8b5cf6' }}>🎤 ガイドあり</span>
+                              )}
                             </p>
-                            <p style={{ margin: '2px 0 0' }}>
-                              {formatDuration(aiRouteResult.routeOptimization.legs[i].durationSeconds)}
+                            <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#6b7280' }}>
+                              {i === 0 ? '出発地点' : i === aiRouteResult.routeOptimization.orderedWaypoints!.length - 1 ? '到着地点' : '経由地点'}
                             </p>
                           </div>
-                        )}
-                      </li>
-                    ))}
+                          {aiRouteResult.routeOptimization.legs && aiRouteResult.routeOptimization.legs[i] && (
+                            <div style={{ textAlign: 'right', fontSize: '14px', color: '#6b7280' }}>
+                              <p style={{ margin: 0 }}>
+                                {formatDistance(aiRouteResult.routeOptimization.legs[i].distanceMeters)}
+                              </p>
+                              <p style={{ margin: '2px 0 0' }}>
+                                {formatDuration(aiRouteResult.routeOptimization.legs[i].durationSeconds)}
+                              </p>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ol>
                 </div>
               )}
@@ -1040,6 +1169,216 @@ export default function Home() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 地点ガイド詳細モーダル */}
+      {spotModalOpen && selectedSpotIndex !== null && (
+        <div
+          onClick={closeSpotModal}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              maxWidth: '600px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            }}
+          >
+            {/* モーダルヘッダー */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              position: 'sticky',
+              top: 0,
+              backgroundColor: 'white',
+              borderRadius: '16px 16px 0 0',
+            }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700' }}>
+                  {aiRouteResult?.routeOptimization.orderedWaypoints?.[selectedSpotIndex]?.waypoint.name || '地点詳細'}
+                </h2>
+                <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#6b7280' }}>
+                  観光ガイドシナリオ
+                </p>
+              </div>
+              <button
+                onClick={closeSpotModal}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  backgroundColor: '#f3f4f6',
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* モーダルコンテンツ */}
+            <div style={{ padding: '24px' }}>
+              {(() => {
+                const scenario = getSelectedSpotScenario();
+                if (!scenario) {
+                  return (
+                    <p style={{ color: '#6b7280', textAlign: 'center' }}>
+                      シナリオデータがありません
+                    </p>
+                  );
+                }
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Qwen の結果 */}
+                    {scenario.qwen && (
+                      <div style={{
+                        padding: '16px',
+                        backgroundColor: '#f0f9ff',
+                        borderRadius: '12px',
+                        border: '2px solid #0ea5e9',
+                      }}>
+                        <h3 style={{
+                          margin: '0 0 12px 0',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#0369a1',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}>
+                          <span style={{
+                            display: 'inline-block',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '6px',
+                            backgroundColor: '#0ea5e9',
+                            color: 'white',
+                            fontSize: '12px',
+                            textAlign: 'center',
+                            lineHeight: '24px',
+                          }}>Q</span>
+                          Qwen 生成ガイド
+                        </h3>
+                        <p style={{
+                          margin: 0,
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: '1.8',
+                          color: '#0c4a6e',
+                          fontSize: '15px',
+                        }}>
+                          {scenario.qwen}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Gemini の結果 */}
+                    {scenario.gemini && (
+                      <div style={{
+                        padding: '16px',
+                        backgroundColor: '#fef3c7',
+                        borderRadius: '12px',
+                        border: '2px solid #f59e0b',
+                      }}>
+                        <h3 style={{
+                          margin: '0 0 12px 0',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#b45309',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}>
+                          <span style={{
+                            display: 'inline-block',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '6px',
+                            backgroundColor: '#f59e0b',
+                            color: 'white',
+                            fontSize: '12px',
+                            textAlign: 'center',
+                            lineHeight: '24px',
+                          }}>G</span>
+                          Gemini 生成ガイド
+                        </h3>
+                        <p style={{
+                          margin: 0,
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: '1.8',
+                          color: '#78350f',
+                          fontSize: '15px',
+                        }}>
+                          {scenario.gemini}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* エラーがある場合 */}
+                    {scenario.error && (scenario.error.qwen || scenario.error.gemini) && (
+                      <div style={{
+                        padding: '16px',
+                        backgroundColor: '#fef2f2',
+                        borderRadius: '12px',
+                        border: '2px solid #fca5a5',
+                      }}>
+                        <h3 style={{
+                          margin: '0 0 12px 0',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#dc2626',
+                        }}>
+                          ⚠️ エラー
+                        </h3>
+                        {scenario.error.qwen && (
+                          <p style={{ margin: '0 0 8px 0', color: '#991b1b' }}>
+                            Qwen: {scenario.error.qwen}
+                          </p>
+                        )}
+                        {scenario.error.gemini && (
+                          <p style={{ margin: 0, color: '#991b1b' }}>
+                            Gemini: {scenario.error.gemini}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* シナリオがない場合 */}
+                    {!scenario.qwen && !scenario.gemini && (
+                      <p style={{ color: '#6b7280', textAlign: 'center' }}>
+                        このスポットのガイドはまだ生成されていません
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
         </div>
       )}
     </div>
