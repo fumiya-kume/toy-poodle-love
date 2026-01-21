@@ -16,6 +16,20 @@ struct Route: Identifiable {
         self.steps = mkRoute.steps
     }
 
+    /// テスト用イニシャライザ
+    init(
+        polyline: MKPolyline,
+        distance: CLLocationDistance,
+        expectedTravelTime: TimeInterval,
+        steps: [MKRoute.Step] = []
+    ) {
+        self.id = UUID()
+        self.polyline = polyline
+        self.distance = distance
+        self.expectedTravelTime = expectedTravelTime
+        self.steps = steps
+    }
+
     var formattedDistance: String {
         if distance >= 1000 {
             return String(format: "%.1f km", distance / 1000)

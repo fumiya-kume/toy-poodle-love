@@ -62,6 +62,63 @@ struct RateLimiterTests {
 
         #expect(await limiter.currentUsage == 3)
     }
+
+    // MARK: - timeUntilNextAvailable Tests
+
+    @Test func timeUntilNextAvailable_underLimit_returnsNil() async {
+        let limiter = RateLimiter(maxRequests: 3, windowSeconds: 60)
+
+        await limiter.recordRequest()
+        await limiter.recordRequest()
+
+        let time = await limiter.timeUntilNextAvailable
+        #expect(time == nil)
+    }
+
+    @Test func timeUntilNextAvailable_noRequests_returnsNil() async {
+        let limiter = RateLimiter(maxRequests: 3, windowSeconds: 60)
+
+        let time = await limiter.timeUntilNextAvailable
+        #expect(time == nil)
+    }
+
+    @Test func timeUntilNextAvailable_atLimit_returnsPositiveValue() async {
+        let limiter = RateLimiter(maxRequests: 3, windowSeconds: 60)
+
+        await limiter.recordRequest()
+        await limiter.recordRequest()
+        await limiter.recordRequest()
+
+        let time = await limiter.timeUntilNextAvailable
+        #expect(time != nil)
+        if let time = time {
+            #expect(time > 0)
+            #expect(time <= 60)
+        }
+    }
+
+    @Test func timeUntilNextAvailable_atLimit_returnsValueCloseToWindowSeconds() async {
+        let windowSeconds: TimeInterval = 60
+        let limiter = RateLimiter(maxRequests: 2, windowSeconds: windowSeconds)
+
+        await limiter.recordRequest()
+        await limiter.recordRequest()
+
+        let time = await limiter.timeUntilNextAvailable
+        #expect(time != nil)
+        if let time = time {
+            #expect(time >= windowSeconds - 1)
+        }
+    }
+
+    // MARK: - Default Initialization Tests
+
+    @Test func defaultInit_setsDefaultValues() async {
+        let limiter = RateLimiter()
+
+        #expect(await limiter.remainingRequests == 45)
+        #expect(await limiter.currentUsage == 0)
+    }
 }
 
 // MARK: - CoordinateCacheModels Tests
@@ -120,8 +177,8 @@ struct GeocodingCacheServiceTests {
         let cache = GeocodingCacheService(configuration: config)
         let coordinate = CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671)
 
-        // 初期化時の非同期ロードが完了するのを待ってからクリア
-        try? await Task.sleep(for: .milliseconds(50))
+        // 初期化完了を待ってからクリア
+        await cache.waitForInitialization()
         await cache.clearCache()
 
         await cache.cacheCoordinate(coordinate, for: "東京駅", subtitle: "東京都千代田区")
@@ -146,8 +203,8 @@ struct GeocodingCacheServiceTests {
         let cache = GeocodingCacheService(configuration: config)
         let coordinate = CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671)
 
-        // 初期化時の非同期ロードが完了するのを待ってからクリア
-        try? await Task.sleep(for: .milliseconds(50))
+        // 初期化完了を待ってからクリア
+        await cache.waitForInitialization()
         await cache.clearCache()
 
         // 大文字で保存
@@ -164,8 +221,8 @@ struct GeocodingCacheServiceTests {
         let cache = GeocodingCacheService(configuration: config)
         let coordinate = CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671)
 
-        // 初期化時の非同期ロードが完了するのを待ってからクリア
-        try? await Task.sleep(for: .milliseconds(50))
+        // 初期化完了を待ってからクリア
+        await cache.waitForInitialization()
         await cache.clearCache()
 
         await cache.cacheCoordinate(coordinate, for: "東京駅", subtitle: "東京都")

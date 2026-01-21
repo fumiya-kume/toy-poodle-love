@@ -1,0 +1,65 @@
+name: Viewer CI
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'viewer/**'
+      - '.github/workflows/viewer-ci.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'viewer/**'
+      - '.github/workflows/viewer-ci.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: viewer
+
+jobs:
+  build-and-test:
+    name: Build & Test (macOS)
+    runs-on: macos-15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Cache SwiftPM checkouts
+        uses: actions/cache@v4
+        with:
+          path: viewer/.sourcepackages
+          key: ${{ runner.os }}-spm-viewer-${{ hashFiles('viewer/project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-viewer-
+
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/Homebrew
+          key: ${{ runner.os }}-homebrew-viewer-${{ hashFiles('viewer/project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-homebrew-viewer-
+
+      - name: Install tools
+        env:
+          HOMEBREW_NO_ANALYTICS: "1"
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: brew install xcodegen xcbeautify
+
+      - name: Run macOS tests
+        run: |
+          set -o pipefail
+          make test 2>&1 | xcbeautify
