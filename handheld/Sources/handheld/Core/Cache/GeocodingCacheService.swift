@@ -10,13 +10,53 @@ actor GeocodingCacheService {
     private var isDirty = false
     private var saveTask: Task<Void, Never>?
     private let saveDebounce: Duration = .milliseconds(300)
+    private var initializationTask: Task<Void, Never>?
 
     init(configuration: CacheConfiguration = .default) {
         self.configuration = configuration
         self.cacheFileURL = Self.defaultCacheFileURL()
 
-        Task.detached { [self] in
-            await loadCache()
+        let cacheURL = cacheFileURL
+        let ttlSeconds = configuration.ttlSeconds
+        initializationTask = Task { [weak self] in
+            guard let loadedCache = Self.loadCacheFromDisk(cacheURL: cacheURL, ttlSeconds: ttlSeconds) else {
+                return
+            }
+            await self?.setMemoryCache(loadedCache)
+        }
+    }
+
+    /// 初期化完了を待つ（テスト用）
+    func waitForInitialization() async {
+        await initializationTask?.value
+    }
+
+    private func setMemoryCache(_ cache: [SuggestionCacheKey: CoordinateCacheEntry]) {
+        memoryCache = cache
+    }
+
+    private nonisolated static func loadCacheFromDisk(
+        cacheURL: URL,
+        ttlSeconds: TimeInterval
+    ) -> [SuggestionCacheKey: CoordinateCacheEntry]? {
+        guard FileManager.default.fileExists(atPath: cacheURL.path) else {
+            AppLogger.cache.info("キャッシュファイルが存在しません。新規作成します。")
+            return nil
+        }
+
+        do {
+            let data = try Data(contentsOf: cacheURL)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let cached = try decoder.decode([SuggestionCacheKey: CoordinateCacheEntry].self, from: data)
+
+            // 期限切れエントリを除外してロード
+            let filteredCache = cached.filter { !$0.value.isExpired(ttl: ttlSeconds) }
+            AppLogger.cache.info("キャッシュをロードしました: \(filteredCache.count)件")
+            return filteredCache
+        } catch {
+            AppLogger.cache.error("キャッシュのロードに失敗しました: \(error.localizedDescription)")
+            return nil
         }
     }
 
@@ -85,26 +125,6 @@ actor GeocodingCacheService {
         return cacheDirectory.appendingPathComponent("geocoding_cache.json")
     }
 
-    private func loadCache() {
-        guard FileManager.default.fileExists(atPath: cacheFileURL.path) else {
-            AppLogger.cache.info("キャッシュファイルが存在しません。新規作成します。")
-            return
-        }
-
-        do {
-            let data = try Data(contentsOf: cacheFileURL)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            let cached = try decoder.decode([SuggestionCacheKey: CoordinateCacheEntry].self, from: data)
-
-            // 期限切れエントリを除外してロード
-            memoryCache = cached.filter { !$0.value.isExpired(ttl: configuration.ttlSeconds) }
-            AppLogger.cache.info("キャッシュをロードしました: \(self.memoryCache.count)件")
-        } catch {
-            AppLogger.cache.error("キャッシュのロードに失敗しました: \(error.localizedDescription)")
-        }
-    }
-
     private func saveCache() async {
         guard isDirty else { return }
 
@@ -124,10 +144,10 @@ actor GeocodingCacheService {
     private func scheduleSave() {
         guard saveTask == nil else { return }
 
-        saveTask = Task.detached { [self] in
-            try? await Task.sleep(for: saveDebounce)
-            await saveCache()
-            await clearSaveTask()
+        saveTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            await self?.saveCache()
+            await self?.clearSaveTask()
         }
     }
 

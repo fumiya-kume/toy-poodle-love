@@ -120,8 +120,8 @@ struct GeocodingCacheServiceTests {
         let cache = GeocodingCacheService(configuration: config)
         let coordinate = CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671)
 
-        // 初期化時の非同期ロードが完了するのを待ってからクリア
-        try? await Task.sleep(for: .milliseconds(50))
+        // 初期化完了を待ってからクリア
+        await cache.waitForInitialization()
         await cache.clearCache()
 
         await cache.cacheCoordinate(coordinate, for: "東京駅", subtitle: "東京都千代田区")
@@ -146,8 +146,8 @@ struct GeocodingCacheServiceTests {
         let cache = GeocodingCacheService(configuration: config)
         let coordinate = CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671)
 
-        // 初期化時の非同期ロードが完了するのを待ってからクリア
-        try? await Task.sleep(for: .milliseconds(50))
+        // 初期化完了を待ってからクリア
+        await cache.waitForInitialization()
         await cache.clearCache()
 
         // 大文字で保存
@@ -164,8 +164,8 @@ struct GeocodingCacheServiceTests {
         let cache = GeocodingCacheService(configuration: config)
         let coordinate = CLLocationCoordinate2D(latitude: 35.6812, longitude: 139.7671)
 
-        // 初期化時の非同期ロードが完了するのを待ってからクリア
-        try? await Task.sleep(for: .milliseconds(50))
+        // 初期化完了を待ってからクリア
+        await cache.waitForInitialization()
         await cache.clearCache()
 
         await cache.cacheCoordinate(coordinate, for: "東京駅", subtitle: "東京都")
