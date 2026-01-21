@@ -217,6 +217,7 @@ export default function Home() {
     setAiRouteLoading(true);
     setAiRouteError(null);
     setAiRouteResult(null);
+    setScenarioData(null);
 
     try {
       const res = await fetch('/api/pipeline/route-optimize', {
@@ -237,6 +238,43 @@ export default function Home() {
       }
 
       setAiRouteResult(data);
+
+      // ルート最適化成功後、自動的にシナリオガイドを生成
+      if (data.routeGeneration.spots && data.routeGeneration.routeName) {
+        setScenarioLoading(true);
+        try {
+          const spots: RouteSpot[] = data.routeGeneration.spots.map((spot) => ({
+            name: spot.name,
+            type: spot.type,
+            description: spot.description,
+            point: spot.point,
+          }));
+
+          const scenarioRes = await fetch('/api/scenario', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              route: {
+                routeName: data.routeGeneration.routeName,
+                spots,
+              },
+              models: 'both',
+              includeImagePrompt: false,
+            }),
+          });
+
+          const scenarioResult: ScenarioResponse = await scenarioRes.json();
+
+          if (scenarioResult.success && scenarioResult.data) {
+            setScenarioData(scenarioResult.data);
+          }
+        } catch (scenarioError) {
+          console.error('シナリオ自動生成エラー:', scenarioError);
+          // シナリオ生成失敗はアラートを出さず、手動生成ボタンで再試行可能にする
+        } finally {
+          setScenarioLoading(false);
+        }
+      }
     } catch (error) {
       console.error('AI ルート最適化エラー:', error);
       setAiRouteError(error instanceof Error ? error.message : 'エラーが発生しました');
@@ -526,21 +564,21 @@ export default function Home() {
 
             <button
               type="submit"
-              disabled={aiRouteLoading}
+              disabled={aiRouteLoading || scenarioLoading}
               style={{
                 width: '100%',
                 padding: '12px 24px',
                 fontSize: '16px',
                 fontWeight: '600',
-                backgroundColor: aiRouteLoading ? '#ccc' : '#8b5cf6',
+                backgroundColor: (aiRouteLoading || scenarioLoading) ? '#ccc' : '#8b5cf6',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
-                cursor: aiRouteLoading ? 'not-allowed' : 'pointer',
+                cursor: (aiRouteLoading || scenarioLoading) ? 'not-allowed' : 'pointer',
                 transition: 'background-color 0.2s'
               }}
             >
-              {aiRouteLoading ? '処理中...' : 'AI でルートを生成・最適化'}
+              {aiRouteLoading ? '処理中...' : scenarioLoading ? 'ガイド生成中...' : '🎤 AI でルート＆ガイドを生成'}
             </button>
           </form>
 
@@ -559,7 +597,7 @@ export default function Home() {
           )}
 
           {/* ステップ進捗表示 */}
-          {aiRouteLoading && (
+          {(aiRouteLoading || scenarioLoading) && (
             <div style={{ marginTop: '24px' }}>
               <h3 style={{ fontSize: '18px', marginBottom: '12px', fontWeight: '600' }}>
                 処理中...
@@ -570,28 +608,46 @@ export default function Home() {
                     width: '12px',
                     height: '12px',
                     borderRadius: '50%',
-                    backgroundColor: '#f59e0b',
-                    animation: 'pulse 1s infinite'
+                    backgroundColor: aiRouteResult ? '#22c55e' : '#f59e0b',
+                    animation: aiRouteResult ? 'none' : 'pulse 1s infinite'
                   }} />
-                  <span>1. AIがルートを生成中...</span>
+                  <span style={{ color: aiRouteResult ? '#22c55e' : undefined }}>
+                    1. AIがルートを生成{aiRouteResult ? ' ✓' : '中...'}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{
                     width: '12px',
                     height: '12px',
                     borderRadius: '50%',
-                    backgroundColor: '#9ca3af'
+                    backgroundColor: aiRouteResult ? '#22c55e' : '#9ca3af'
                   }} />
-                  <span style={{ color: '#9ca3af' }}>2. 座標を取得</span>
+                  <span style={{ color: aiRouteResult ? '#22c55e' : '#9ca3af' }}>
+                    2. 座標を取得{aiRouteResult ? ' ✓' : ''}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{
                     width: '12px',
                     height: '12px',
                     borderRadius: '50%',
-                    backgroundColor: '#9ca3af'
+                    backgroundColor: aiRouteResult ? '#22c55e' : '#9ca3af'
                   }} />
-                  <span style={{ color: '#9ca3af' }}>3. ルートを最適化</span>
+                  <span style={{ color: aiRouteResult ? '#22c55e' : '#9ca3af' }}>
+                    3. ルートを最適化{aiRouteResult ? ' ✓' : ''}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    backgroundColor: scenarioData ? '#22c55e' : scenarioLoading ? '#f59e0b' : '#9ca3af',
+                    animation: scenarioLoading && !scenarioData ? 'pulse 1s infinite' : 'none'
+                  }} />
+                  <span style={{ color: scenarioData ? '#22c55e' : scenarioLoading ? undefined : '#9ca3af' }}>
+                    4. 観光ガイドを生成{scenarioData ? ' ✓' : scenarioLoading ? '中...' : ''}
+                  </span>
                 </div>
               </div>
             </div>
