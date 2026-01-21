@@ -1,5 +1,6 @@
 package com.fumiyakume.viewer.data.network
 
+import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -90,6 +91,8 @@ sealed class ApiResult<out T> {
  */
 suspend fun <T> safeApiCall(apiCall: suspend () -> T): ApiResult<T> = try {
     ApiResult.Success(apiCall())
+} catch (e: CancellationException) {
+    throw e
 } catch (e: Exception) {
     ApiResult.Error(ApiError.from(e))
 }

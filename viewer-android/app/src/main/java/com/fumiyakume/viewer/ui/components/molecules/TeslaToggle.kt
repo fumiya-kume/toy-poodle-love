@@ -3,7 +3,7 @@ package com.fumiyakume.viewer.ui.components.molecules
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -57,10 +57,11 @@ fun TeslaToggle(
 
     Row(
         modifier = modifier
-            .clickable(
+            .toggleable(
+                value = checked,
                 enabled = enabled,
                 role = Role.Switch,
-                onClick = { onCheckedChange(!checked) }
+                onValueChange = onCheckedChange
             ),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

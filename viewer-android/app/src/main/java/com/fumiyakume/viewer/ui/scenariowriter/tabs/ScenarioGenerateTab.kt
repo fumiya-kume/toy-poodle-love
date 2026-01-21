@@ -241,7 +241,7 @@ fun ScenarioGenerateTab(
                                         color = TeslaColors.TextPrimary
                                     )
                                     Text(
-                                        text = spot.type,
+                                        text = SpotType.entries.firstOrNull { it.value == spot.type }?.displayName ?: spot.type,
                                         style = TeslaTheme.typography.labelSmall,
                                         color = TeslaColors.Accent
                                     )
@@ -365,7 +365,7 @@ private fun SpotScenarioRow(
                     color = TeslaColors.TextPrimary
                 )
                 Text(
-                    text = spotType,
+                    text = SpotType.entries.firstOrNull { it.value == spotType }?.displayName ?: spotType,
                     style = TeslaTheme.typography.labelSmall,
                     color = TeslaColors.Accent
                 )

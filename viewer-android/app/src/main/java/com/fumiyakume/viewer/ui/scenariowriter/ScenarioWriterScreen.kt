@@ -25,7 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.fumiyakume.viewer.ui.components.molecules.TeslaLoadingSpinner
+import com.fumiyakume.viewer.ui.components.molecules.TeslaLoadingOverlay
 import com.fumiyakume.viewer.ui.scenariowriter.tabs.GeocodeTab
 import com.fumiyakume.viewer.ui.scenariowriter.tabs.PipelineTab
 import com.fumiyakume.viewer.ui.scenariowriter.tabs.RouteGenerateTab
@@ -90,14 +90,6 @@ fun ScenarioWriterScreen(
                     .fillMaxSize()
                     .background(TeslaColors.Background)
             ) {
-                // ローディング表示
-                if (uiState.isLoading) {
-                    TeslaLoadingSpinner(
-                        message = getLoadingMessage(selectedTab),
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-
                 // タブコンテンツ
                 when (selectedTab) {
                     ScenarioWriterTab.PIPELINE -> PipelineTab(
@@ -167,6 +159,12 @@ fun ScenarioWriterScreen(
                         onOptimizeRoute = viewModel::optimizeRoute
                     )
                 }
+
+                // Loading overlay on top of content
+                TeslaLoadingOverlay(
+                    isLoading = uiState.isLoading,
+                    message = getLoadingMessage(selectedTab)
+                )
             }
         }
     }

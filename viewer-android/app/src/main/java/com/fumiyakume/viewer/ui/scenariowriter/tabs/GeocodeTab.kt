@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fumiyakume.viewer.data.network.GeocodedPlace
+import java.util.Locale
 import com.fumiyakume.viewer.data.network.LatLng
 import com.fumiyakume.viewer.ui.components.molecules.TeslaGroupBox
 import com.fumiyakume.viewer.ui.components.molecules.TeslaTextArea
@@ -141,7 +142,7 @@ private fun GeocodeResultItem(
                     color = TeslaColors.TextTertiary
                 )
                 Text(
-                    text = String.format("%.6f", place.location.latitude),
+                    text = String.format(Locale.US, "%.6f", place.location.latitude),
                     style = TeslaTheme.typography.bodyMedium,
                     color = TeslaColors.TextPrimary
                 )
@@ -154,7 +155,7 @@ private fun GeocodeResultItem(
                     color = TeslaColors.TextTertiary
                 )
                 Text(
-                    text = String.format("%.6f", place.location.longitude),
+                    text = String.format(Locale.US, "%.6f", place.location.longitude),
                     style = TeslaTheme.typography.bodyMedium,
                     color = TeslaColors.TextPrimary
                 )

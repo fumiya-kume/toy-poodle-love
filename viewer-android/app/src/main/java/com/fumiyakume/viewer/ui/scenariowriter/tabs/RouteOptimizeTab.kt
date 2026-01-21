@@ -1,6 +1,7 @@
 package com.fumiyakume.viewer.ui.scenariowriter.tabs
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fumiyakume.viewer.data.network.RouteOptimizeResponse
+import java.util.Locale
 import com.fumiyakume.viewer.data.network.RouteWaypoint
 import com.fumiyakume.viewer.ui.components.molecules.TeslaGroupBox
 import com.fumiyakume.viewer.ui.components.molecules.TeslaTextField
@@ -220,7 +222,7 @@ fun RouteOptimizeTab(
                                     color = TeslaColors.TextTertiary
                                 )
                                 Text(
-                                    text = "${String.format("%.1f", distance)} km",
+                                    text = "${String.format(Locale.US, "%.1f", distance)} km",
                                     style = TeslaTheme.typography.bodyLarge,
                                     color = TeslaColors.TextPrimary
                                 )
@@ -248,7 +250,6 @@ fun RouteOptimizeTab(
     }
 }
 
-@Suppress("UNUSED_PARAMETER")
 @Composable
 private fun TravelModeSelector(
     selectedMode: TravelMode,
@@ -276,14 +277,13 @@ private fun TravelModeSelector(
                     style = TeslaTheme.typography.labelMedium,
                     color = if (isSelected) TeslaColors.TextPrimary else TeslaColors.TextSecondary,
                     modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
                         .background(
                             if (isSelected) TeslaColors.Accent.copy(alpha = 0.2f)
                             else TeslaColors.Background.copy(alpha = 0f)
                         )
+                        .clickable { onModeSelected(mode) }
                         .padding(horizontal = 16.dp, vertical = 10.dp)
-                        .then(
-                            Modifier.clip(RoundedCornerShape(12.dp))
-                        )
                 )
             }
         }

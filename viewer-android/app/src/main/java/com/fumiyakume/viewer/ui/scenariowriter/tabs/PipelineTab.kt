@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fumiyakume.viewer.ui.components.molecules.ModelPickerView
+import java.util.Locale
 import com.fumiyakume.viewer.ui.components.molecules.TeslaGroupBox
 import com.fumiyakume.viewer.ui.components.molecules.TeslaStepper
 import com.fumiyakume.viewer.ui.components.molecules.TeslaTextField
@@ -168,7 +169,7 @@ fun PipelineTab(
                         ) {
                             result.totalDistanceKm?.let { distance ->
                                 Text(
-                                    text = "総距離: ${String.format("%.1f", distance)} km",
+                                    text = "総距離: ${String.format(Locale.US, "%.1f", distance)} km",
                                     style = TeslaTheme.typography.labelMedium,
                                     color = TeslaColors.TextSecondary
                                 )

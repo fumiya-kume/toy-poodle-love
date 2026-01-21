@@ -227,8 +227,13 @@ fun rememberPlayerPosition(player: ExoPlayer?): Pair<Long, Long> {
 
     LaunchedEffect(player) {
         while (player != null) {
-            currentPosition = player.currentPosition
-            duration = player.duration.coerceAtLeast(0L)
+            try {
+                currentPosition = player.currentPosition
+                duration = player.duration.coerceAtLeast(0L)
+            } catch (e: IllegalStateException) {
+                // Player has been released, stop monitoring
+                break
+            }
             delay(500) // 500ms間隔で更新
         }
     }

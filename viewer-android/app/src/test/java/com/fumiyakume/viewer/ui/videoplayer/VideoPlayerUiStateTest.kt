@@ -48,7 +48,7 @@ class VideoPlayerUiStateTest {
     fun defaults_areReasonable() {
         val state = VideoPlayerUiState()
 
-        assertEquals(0.5f, state.overlayOpacity)
+        assertEquals(0.5f, state.overlayOpacity, 0.001f)
         assertTrue(state.isOverlayVisible)
         assertTrue(state.areControlsVisible)
     }

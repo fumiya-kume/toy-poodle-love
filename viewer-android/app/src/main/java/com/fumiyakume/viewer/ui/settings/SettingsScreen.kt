@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.fumiyakume.viewer.BuildConfig
 import com.fumiyakume.viewer.data.local.AppSettings
 import com.fumiyakume.viewer.ui.components.molecules.ModelPickerView
 import com.fumiyakume.viewer.ui.components.molecules.TeslaGroupBox
@@ -224,7 +225,7 @@ private fun SettingsContent(
                         color = TeslaColors.TextSecondary
                     )
                     Text(
-                        text = "1.0.0",
+                        text = BuildConfig.VERSION_NAME,
                         style = TeslaTheme.typography.bodyMedium,
                         color = TeslaColors.TextPrimary
                     )
@@ -240,7 +241,7 @@ private fun SettingsContent(
                         color = TeslaColors.TextSecondary
                     )
                     Text(
-                        text = "Debug",
+                        text = if (BuildConfig.DEBUG) "Debug" else "Release",
                         style = TeslaTheme.typography.bodyMedium,
                         color = TeslaColors.TextPrimary
                     )

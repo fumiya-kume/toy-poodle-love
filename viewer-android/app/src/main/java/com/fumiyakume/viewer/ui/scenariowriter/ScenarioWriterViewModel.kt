@@ -234,11 +234,15 @@ class ScenarioWriterViewModel @Inject constructor(
 
     fun generateText() {
         viewModelScope.launch {
+            // Snapshot model and prompt at start to prevent race conditions
+            val snapshotModel = _uiState.value.textGenerationModel
+            val snapshotPrompt = _uiState.value.textGenerationPrompt
+
             _uiState.update { it.copy(isLoadingTextGeneration = true) }
 
-            val result = when (_uiState.value.textGenerationModel) {
-                AIModel.GEMINI -> repository.generateTextWithGemini(_uiState.value.textGenerationPrompt)
-                AIModel.QWEN -> repository.generateTextWithQwen(_uiState.value.textGenerationPrompt)
+            val result = when (snapshotModel) {
+                AIModel.GEMINI -> repository.generateTextWithGemini(snapshotPrompt)
+                AIModel.QWEN -> repository.generateTextWithQwen(snapshotPrompt)
             }
 
             when (result) {
@@ -246,7 +250,7 @@ class ScenarioWriterViewModel @Inject constructor(
                     _uiState.update { it.copy(
                         isLoadingTextGeneration = false,
                         textGenerationResult = result.data,
-                        textGenerationResultModel = _uiState.value.textGenerationModel
+                        textGenerationResultModel = snapshotModel
                     ) }
                 }
                 is ApiResult.Error -> {
