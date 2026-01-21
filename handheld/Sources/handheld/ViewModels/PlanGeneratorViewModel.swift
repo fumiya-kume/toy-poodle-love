@@ -324,17 +324,38 @@ final class PlanGeneratorViewModel {
             let generated = try await planGeneratorService.generatePlan(
                 theme: theme,
                 categories: Array(selectedCategories),
-                candidatePlaces: candidatePlaces
+                candidatePlaces: candidatePlaces,
+                startPoint: location,
+                startPointName: locationQuery  // Web版と同じように、ユーザー入力文字列をそのまま使用
             )
 
-            let matchedSpots = planGeneratorService.matchGeneratedSpotsWithPlaces(
-                generatedSpots: generated.spots,
-                candidatePlaces: candidatePlaces
-            )
+            // Web API使用時とFoundation Models使用時で処理を分岐
+            let matchedSpots: [(spot: GeneratedSpotInfo, place: Place)]
 
-            guard !matchedSpots.isEmpty else {
-                generatorState = .error(message: "スポットのマッチングに失敗しました。再度お試しください。")
-                return
+            if planGeneratorService.usedWebAPI {
+                // Web API使用時: ジオコーディング結果から直接Placeオブジェクトを作成
+                AppLogger.ai.info("Web API結果からPlaceオブジェクトを生成")
+                let places = planGeneratorService.getPlacesFromWebAPIResult(generatedSpots: generated.spots)
+
+                guard !places.isEmpty else {
+                    generatorState = .error(message: "Web APIから座標情報を取得できませんでした。再度お試しください。")
+                    return
+                }
+
+                // GeneratedSpotInfoとPlaceを組み合わせる
+                matchedSpots = zip(generated.spots, places).map { (spot: $0, place: $1) }
+            } else {
+                // Foundation Models使用時: 候補地リストとマッチング
+                AppLogger.ai.info("候補地リストとマッチング")
+                matchedSpots = planGeneratorService.matchGeneratedSpotsWithPlaces(
+                    generatedSpots: generated.spots,
+                    candidatePlaces: candidatePlaces
+                )
+
+                guard !matchedSpots.isEmpty else {
+                    generatorState = .error(message: "スポットのマッチングに失敗しました。再度お試しください。")
+                    return
+                }
             }
 
             // 座標検証 - 検索範囲内のスポットのみ許可（50%のマージン）
