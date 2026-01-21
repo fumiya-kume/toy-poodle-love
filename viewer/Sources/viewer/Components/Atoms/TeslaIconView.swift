@@ -36,8 +36,13 @@ extension TeslaIconView {
         size: CGFloat = 24,
         color: Color = TeslaColors.textPrimary
     ) {
-        // システム名から対応するTeslaIconを検索、見つからない場合はplayをデフォルトに
-        self.icon = TeslaIcon.allCases.first { $0.systemName == systemName } ?? .play
+        // システム名から対応するTeslaIconを検索
+        if let foundIcon = TeslaIcon.allCases.first(where: { $0.systemName == systemName }) {
+            self.icon = foundIcon
+        } else {
+            assertionFailure("TeslaIcon not found for systemName: \(systemName). Falling back to .play")
+            self.icon = .play
+        }
         self.size = size
         self.color = color
     }

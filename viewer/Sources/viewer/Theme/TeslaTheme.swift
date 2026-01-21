@@ -9,8 +9,10 @@ import Observation
 
 /// Tesla Dashboard UI のテーマ設定
 /// @Observable により、テーマの変更が自動的にUIに反映される
+/// @MainActor でメインスレッドからのアクセスを保証
 @Observable
-final class TeslaTheme: Sendable {
+@MainActor
+final class TeslaTheme {
 
     // MARK: - Shared Instance
 

@@ -7,7 +7,7 @@ import SwiftUI
 // MARK: - Alert Type
 
 /// アラートの種類
-enum TeslaAlertType {
+enum TeslaAlertType: Sendable {
     case info
     case success
     case warning
@@ -179,7 +179,7 @@ struct TeslaAlertModifier: ViewModifier {
                     .transition(.move(edge: alignment == .top ? .top : .bottom).combined(with: .opacity))
             }
         }
-        .animation(TeslaAnimation.standard, value: alert != nil)
+        .animation(TeslaAnimation.standard, value: alert?.title)
     }
 }
 
