@@ -5,6 +5,7 @@ export {
   hasGeminiApiKey,
   hasGoogleMapsApiKey,
   hasLangfuseKeys,
+  isLangfuseEnabled,
   validateRequiredKeys,
   clearEnvCache,
 } from './env';

@@ -7,39 +7,57 @@ import { NextResponse } from 'next/server';
 import { RouteOptimizerPipeline } from '../../../../src/pipeline/route-optimizer';
 import { PipelineRequest } from '../../../../src/types/pipeline';
 import { getEnv, requireApiKey } from '../../../../src/config';
+import { createPipelineTrace } from '../../../../src/langfuse-client';
 
 export async function POST(request: Request) {
+  const body = await request.json();
+
+  // 入力バリデーション
+  const validationError = validateRequest(body);
+  if (validationError) {
+    return NextResponse.json(
+      { success: false, error: validationError },
+      { status: 400 }
+    );
+  }
+
+  const pipelineRequest: PipelineRequest = {
+    startPoint: body.startPoint,
+    purpose: body.purpose,
+    spotCount: body.spotCount,
+    model: body.model,
+  };
+
+  // Langfuseトレースを開始
+  const trace = createPipelineTrace('route-optimize-pipeline', {
+    startPoint: pipelineRequest.startPoint,
+    purpose: pipelineRequest.purpose,
+    spotCount: pipelineRequest.spotCount,
+    model: pipelineRequest.model,
+  });
+
   try {
-    const body = await request.json();
-
-    // 入力バリデーション
-    const validationError = validateRequest(body);
-    if (validationError) {
-      return NextResponse.json(
-        { success: false, error: validationError },
-        { status: 400 }
-      );
-    }
-
-    const pipelineRequest: PipelineRequest = {
-      startPoint: body.startPoint,
-      purpose: body.purpose,
-      spotCount: body.spotCount,
-      model: body.model,
-    };
-
     // 環境変数チェック
     const googleMapsKeyError = requireApiKey('googleMaps');
-    if (googleMapsKeyError) return googleMapsKeyError;
+    if (googleMapsKeyError) {
+      trace?.end({ error: googleMapsKeyError });
+      return googleMapsKeyError;
+    }
 
     if (pipelineRequest.model === 'qwen') {
       const keyError = requireApiKey('qwen');
-      if (keyError) return keyError;
+      if (keyError) {
+        trace?.end({ error: keyError });
+        return keyError;
+      }
     }
 
     if (pipelineRequest.model === 'gemini') {
       const keyError = requireApiKey('gemini');
-      if (keyError) return keyError;
+      if (keyError) {
+        trace?.end({ error: keyError });
+        return keyError;
+      }
     }
 
     const env = getEnv();
@@ -54,14 +72,22 @@ export async function POST(request: Request) {
 
     const result = await pipeline.execute(pipelineRequest);
 
+    // トレースを終了
+    trace?.end({ success: result.success, result });
+
     return NextResponse.json(result);
 
   } catch (error) {
     console.error('Pipeline API error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    
+    // エラーをトレースに記録
+    trace?.end({ error: errorMessage });
+
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Internal server error',
+        error: errorMessage,
       },
       { status: 500 }
     );

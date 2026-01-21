@@ -1,34 +1,30 @@
 /**
  * Langfuse LLMOps クライアント
- *
- * Qwen/Gemini APIのトレーシング、コスト追跡、レイテンシ計測を提供
- *
- * 使用方法:
- * - Qwen: observeOpenAI()でOpenAIクライアントをラップ
- * - Gemini: createGeneration()で手動トレース
  */
 
 import { Langfuse } from 'langfuse';
-import { observeOpenAI } from 'langfuse';
-import OpenAI from 'openai';
-import { getEnv, hasLangfuseKeys } from './config';
+import type OpenAI from 'openai';
+import { getEnv, isLangfuseEnabled } from './config';
 
 let langfuseInstance: Langfuse | null = null;
 
 /**
  * Langfuseクライアントを取得（シングルトン）
- * 環境変数が設定されていない場合はnullを返す
  */
 export function getLangfuse(): Langfuse | null {
-  if (langfuseInstance) return langfuseInstance;
+  // 既にインスタンスが作成されている場合はそれを返す
+  if (langfuseInstance) {
+    return langfuseInstance;
+  }
 
-  if (!hasLangfuseKeys()) {
-    console.log('[Langfuse] Keys not configured, tracing disabled');
+  // Langfuseが有効でない場合はnullを返す
+  if (!isLangfuseEnabled()) {
     return null;
   }
 
   const env = getEnv();
 
+  // Langfuseクライアントを初期化
   langfuseInstance = new Langfuse({
     secretKey: env.langfuseSecretKey!,
     publicKey: env.langfusePublicKey!,
@@ -37,8 +33,6 @@ export function getLangfuse(): Langfuse | null {
 
   console.log('[Langfuse] Client initialized:', {
     baseUrl: env.langfuseBaseUrl,
-    hasSecretKey: !!env.langfuseSecretKey,
-    hasPublicKey: !!env.langfusePublicKey,
   });
 
   return langfuseInstance;
@@ -60,17 +54,72 @@ export function wrapOpenAIWithLangfuse(
     metadata?: Record<string, unknown>;
   }
 ): OpenAI {
+  // observeOpenAIは接続エラーを引き起こすため使用しない
+  // 代わりにQwenClientで手動トレーシングを実装
+  console.log('[Langfuse] Using manual tracing instead of observeOpenAI');
+  return openaiClient;
+}
+
+/**
+ * Qwen API呼び出し用の手動トレースを作成
+ *
+ * @param name - トレース名
+ * @param input - 入力メッセージ
+ * @param metadata - 追加メタデータ
+ * @returns トレースオブジェクト（終了時にend()を呼ぶ）
+ */
+export function createQwenTrace(
+  name: string,
+  input: string,
+  metadata?: Record<string, unknown>
+): {
+  traceId: string;
+  generationId: string;
+  end: (output: string, usage?: { totalTokens?: number; promptTokens?: number; completionTokens?: number }, error?: Error) => Promise<void>;
+} | null {
   const langfuse = getLangfuse();
 
   if (!langfuse) {
-    return openaiClient;
+    return null;
   }
 
-  return observeOpenAI(openaiClient, {
-    generationName: options?.generationName || 'qwen-chat',
-    tags: options?.tags || ['qwen'],
-    metadata: options?.metadata,
+  const trace = langfuse.trace({
+    name,
+    input,
+    tags: ['qwen'],
+    metadata,
   });
+
+  const generation = trace.generation({
+    name: 'qwen-chat',
+    model: metadata?.model as string || 'qwen-turbo',
+    input,
+    metadata,
+  });
+
+  return {
+    traceId: trace.id,
+    generationId: generation.id,
+    end: async (output: string, usage?: { totalTokens?: number; promptTokens?: number; completionTokens?: number }, error?: Error) => {
+      generation.end({
+        output,
+        usage: usage ? {
+          total: usage.totalTokens,
+          input: usage.promptTokens,
+          output: usage.completionTokens,
+        } : undefined,
+        level: error ? 'ERROR' : 'DEFAULT',
+        statusMessage: error?.message,
+      });
+
+      trace.update({
+        output,
+      });
+
+      // バックグラウンドで送信
+      await langfuse.flushAsync();
+    },
+  };
 }
 
 /**
@@ -193,8 +242,51 @@ export async function shutdownLangfuse(): Promise<void> {
 }
 
 /**
- * Langfuseが有効かどうかを確認
+ * パイプライン処理などの複合トレースを作成
+ *
+ * @param name - トレース名
+ * @param metadata - メタデータ（リクエスト情報など）
+ * @returns トレースオブジェクト
  */
-export function isLangfuseEnabled(): boolean {
-  return hasLangfuseKeys();
+export function createPipelineTrace(
+  name: string,
+  metadata?: Record<string, unknown>
+): {
+  trace: ReturnType<Langfuse['trace']>;
+  addSpan: (spanName: string, input: unknown) => {
+    end: (output: unknown) => void;
+  };
+  end: (output?: unknown) => Promise<void>;
+} | null {
+  const langfuse = getLangfuse();
+
+  if (!langfuse) {
+    return null;
+  }
+
+  const trace = langfuse.trace({
+    name,
+    tags: ['pipeline'],
+    metadata,
+  });
+
+  return {
+    trace,
+    addSpan: (spanName: string, input: unknown) => {
+      const span = trace.span({
+        name: spanName,
+        input,
+      });
+
+      return {
+        end: (output: unknown) => {
+          span.end({ output });
+        },
+      };
+    },
+    end: async (output?: unknown) => {
+      trace.update({ output });
+      await langfuse.flushAsync();
+    },
+  };
 }

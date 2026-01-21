@@ -11,6 +11,7 @@ export interface ValidatedEnv {
   googleMapsApiKey: string | undefined;
   qwenRegion: QwenRegion;
   // Langfuse LLMOps設定
+  langfuseEnabled: boolean;
   langfuseSecretKey: string | undefined;
   langfusePublicKey: string | undefined;
   langfuseBaseUrl: string | undefined;
@@ -18,5 +19,6 @@ export interface ValidatedEnv {
 
 export const ENV_DEFAULTS = {
   QWEN_REGION: 'international' as QwenRegion,
+  LANGFUSE_ENABLED: true as boolean,
   LANGFUSE_BASE_URL: 'https://cloud.langfuse.com' as string,
 } as const;

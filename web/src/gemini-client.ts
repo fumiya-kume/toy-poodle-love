@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI, RequestOptions } from '@google/generative-ai';
-import { createGeminiTrace, isLangfuseEnabled } from './langfuse-client';
+import { createGeminiTrace } from './langfuse-client';
 
 export class GeminiClient {
   private genAI: GoogleGenerativeAI;
@@ -13,7 +13,6 @@ export class GeminiClient {
     console.log('Gemini Client initialized:', {
       hasApiKey: !!apiKey,
       model: this.modelName,
-      langfuseEnabled: isLangfuseEnabled(),
     });
 
     this.genAI = new GoogleGenerativeAI(apiKey);
@@ -28,14 +27,13 @@ export class GeminiClient {
   }
 
   async chat(message: string): Promise<string> {
-    let lastError: any = null;
-    const maxRetries = 3;
-
     // Langfuseトレースを開始
     const trace = createGeminiTrace('gemini-chat', message, {
       model: this.modelName,
-      maxRetries,
     });
+
+    let lastError: any = null;
+    const maxRetries = 3;
 
     // リトライループ
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -58,7 +56,7 @@ export class GeminiClient {
           timestamp: new Date().toISOString(),
         });
 
-        // Langfuseトレースを正常終了
+        // トレースを終了（成功）
         if (trace) {
           await trace.end(text);
         }
@@ -98,12 +96,12 @@ export class GeminiClient {
 
     // すべてのリトライが失敗した場合
     const formattedError = this.formatError(lastError);
-
-    // Langfuseトレースをエラーで終了
+    
+    // トレースを終了（エラー）
     if (trace) {
       await trace.end('', formattedError);
     }
-
+    
     throw formattedError;
   }
 
