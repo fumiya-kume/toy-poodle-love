@@ -4,6 +4,7 @@ export {
   hasQwenApiKey,
   hasGeminiApiKey,
   hasGoogleMapsApiKey,
+  hasLangfuseKeys,
   validateRequiredKeys,
   clearEnvCache,
 } from './env';

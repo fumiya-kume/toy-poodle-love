@@ -10,8 +10,13 @@ export interface ValidatedEnv {
   geminiApiKey: string | undefined;
   googleMapsApiKey: string | undefined;
   qwenRegion: QwenRegion;
+  // Langfuse LLMOps設定
+  langfuseSecretKey: string | undefined;
+  langfusePublicKey: string | undefined;
+  langfuseBaseUrl: string | undefined;
 }
 
 export const ENV_DEFAULTS = {
   QWEN_REGION: 'international' as QwenRegion,
+  LANGFUSE_BASE_URL: 'https://cloud.langfuse.com' as string,
 } as const;

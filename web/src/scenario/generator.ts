@@ -6,6 +6,7 @@ import { QwenClient } from '../qwen-client';
 import { GeminiClient } from '../gemini-client';
 import { RouteInput, SpotScenario, ScenarioOutput, ModelSelection, RouteSpot } from '../types/scenario';
 import { buildPrompt, resolveLanguage } from './prompt-builder';
+import { createScenarioTrace } from '../langfuse-client';
 
 /**
  * LLMからのレスポンスをパースする
@@ -71,6 +72,14 @@ export class ScenarioGenerator {
   ): Promise<ScenarioOutput> {
     const startTime = Date.now();
 
+    // Langfuseトレースを開始
+    const trace = createScenarioTrace('scenario-generation', {
+      routeName: route.routeName,
+      models,
+      includeImagePrompt,
+      spotCount: route.spots.length,
+    });
+
     // Resolve language from input data
     const language = resolveLanguage(route.language, route.spots);
 
@@ -80,9 +89,16 @@ export class ScenarioGenerator {
     );
 
     // 全地点を並列処理
-    const spotPromises = spotsToProcess.map(spot =>
-      this.generateSpot(route.routeName, spot, models, language, includeImagePrompt)
-    );
+    const spotPromises = spotsToProcess.map(spot => {
+      // 各スポットのスパンを追加
+      const span = trace?.addSpan(`spot:${spot.name}`, { spot, models, language });
+
+      return this.generateSpot(route.routeName, spot, models, language, includeImagePrompt)
+        .then(result => {
+          span?.end(result);
+          return result;
+        });
+    });
 
     const results = await Promise.all(spotPromises);
 
@@ -98,12 +114,19 @@ export class ScenarioGenerator {
       processingTimeMs,
     };
 
-    return {
+    const output = {
       generatedAt: new Date().toISOString(),
       routeName: route.routeName,
       spots: results,
       stats,
     };
+
+    // Langfuseトレースを終了
+    if (trace) {
+      await trace.end(output);
+    }
+
+    return output;
   }
 
   /**

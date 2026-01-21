@@ -50,6 +50,10 @@ function validateAndTransform(): ValidatedEnv {
     geminiApiKey: process.env.GEMINI_API_KEY || undefined,
     googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || undefined,
     qwenRegion,
+    // Langfuse LLMOps設定
+    langfuseSecretKey: process.env.LANGFUSE_SECRET_KEY || undefined,
+    langfusePublicKey: process.env.LANGFUSE_PUBLIC_KEY || undefined,
+    langfuseBaseUrl: process.env.LANGFUSE_BASE_URL || ENV_DEFAULTS.LANGFUSE_BASE_URL,
   };
 }
 
@@ -74,6 +78,11 @@ export function hasGeminiApiKey(): boolean {
 
 export function hasGoogleMapsApiKey(): boolean {
   return !!getEnv().googleMapsApiKey;
+}
+
+export function hasLangfuseKeys(): boolean {
+  const env = getEnv();
+  return !!env.langfuseSecretKey && !!env.langfusePublicKey;
 }
 
 /**

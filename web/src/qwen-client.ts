@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { wrapOpenAIWithLangfuse, isLangfuseEnabled } from './langfuse-client';
 
 export class QwenClient {
   private client: OpenAI;
@@ -17,14 +18,22 @@ export class QwenClient {
       region,
       baseURL,
       hasApiKey: !!apiKey,
+      langfuseEnabled: isLangfuseEnabled(),
     });
 
-    this.client = new OpenAI({
+    const rawClient = new OpenAI({
       apiKey,
       baseURL,
       timeout: 90000, // 90秒のタイムアウト
       maxRetries: 3,  // リトライは3回まで
       fetch: globalThis.fetch, // グローバルfetchを明示的に使用
+    });
+
+    // LangfuseでラップしてLLMOpsトレーシングを有効化
+    this.client = wrapOpenAIWithLangfuse(rawClient, {
+      generationName: 'qwen-chat',
+      tags: ['qwen', region],
+      metadata: { region, baseURL },
     });
   }
 

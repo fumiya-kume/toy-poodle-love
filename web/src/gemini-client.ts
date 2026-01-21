@@ -1,19 +1,25 @@
 import { GoogleGenerativeAI, RequestOptions } from '@google/generative-ai';
+import { createGeminiTrace, isLangfuseEnabled } from './langfuse-client';
 
 export class GeminiClient {
   private genAI: GoogleGenerativeAI;
   private model: any;
+  private modelName: string;
   private requestOptions: RequestOptions;
 
   constructor(apiKey: string) {
+    this.modelName = 'gemini-2.5-flash-lite';
+
     console.log('Gemini Client initialized:', {
       hasApiKey: !!apiKey,
+      model: this.modelName,
+      langfuseEnabled: isLangfuseEnabled(),
     });
 
     this.genAI = new GoogleGenerativeAI(apiKey);
     // Using Gemini 1.5 Flash model (faster and more cost-effective)
     // Alternative: 'gemini-1.5-pro' for more advanced capabilities
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    this.model = this.genAI.getGenerativeModel({ model: this.modelName });
 
     // タイムアウトとリトライの設定
     this.requestOptions = {
@@ -24,6 +30,12 @@ export class GeminiClient {
   async chat(message: string): Promise<string> {
     let lastError: any = null;
     const maxRetries = 3;
+
+    // Langfuseトレースを開始
+    const trace = createGeminiTrace('gemini-chat', message, {
+      model: this.modelName,
+      maxRetries,
+    });
 
     // リトライループ
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -45,6 +57,11 @@ export class GeminiClient {
           attempt,
           timestamp: new Date().toISOString(),
         });
+
+        // Langfuseトレースを正常終了
+        if (trace) {
+          await trace.end(text);
+        }
 
         return text;
       } catch (error: any) {
@@ -80,7 +97,14 @@ export class GeminiClient {
     }
 
     // すべてのリトライが失敗した場合
-    throw this.formatError(lastError);
+    const formattedError = this.formatError(lastError);
+
+    // Langfuseトレースをエラーで終了
+    if (trace) {
+      await trace.end('', formattedError);
+    }
+
+    throw formattedError;
   }
 
   private isRetryableError(error: any): boolean {
