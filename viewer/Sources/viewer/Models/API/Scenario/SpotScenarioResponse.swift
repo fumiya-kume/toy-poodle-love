@@ -1,7 +1,7 @@
 import Foundation
 
 /// 単一スポットシナリオレスポンス
-struct SpotScenarioResponse: Codable {
+struct SpotScenarioResponse: Codable, Sendable {
     let scenario: String
     let model: String?
 }

@@ -1,7 +1,7 @@
 import Foundation
 
 /// AIで生成されたルートスポット
-struct GeneratedRouteSpot: Codable, Identifiable {
+struct GeneratedRouteSpot: Codable, Identifiable, Sendable {
     let name: String
     let type: String
     let description: String?

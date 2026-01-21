@@ -1,6 +1,6 @@
 import Foundation
 
 /// ジオコーディングリクエスト
-struct GeocodeRequest: Codable {
+struct GeocodeRequest: Codable, Sendable {
     let addresses: [String]
 }

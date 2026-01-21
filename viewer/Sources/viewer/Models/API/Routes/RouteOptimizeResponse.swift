@@ -1,13 +1,13 @@
 import Foundation
 
 /// ルート最適化レスポンス
-struct RouteOptimizeResponse: Codable {
+struct RouteOptimizeResponse: Codable, Sendable {
     let success: Bool
     let optimizedRoute: OptimizedRoute
 }
 
 /// Optimized route details
-struct OptimizedRoute: Codable {
+struct OptimizedRoute: Codable, Sendable {
     let orderedWaypoints: [OptimizedWaypoint]
     let legs: [RouteLeg]
     let totalDistanceMeters: Int
@@ -15,7 +15,7 @@ struct OptimizedRoute: Codable {
 }
 
 /// Optimized waypoint
-struct OptimizedWaypoint: Codable, Identifiable {
+struct OptimizedWaypoint: Codable, Identifiable, Sendable {
     let waypoint: RouteWaypoint
     let waypointIndex: Int
 
@@ -23,7 +23,7 @@ struct OptimizedWaypoint: Codable, Identifiable {
 }
 
 /// Route leg
-struct RouteLeg: Codable {
+struct RouteLeg: Codable, Sendable {
     let startLocation: LatLng?
     let endLocation: LatLng?
     let distanceMeters: Int

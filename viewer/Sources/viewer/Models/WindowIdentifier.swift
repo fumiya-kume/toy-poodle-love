@@ -1,6 +1,6 @@
 import Foundation
 
-enum WindowIdentifier: String, CaseIterable, Identifiable {
+enum WindowIdentifier: String, CaseIterable, Identifiable, Sendable {
     case video1 = "video-window-1"
     case video2 = "video-window-2"
     case video3 = "video-window-3"

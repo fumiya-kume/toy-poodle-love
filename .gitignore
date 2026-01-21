@@ -70,3 +70,6 @@ local.properties
 captures/
 .externalNativeBuild/
 .cxx/
+
+# AI CLI tools
+.codex/

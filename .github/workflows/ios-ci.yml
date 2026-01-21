@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - master
-    paths:
-      - 'handheld/**'
-      - '.github/workflows/ios-ci.yml'
   pull_request:
     branches:
       - master

@@ -69,7 +69,7 @@ final class TTSController: NSObject {
 
 extension TTSController: AVSpeechSynthesizerDelegate {
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor in
+        MainActor.assumeIsolated {
             self.isSpeaking = false
             self.isPaused = false
             self.currentText = nil

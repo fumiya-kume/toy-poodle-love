@@ -1,7 +1,7 @@
 import Foundation
 
 /// スポットごとのシナリオ
-struct SpotScenario: Codable, Identifiable {
+struct SpotScenario: Codable, Identifiable, Sendable {
     let name: String
     let type: String
     let gemini: String?
@@ -39,7 +39,7 @@ struct SpotScenario: Codable, Identifiable {
     }
 }
 
-struct SpotScenarioError: Codable {
+struct SpotScenarioError: Codable, Sendable {
     let qwen: String?
     let gemini: String?
 }

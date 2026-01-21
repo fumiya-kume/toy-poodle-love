@@ -1,7 +1,7 @@
 import Foundation
 
 /// 移動モード
-enum TravelMode: String, Codable, CaseIterable, Identifiable {
+enum TravelMode: String, Codable, CaseIterable, Identifiable, Sendable {
     case driving = "DRIVE"
     case walking = "WALK"
     case bicycling = "BICYCLE"

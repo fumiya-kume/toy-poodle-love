@@ -1,7 +1,7 @@
 import Foundation
 
 /// シナリオ生成用のルートスポット
-struct RouteSpot: Codable, Equatable, Identifiable {
+struct RouteSpot: Codable, Equatable, Identifiable, Sendable {
     let name: String
     let type: RouteSpotType
     let description: String?
@@ -10,7 +10,7 @@ struct RouteSpot: Codable, Equatable, Identifiable {
     var id: String { name + type.rawValue + (point ?? "") }
 }
 
-enum RouteSpotType: String, Codable, CaseIterable, Identifiable {
+enum RouteSpotType: String, Codable, CaseIterable, Identifiable, Sendable {
     case start
     case waypoint
     case destination

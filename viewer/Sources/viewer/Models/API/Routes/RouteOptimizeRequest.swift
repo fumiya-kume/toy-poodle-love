@@ -1,7 +1,7 @@
 import Foundation
 
 /// ルート最適化リクエスト
-struct RouteOptimizeRequest: Codable {
+struct RouteOptimizeRequest: Codable, Sendable {
     let origin: RouteWaypoint
     let destination: RouteWaypoint
     let intermediates: [RouteWaypoint]

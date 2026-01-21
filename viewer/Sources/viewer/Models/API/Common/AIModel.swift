@@ -1,7 +1,7 @@
 import Foundation
 
 /// 使用可能なAIモデル
-enum AIModel: String, Codable, CaseIterable, Identifiable {
+enum AIModel: String, Codable, CaseIterable, Identifiable, Sendable {
     case gemini
     case qwen
 

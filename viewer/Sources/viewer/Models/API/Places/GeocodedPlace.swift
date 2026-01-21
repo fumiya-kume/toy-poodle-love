@@ -1,7 +1,7 @@
 import Foundation
 
 /// ジオコーディングされた場所
-struct GeocodedPlace: Codable, Identifiable {
+struct GeocodedPlace: Codable, Identifiable, Sendable {
     /// 入力された住所
     let inputAddress: String
     /// 座標

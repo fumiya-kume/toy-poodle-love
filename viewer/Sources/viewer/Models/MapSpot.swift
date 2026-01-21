@@ -1,7 +1,7 @@
 import MapKit
 
-struct MapSpot: Identifiable, Equatable, Hashable {
-    enum MapSpotType: Hashable {
+struct MapSpot: Identifiable, Equatable, Hashable, Sendable {
+    enum MapSpotType: Hashable, Sendable {
         case start
         case waypoint
         case destination
