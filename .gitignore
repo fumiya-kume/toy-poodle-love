@@ -52,10 +52,24 @@ build/
 handheld/.derivedData*/
 handheld/.xcresult/
 handheld/.sourcepackages/
+viewer/.sourcepackages/
 
 # Swift Package Manager
 .build/
 .swiftpm/
+
+# Android
+local.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+.gradle/
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
 
 # AI CLI tools
 .codex/

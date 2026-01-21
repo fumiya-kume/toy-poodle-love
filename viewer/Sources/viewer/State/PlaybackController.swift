@@ -320,7 +320,7 @@ final class PlaybackController {
             return
         }
 
-        if let timeObserver = overlayTimeObserver, let observerPlayer = overlayTimeObserverPlayer {
+        if overlayTimeObserver != nil, let observerPlayer = overlayTimeObserverPlayer {
             if observerPlayer === overlayPlayer {
                 return
             }

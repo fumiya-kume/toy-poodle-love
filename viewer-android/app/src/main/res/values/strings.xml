@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Viewer</string>
+
+    <!-- Home Screen -->
+    <string name="home_video_player_title">ビデオプレイヤー</string>
+    <string name="home_video_player_description">デュアルビデオ再生とオーバーレイ</string>
+    <string name="home_scenario_writer_title">シナリオライター</string>
+    <string name="home_scenario_writer_description">AIルート生成とシナリオ作成</string>
+
+    <!-- Video Player -->
+    <string name="video_player_select_main">メインビデオを選択</string>
+    <string name="video_player_select_overlay">オーバーレイビデオを選択</string>
+    <string name="video_player_opacity">透明度</string>
+    <string name="video_player_play">再生</string>
+    <string name="video_player_pause">一時停止</string>
+
+    <!-- Scenario Writer -->
+    <string name="scenario_writer_pipeline">パイプライン</string>
+    <string name="scenario_writer_route_generate">ルート生成</string>
+    <string name="scenario_writer_scenario_generate">シナリオ生成</string>
+    <string name="scenario_writer_scenario_integrate">シナリオ統合</string>
+    <string name="scenario_writer_map">マップ</string>
+    <string name="scenario_writer_text_generation">テキスト生成</string>
+    <string name="scenario_writer_geocode">ジオコード</string>
+    <string name="scenario_writer_route_optimize">ルート最適化</string>
+
+    <!-- Settings -->
+    <string name="settings_title">設定</string>
+    <string name="settings_control_hide_delay">コントロール自動非表示</string>
+    <string name="settings_default_opacity">デフォルト透明度</string>
+
+    <!-- Common -->
+    <string name="loading">読み込み中...</string>
+    <string name="error_network">ネットワークエラーが発生しました</string>
+    <string name="error_unknown">エラーが発生しました</string>
+    <string name="retry">再試行</string>
+    <string name="cancel">キャンセル</string>
+    <string name="ok">OK</string>
+</resources>

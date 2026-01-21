@@ -36,6 +36,9 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      - name: Prepare SwiftPM cache directory
+        run: mkdir -p .sourcepackages
+
       - name: Cache SwiftPM checkouts
         uses: actions/cache@v4
         with:
