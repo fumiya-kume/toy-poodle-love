@@ -66,13 +66,16 @@ struct MockPlanRouteService: PlanRouteServiceProtocol {
 
 struct MockPlanGeneratorService: PlanGeneratorServiceProtocol {
     var isAvailable: Bool = false
+    var usedWebAPI: Bool = false
     var mockPlan: GeneratedPlan?
     var shouldThrowError: Bool = false
 
     func generatePlan(
         theme: String,
         categories: [PlanCategory],
-        candidatePlaces: [Place]
+        candidatePlaces: [Place],
+        startPoint: Place,
+        startPointName: String?
     ) async throws -> GeneratedPlan {
         if shouldThrowError {
             throw PlanGeneratorError.aiUnavailable
@@ -91,6 +94,10 @@ struct MockPlanGeneratorService: PlanGeneratorServiceProtocol {
             }
         }
         return result
+    }
+
+    func getPlacesFromWebAPIResult(generatedSpots: [GeneratedSpotInfo]) -> [Place] {
+        return []
     }
 }
 

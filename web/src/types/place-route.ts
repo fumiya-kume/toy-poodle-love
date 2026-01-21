@@ -16,6 +16,8 @@ export interface LatLng {
 export interface GeocodedPlace {
   /** 入力された住所/場所名 */
   inputAddress: string;
+  /** 元のスポット名（iOS側のキャッシュキーとして使用） */
+  spotName?: string;
   /** 正規化された住所（Google が返す形式） */
   formattedAddress: string;
   /** 座標 */

@@ -66,18 +66,21 @@ export function buildRouteGenerationPrompt(
   "spots": [
     {
       "name": "地点名",
+      "address": "住所（例: 東京都千代田区丸の内1丁目）",
       "type": "start",
       "description": "地点の簡単な説明",
       "point": "観光ポイント・見どころ"
     },
     {
       "name": "地点名",
+      "address": "住所（例: 東京都千代田区千代田1-1）",
       "type": "waypoint",
       "description": "地点の簡単な説明",
       "point": "観光ポイント・見どころ"
     },
     {
       "name": "地点名",
+      "address": "住所（例: 東京都千代田区北の丸公園1-1）",
       "type": "destination",
       "description": "地点の簡単な説明",
       "point": "観光ポイント・見どころ"
@@ -89,7 +92,8 @@ export function buildRouteGenerationPrompt(
 # 要件
 - typeは必ず最初が"start"、最後が"destination"、それ以外は"waypoint"
 - 地点数は必ず${spotCount}個
-- 各地点にはdescriptionとpointを含める
+- 各地点にはaddress、description、pointを含める
+- addressは正確な住所を記載(ジオコーディングに使用)
 - 実在する場所のみを使用
 - 観光客に人気があり、タクシーで回れるルートを考慮`;
   }
@@ -116,18 +120,21 @@ Output in the following JSON format only. No other explanations or comments need
   "spots": [
     {
       "name": "Spot name",
+      "address": "Address (e.g., 1 Chome Marunouchi, Chiyoda City, Tokyo)",
       "type": "start",
       "description": "Brief description of the spot",
       "point": "Tourist highlight"
     },
     {
       "name": "Spot name",
+      "address": "Address (e.g., 1-1 Chiyoda, Chiyoda City, Tokyo)",
       "type": "waypoint",
       "description": "Brief description of the spot",
       "point": "Tourist highlight"
     },
     {
       "name": "Spot name",
+      "address": "Address (e.g., 1-1 Kitanomarukoen, Chiyoda City, Tokyo)",
       "type": "destination",
       "description": "Brief description of the spot",
       "point": "Tourist highlight"
@@ -139,7 +146,8 @@ Output in the following JSON format only. No other explanations or comments need
 # Requirements
 - type must be "start" for first, "destination" for last, "waypoint" for others
 - Exactly ${spotCount} spots
-- Include description and point for each spot
+- Include address, description, and point for each spot
+- address should be accurate (used for geocoding)
 - Use only real, existing locations
 - Consider routes popular with tourists and accessible by taxi`;
 }
