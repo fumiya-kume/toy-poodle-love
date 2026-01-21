@@ -52,6 +52,7 @@ build/
 handheld/.derivedData*/
 handheld/.xcresult/
 handheld/.sourcepackages/
+viewer/.sourcepackages/
 
 # Swift Package Manager
 .build/
