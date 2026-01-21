@@ -40,7 +40,10 @@
       "Skill(code-review)",
       "Bash(codex --help:*)",
       "Bash(codex review --help:*)",
-      "Bash(codex review:*)"
+      "Bash(codex review:*)",
+      "WebFetch(domain:www.figma.com)",
+      "Bash(head:*)",
+      "WebFetch(domain:namigoeku.com)"
     ]
   },
   "outputStyle": "Explanatory"
