@@ -48,6 +48,18 @@ class ScenarioWriterViewModelTest {
     }
 
     @Test
+    fun updateRouteGenerateSpotCount_clampsToRange() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = mockk<ScenarioRepository>(relaxed = true)
+        val viewModel = ScenarioWriterViewModel(repository)
+
+        viewModel.updateRouteGenerateSpotCount(1)
+        assertEquals(3, viewModel.uiState.value.routeGenerateSpotCount)
+
+        viewModel.updateRouteGenerateSpotCount(10)
+        assertEquals(8, viewModel.uiState.value.routeGenerateSpotCount)
+    }
+
+    @Test
     fun addWaypoint_trimsAndClearsInput() = runTest(mainDispatcherRule.dispatcher) {
         val repository = mockk<ScenarioRepository>(relaxed = true)
         val viewModel = ScenarioWriterViewModel(repository)
@@ -161,6 +173,25 @@ class ScenarioWriterViewModelTest {
     }
 
     @Test
+    fun generateText_usesQwen_whenSelected() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = mockk<ScenarioRepository>()
+        val viewModel = ScenarioWriterViewModel(repository)
+
+        coEvery { repository.generateTextWithQwen("hi") } returns ApiResult.Success("ok")
+
+        viewModel.updateTextGenerationPrompt("hi")
+        viewModel.updateTextGenerationModel(AIModel.QWEN)
+        viewModel.generateText()
+        advanceUntilIdle()
+
+        assertEquals("ok", viewModel.uiState.value.textGenerationResult)
+        assertEquals(AIModel.QWEN, viewModel.uiState.value.textGenerationResultModel)
+
+        coVerify(exactly = 1) { repository.generateTextWithQwen("hi") }
+        coVerify(exactly = 0) { repository.generateTextWithGemini(any()) }
+    }
+
+    @Test
     fun geocode_splitsAndTrimsAddresses_beforeCallingRepository() = runTest(mainDispatcherRule.dispatcher) {
         val repository = mockk<ScenarioRepository>()
         val viewModel = ScenarioWriterViewModel(repository)
@@ -256,6 +287,26 @@ class ScenarioWriterViewModelTest {
     }
 
     @Test
+    fun optimizeRoute_passesEmptyIntermediates_whenOnlyTwoWaypoints() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = mockk<ScenarioRepository>()
+        val viewModel = ScenarioWriterViewModel(repository)
+
+        viewModel.updateWaypointInput("origin")
+        viewModel.addWaypoint()
+        viewModel.updateWaypointInput("destination")
+        viewModel.addWaypoint()
+
+        val intermediatesSlot = slot<List<RouteWaypoint>>()
+        coEvery { repository.optimizeRoute(any(), any(), capture(intermediatesSlot), any(), any()) } returns
+            ApiResult.Success(RouteOptimizeResponse(success = true))
+
+        viewModel.optimizeRoute()
+        advanceUntilIdle()
+
+        assertTrue(intermediatesSlot.captured.isEmpty())
+    }
+
+    @Test
     fun createSpotsFromPipeline_mapsGeneratedSpots_andSelectsScenarioTab() = runTest(mainDispatcherRule.dispatcher) {
         val repository = mockk<ScenarioRepository>()
         val viewModel = ScenarioWriterViewModel(repository)
@@ -288,6 +339,28 @@ class ScenarioWriterViewModelTest {
             ),
             viewModel.uiState.value.scenarioSpots
         )
+    }
+
+    @Test
+    fun createSpotsFromPipeline_setsEmptyRouteName_whenRouteNameIsNull() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = mockk<ScenarioRepository>()
+        val viewModel = ScenarioWriterViewModel(repository)
+
+        val response = PipelineResponse(
+            success = true,
+            routeName = null,
+            spots = listOf(GeneratedSpot(name = "A", type = "start", description = "a"))
+        )
+        coEvery { repository.runPipeline(any(), any(), any(), any()) } returns ApiResult.Success(response)
+
+        viewModel.updatePipelineStartPoint("start")
+        viewModel.updatePipelinePurpose("purpose")
+        viewModel.runPipeline()
+        advanceUntilIdle()
+
+        viewModel.createSpotsFromPipeline()
+
+        assertEquals("", viewModel.uiState.value.scenarioRouteName)
     }
 
     @Test
@@ -370,6 +443,78 @@ class ScenarioWriterViewModelTest {
     }
 
     @Test
+    fun generateRoute_error_setsErrorMessage() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = mockk<ScenarioRepository>()
+        val viewModel = ScenarioWriterViewModel(repository)
+
+        coEvery { repository.generateRoute(any(), any(), any(), any()) } returns ApiResult.Error(ApiError.TimeoutError)
+
+        viewModel.updateRouteGenerateStartPoint("start")
+        viewModel.updateRouteGeneratePurpose("purpose")
+        viewModel.generateRoute()
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.routeGenerateResult)
+        assertFalse(viewModel.uiState.value.isLoadingRouteGenerate)
+        assertEquals("接続がタイムアウトしました", viewModel.errorMessage.value)
+    }
+
+    @Test
+    fun generateScenario_passesNullLanguage_whenBlank() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = mockk<ScenarioRepository>()
+        val viewModel = ScenarioWriterViewModel(repository)
+
+        val languageSlot = slot<String?>()
+        val modelsSlot = slot<String>()
+        coEvery { repository.generateScenario(any(), any(), captureNullable(languageSlot), capture(modelsSlot)) } returns
+            ApiResult.Success(ScenarioOutput(success = true))
+
+        viewModel.updateScenarioRouteName("route")
+        viewModel.updateScenarioLanguage("")
+        viewModel.addScenarioSpot(RouteSpot(name = "A", type = "start"))
+        viewModel.generateScenario()
+        advanceUntilIdle()
+
+        assertNull(languageSlot.captured)
+        assertEquals("both", modelsSlot.captured)
+    }
+
+    @Test
+    fun generateScenario_passesLanguage_whenProvided() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = mockk<ScenarioRepository>()
+        val viewModel = ScenarioWriterViewModel(repository)
+
+        val languageSlot = slot<String?>()
+        coEvery { repository.generateScenario(any(), any(), captureNullable(languageSlot), any()) } returns
+            ApiResult.Success(ScenarioOutput(success = true))
+
+        viewModel.updateScenarioRouteName("route")
+        viewModel.updateScenarioLanguage("ja")
+        viewModel.addScenarioSpot(RouteSpot(name = "A", type = "start"))
+        viewModel.generateScenario()
+        advanceUntilIdle()
+
+        assertEquals("ja", languageSlot.captured)
+    }
+
+    @Test
+    fun generateScenario_error_setsErrorMessage() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = mockk<ScenarioRepository>()
+        val viewModel = ScenarioWriterViewModel(repository)
+
+        coEvery { repository.generateScenario(any(), any(), any(), any()) } returns ApiResult.Error(ApiError.NetworkError)
+
+        viewModel.updateScenarioRouteName("route")
+        viewModel.addScenarioSpot(RouteSpot(name = "A", type = "start"))
+        viewModel.generateScenario()
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.scenarioResult)
+        assertFalse(viewModel.uiState.value.isLoadingScenario)
+        assertEquals("ネットワークに接続できません", viewModel.errorMessage.value)
+    }
+
+    @Test
     fun integrateScenarios_setsError_whenNoScenarioResult_andDoesNotCallRepository() = runTest(mainDispatcherRule.dispatcher) {
         val repository = mockk<ScenarioRepository>()
         val viewModel = ScenarioWriterViewModel(repository)
@@ -413,5 +558,22 @@ class ScenarioWriterViewModelTest {
             scenarioListSlot.captured
         )
         assertEquals(integratedOutput, viewModel.uiState.value.scenarioIntegrationResult)
+    }
+
+    @Test
+    fun clearError_resetsErrorMessage() = runTest(mainDispatcherRule.dispatcher) {
+        val repository = mockk<ScenarioRepository>()
+        val viewModel = ScenarioWriterViewModel(repository)
+
+        coEvery { repository.runPipeline(any(), any(), any(), any()) } returns ApiResult.Error(ApiError.NetworkError)
+
+        viewModel.updatePipelineStartPoint("start")
+        viewModel.updatePipelinePurpose("purpose")
+        viewModel.runPipeline()
+        advanceUntilIdle()
+        assertEquals("ネットワークに接続できません", viewModel.errorMessage.value)
+
+        viewModel.clearError()
+        assertNull(viewModel.errorMessage.value)
     }
 }

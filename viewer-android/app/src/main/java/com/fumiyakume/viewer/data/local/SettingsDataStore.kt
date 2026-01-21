@@ -1,21 +1,15 @@
 package com.fumiyakume.viewer.data.local
 
-import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
-
-// DataStore拡張プロパティ
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "viewer_settings")
 
 /**
  * アプリ設定を永続化するDataStore
@@ -24,7 +18,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
  */
 @Singleton
 class SettingsDataStore @Inject constructor(
-    @ApplicationContext private val context: Context
+    private val dataStore: DataStore<Preferences>
 ) {
     private object PreferencesKeys {
         val CONTROL_HIDE_DELAY_MS = longPreferencesKey("control_hide_delay_ms")
@@ -42,13 +36,13 @@ class SettingsDataStore @Inject constructor(
     /**
      * コントロール非表示の遅延時間 (ミリ秒)
      */
-    val controlHideDelayMs: Flow<Long> = context.dataStore.data
+    val controlHideDelayMs: Flow<Long> = dataStore.data
         .map { preferences ->
             preferences[PreferencesKeys.CONTROL_HIDE_DELAY_MS] ?: DEFAULT_CONTROL_HIDE_DELAY_MS
         }
 
     suspend fun setControlHideDelayMs(delayMs: Long) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[PreferencesKeys.CONTROL_HIDE_DELAY_MS] = delayMs.coerceIn(1000, 10000)
         }
     }
@@ -56,13 +50,13 @@ class SettingsDataStore @Inject constructor(
     /**
      * デフォルトのオーバーレイ透明度
      */
-    val defaultOverlayOpacity: Flow<Float> = context.dataStore.data
+    val defaultOverlayOpacity: Flow<Float> = dataStore.data
         .map { preferences ->
             preferences[PreferencesKeys.DEFAULT_OVERLAY_OPACITY] ?: DEFAULT_OVERLAY_OPACITY_VALUE
         }
 
     suspend fun setDefaultOverlayOpacity(opacity: Float) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[PreferencesKeys.DEFAULT_OVERLAY_OPACITY] = opacity.coerceIn(0f, 1f)
         }
     }
@@ -70,13 +64,13 @@ class SettingsDataStore @Inject constructor(
     /**
      * デフォルトのAIモデル
      */
-    val defaultAIModel: Flow<String> = context.dataStore.data
+    val defaultAIModel: Flow<String> = dataStore.data
         .map { preferences ->
             preferences[PreferencesKeys.DEFAULT_AI_MODEL] ?: DEFAULT_AI_MODEL_VALUE
         }
 
     suspend fun setDefaultAIModel(model: String) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[PreferencesKeys.DEFAULT_AI_MODEL] = model
         }
     }

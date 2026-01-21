@@ -3,33 +3,32 @@ package com.fumiyakume.viewer.ui.settings
 import app.cash.turbine.test
 import com.fumiyakume.viewer.data.local.AppSettings
 import com.fumiyakume.viewer.data.local.SettingsDataStore
+import com.fumiyakume.viewer.test.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
     private lateinit var settingsDataStore: SettingsDataStore
     private lateinit var viewModel: SettingsViewModel
 
     @Before
     fun setup() {
-        Dispatchers.setMain(testDispatcher)
         settingsDataStore = mockk(relaxed = true)
 
         // デフォルト値を返すFlowを設定
@@ -40,15 +39,10 @@ class SettingsViewModelTest {
         viewModel = SettingsViewModel(settingsDataStore)
     }
 
-    @After
-    fun tearDown() {
-        Dispatchers.resetMain()
-    }
-
     // ========== 初期状態テスト ==========
 
     @Test
-    fun `settings emits initial values from datastore`() = runTest {
+    fun `settings emits initial values from datastore`() = runTest(mainDispatcherRule.dispatcher) {
         viewModel.settings.test {
             val initial = awaitItem()
             assertEquals(3000L, initial.controlHideDelayMs)
@@ -58,7 +52,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `settings has correct default values`() = runTest {
+    fun `settings has correct default values`() = runTest(mainDispatcherRule.dispatcher) {
         // デフォルトのAppSettingsの値を検証
         val defaultSettings = AppSettings()
         assertEquals(3000L, defaultSettings.controlHideDelayMs)
@@ -69,7 +63,7 @@ class SettingsViewModelTest {
     // ========== 設定更新テスト ==========
 
     @Test
-    fun `updateControlHideDelay calls datastore with correct value`() = runTest {
+    fun `updateControlHideDelay calls datastore with correct value`() = runTest(mainDispatcherRule.dispatcher) {
         coEvery { settingsDataStore.setControlHideDelayMs(any()) } returns Unit
 
         viewModel.updateControlHideDelay(5000L)
@@ -79,7 +73,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `updateDefaultOverlayOpacity calls datastore with correct value`() = runTest {
+    fun `updateDefaultOverlayOpacity calls datastore with correct value`() = runTest(mainDispatcherRule.dispatcher) {
         coEvery { settingsDataStore.setDefaultOverlayOpacity(any()) } returns Unit
 
         viewModel.updateDefaultOverlayOpacity(0.75f)
@@ -89,7 +83,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `updateDefaultAIModel calls datastore with correct value`() = runTest {
+    fun `updateDefaultAIModel calls datastore with correct value`() = runTest(mainDispatcherRule.dispatcher) {
         coEvery { settingsDataStore.setDefaultAIModel(any()) } returns Unit
 
         viewModel.updateDefaultAIModel("qwen")
@@ -101,7 +95,7 @@ class SettingsViewModelTest {
     // ========== 境界値テスト ==========
 
     @Test
-    fun `updateControlHideDelay accepts minimum value`() = runTest {
+    fun `updateControlHideDelay accepts minimum value`() = runTest(mainDispatcherRule.dispatcher) {
         coEvery { settingsDataStore.setControlHideDelayMs(any()) } returns Unit
 
         viewModel.updateControlHideDelay(1000L)
@@ -111,7 +105,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `updateControlHideDelay accepts maximum value`() = runTest {
+    fun `updateControlHideDelay accepts maximum value`() = runTest(mainDispatcherRule.dispatcher) {
         coEvery { settingsDataStore.setControlHideDelayMs(any()) } returns Unit
 
         viewModel.updateControlHideDelay(10000L)
@@ -121,7 +115,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `updateDefaultOverlayOpacity accepts minimum value`() = runTest {
+    fun `updateDefaultOverlayOpacity accepts minimum value`() = runTest(mainDispatcherRule.dispatcher) {
         coEvery { settingsDataStore.setDefaultOverlayOpacity(any()) } returns Unit
 
         viewModel.updateDefaultOverlayOpacity(0f)
@@ -131,12 +125,68 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `updateDefaultOverlayOpacity accepts maximum value`() = runTest {
+    fun `updateDefaultOverlayOpacity accepts maximum value`() = runTest(mainDispatcherRule.dispatcher) {
         coEvery { settingsDataStore.setDefaultOverlayOpacity(any()) } returns Unit
 
         viewModel.updateDefaultOverlayOpacity(1f)
         advanceUntilIdle()
 
         coVerify { settingsDataStore.setDefaultOverlayOpacity(1f) }
+    }
+
+    @Test
+    fun `settings emits updated values when datastore flows change`() = runTest(mainDispatcherRule.dispatcher) {
+        val controlHideDelayMsFlow = MutableStateFlow(5000L)
+        val overlayOpacityFlow = MutableStateFlow(0.75f)
+        val aiModelFlow = MutableStateFlow("qwen")
+
+        val dataStore = mockk<SettingsDataStore>(relaxed = true)
+        every { dataStore.controlHideDelayMs } returns controlHideDelayMsFlow
+        every { dataStore.defaultOverlayOpacity } returns overlayOpacityFlow
+        every { dataStore.defaultAIModel } returns aiModelFlow
+
+        val viewModel = SettingsViewModel(dataStore)
+
+        viewModel.settings.test {
+            assertEquals(AppSettings(), awaitItem())
+            assertEquals(
+                AppSettings(
+                    controlHideDelayMs = 5000L,
+                    defaultOverlayOpacity = 0.75f,
+                    defaultAIModel = "qwen"
+                ),
+                awaitItem()
+            )
+
+            controlHideDelayMsFlow.value = 8000L
+            assertEquals(
+                AppSettings(
+                    controlHideDelayMs = 8000L,
+                    defaultOverlayOpacity = 0.75f,
+                    defaultAIModel = "qwen"
+                ),
+                awaitItem()
+            )
+
+            overlayOpacityFlow.value = 0.25f
+            assertEquals(
+                AppSettings(
+                    controlHideDelayMs = 8000L,
+                    defaultOverlayOpacity = 0.25f,
+                    defaultAIModel = "qwen"
+                ),
+                awaitItem()
+            )
+
+            aiModelFlow.value = "gemini"
+            assertEquals(
+                AppSettings(
+                    controlHideDelayMs = 8000L,
+                    defaultOverlayOpacity = 0.25f,
+                    defaultAIModel = "gemini"
+                ),
+                awaitItem()
+            )
+        }
     }
 }

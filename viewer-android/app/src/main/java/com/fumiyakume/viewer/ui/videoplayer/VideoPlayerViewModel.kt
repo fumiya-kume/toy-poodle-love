@@ -1,6 +1,5 @@
 package com.fumiyakume.viewer.ui.videoplayer
 
-import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,7 +7,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +23,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class VideoPlayerViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
+    private val exoPlayerFactory: ExoPlayerFactory
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VideoPlayerUiState())
@@ -43,7 +41,7 @@ class VideoPlayerViewModel @Inject constructor(
     }
 
     private fun initializePlayers() {
-        mainPlayer = ExoPlayer.Builder(context).build().apply {
+        mainPlayer = exoPlayerFactory.create().apply {
             addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     _uiState.update { it.copy(isMainPlaying = isPlaying) }
@@ -55,7 +53,7 @@ class VideoPlayerViewModel @Inject constructor(
             })
         }
 
-        overlayPlayer = ExoPlayer.Builder(context).build().apply {
+        overlayPlayer = exoPlayerFactory.create().apply {
             addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     _uiState.update { it.copy(isOverlayPlaying = isPlaying) }
