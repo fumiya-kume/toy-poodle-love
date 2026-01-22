@@ -9,6 +9,50 @@ import {
 } from '../src/types/place-route';
 import { PipelineResponse } from '../src/types/pipeline';
 
+// AppTheme - handheldと統一したトイプードル風カラーパレット
+const AppTheme = {
+  primaryColor: '#cc856b',      // アプリコット (RGB: 0.8, 0.52, 0.42)
+  secondaryColor: '#f5ded1',    // クリーム (RGB: 0.96, 0.87, 0.82)
+  accentColor: '#8c5c52',       // ブラウン (RGB: 0.55, 0.36, 0.32)
+  // 追加のユーティリティカラー
+  textOnPrimary: '#ffffff',
+  textOnSecondary: '#8c5c52',
+  successColor: '#22c55e',
+  errorColor: '#ef4444',
+  warningColor: '#f59e0b',
+  grayText: '#6b7280',
+  borderColor: '#e5e7eb',
+  cardShadow: 'rgba(0, 0, 0, 0.08)',
+};
+
+// 共通スタイル - handheldのAppStylesに対応
+const AppStyles = {
+  card: {
+    padding: '16px',
+    backgroundColor: '#ffffff',
+    borderRadius: '16px',
+    boxShadow: `0 4px 8px ${AppTheme.cardShadow}`,
+  },
+  primaryButton: {
+    fontWeight: '600' as const,
+    color: AppTheme.textOnPrimary,
+    backgroundColor: AppTheme.primaryColor,
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    transition: 'transform 0.2s, background-color 0.2s',
+  },
+  secondaryButton: {
+    fontWeight: '600' as const,
+    color: AppTheme.primaryColor,
+    backgroundColor: AppTheme.secondaryColor,
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    transition: 'transform 0.2s, background-color 0.2s',
+  },
+};
+
 type TabType = 'ai' | 'route' | 'ai-route';
 
 interface ModelResponse {
@@ -273,13 +317,22 @@ export default function Home() {
 
   return (
     <div style={{
-      maxWidth: '800px',
-      margin: '0 auto',
+      minHeight: '100vh',
+      background: `linear-gradient(to bottom, ${AppTheme.secondaryColor}99, #ffffff)`,
       padding: '40px 20px',
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
-      <h1 style={{ fontSize: '32px', marginBottom: '32px', textAlign: 'center' }}>
-        Taxi Scenario Writer
+      <div style={{
+        maxWidth: '800px',
+        margin: '0 auto',
+      }}>
+      <h1 style={{
+        fontSize: '32px',
+        marginBottom: '32px',
+        textAlign: 'center',
+        color: AppTheme.accentColor
+      }}>
+        🐩 Taxi Scenario Writer
       </h1>
 
       {/* タブ切り替え */}
@@ -287,7 +340,7 @@ export default function Home() {
         display: 'flex',
         gap: '8px',
         marginBottom: '24px',
-        borderBottom: '2px solid #e5e7eb'
+        borderBottom: `2px solid ${AppTheme.borderColor}`
       }}>
         <button
           onClick={() => setActiveTab('ai-route')}
@@ -296,9 +349,9 @@ export default function Home() {
             fontSize: '16px',
             fontWeight: activeTab === 'ai-route' ? '600' : '400',
             backgroundColor: 'transparent',
-            color: activeTab === 'ai-route' ? '#8b5cf6' : '#6b7280',
+            color: activeTab === 'ai-route' ? AppTheme.primaryColor : AppTheme.grayText,
             border: 'none',
-            borderBottom: activeTab === 'ai-route' ? '2px solid #8b5cf6' : '2px solid transparent',
+            borderBottom: activeTab === 'ai-route' ? `2px solid ${AppTheme.primaryColor}` : '2px solid transparent',
             marginBottom: '-2px',
             cursor: 'pointer',
           }}
@@ -312,9 +365,9 @@ export default function Home() {
             fontSize: '16px',
             fontWeight: activeTab === 'route' ? '600' : '400',
             backgroundColor: 'transparent',
-            color: activeTab === 'route' ? '#0070f3' : '#6b7280',
+            color: activeTab === 'route' ? AppTheme.primaryColor : AppTheme.grayText,
             border: 'none',
-            borderBottom: activeTab === 'route' ? '2px solid #0070f3' : '2px solid transparent',
+            borderBottom: activeTab === 'route' ? `2px solid ${AppTheme.primaryColor}` : '2px solid transparent',
             marginBottom: '-2px',
             cursor: 'pointer',
           }}
@@ -328,9 +381,9 @@ export default function Home() {
             fontSize: '16px',
             fontWeight: activeTab === 'ai' ? '600' : '400',
             backgroundColor: 'transparent',
-            color: activeTab === 'ai' ? '#0070f3' : '#6b7280',
+            color: activeTab === 'ai' ? AppTheme.primaryColor : AppTheme.grayText,
             border: 'none',
-            borderBottom: activeTab === 'ai' ? '2px solid #0070f3' : '2px solid transparent',
+            borderBottom: activeTab === 'ai' ? `2px solid ${AppTheme.primaryColor}` : '2px solid transparent',
             marginBottom: '-2px',
             cursor: 'pointer',
           }}
@@ -451,15 +504,11 @@ export default function Home() {
               disabled={aiRouteLoading}
               style={{
                 width: '100%',
-                padding: '12px 24px',
+                padding: '14px 24px',
                 fontSize: '16px',
-                fontWeight: '600',
-                backgroundColor: aiRouteLoading ? '#ccc' : '#8b5cf6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
+                ...AppStyles.primaryButton,
+                backgroundColor: aiRouteLoading ? '#ccc' : AppTheme.primaryColor,
                 cursor: aiRouteLoading ? 'not-allowed' : 'pointer',
-                transition: 'background-color 0.2s'
               }}
             >
               {aiRouteLoading ? '処理中...' : 'AI でルートを生成・最適化'}
@@ -524,9 +573,7 @@ export default function Home() {
             <div style={{ marginTop: '24px' }}>
               {/* ステップ完了状況 */}
               <div style={{
-                padding: '16px',
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
+                ...AppStyles.card,
                 marginBottom: '16px'
               }}>
                 <h3 style={{ fontSize: '16px', marginBottom: '12px', fontWeight: '600' }}>
@@ -585,13 +632,13 @@ export default function Home() {
               {aiRouteResult.routeGeneration.routeName && (
                 <div style={{
                   padding: '16px',
-                  backgroundColor: '#ede9fe',
-                  border: '2px solid #8b5cf6',
-                  borderRadius: '8px',
+                  backgroundColor: AppTheme.secondaryColor,
+                  border: `2px solid ${AppTheme.primaryColor}`,
+                  borderRadius: '16px',
                   marginBottom: '16px'
                 }}>
-                  <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#5b21b6', margin: 0 }}>
-                    {aiRouteResult.routeGeneration.routeName}
+                  <h3 style={{ fontSize: '20px', fontWeight: '700', color: AppTheme.accentColor, margin: 0 }}>
+                    🐩 {aiRouteResult.routeGeneration.routeName}
                   </h3>
                 </div>
               )}
@@ -605,9 +652,7 @@ export default function Home() {
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {aiRouteResult.routeGeneration.spots.map((spot, i) => (
                       <li key={i} style={{
-                        padding: '12px',
-                        backgroundColor: '#f9fafb',
-                        borderRadius: '8px',
+                        ...AppStyles.card,
                         marginBottom: '8px'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -650,27 +695,27 @@ export default function Home() {
               {/* 最適化されたルート */}
               {aiRouteResult.routeOptimization.orderedWaypoints && (
                 <div>
-                  <h3 style={{ fontSize: '20px', marginBottom: '16px', fontWeight: '600' }}>
+                  <h3 style={{ fontSize: '20px', marginBottom: '16px', fontWeight: '600', color: AppTheme.accentColor }}>
                     最適化されたルート
                   </h3>
 
                   <div style={{
                     padding: '16px',
-                    backgroundColor: '#f0fdf4',
-                    border: '2px solid #22c55e',
-                    borderRadius: '8px',
+                    backgroundColor: AppTheme.secondaryColor,
+                    border: `2px solid ${AppTheme.primaryColor}`,
+                    borderRadius: '16px',
                     marginBottom: '16px'
                   }}>
                     <div style={{ display: 'flex', gap: '24px', justifyContent: 'center' }}>
                       <div>
-                        <span style={{ fontSize: '14px', color: '#6b7280' }}>総距離</span>
-                        <p style={{ fontSize: '24px', fontWeight: '700', margin: '4px 0 0', color: '#166534' }}>
+                        <span style={{ fontSize: '14px', color: AppTheme.grayText }}>総距離</span>
+                        <p style={{ fontSize: '24px', fontWeight: '700', margin: '4px 0 0', color: AppTheme.accentColor }}>
                           {formatDistance(aiRouteResult.routeOptimization.totalDistanceMeters!)}
                         </p>
                       </div>
                       <div>
-                        <span style={{ fontSize: '14px', color: '#6b7280' }}>総所要時間</span>
-                        <p style={{ fontSize: '24px', fontWeight: '700', margin: '4px 0 0', color: '#166534' }}>
+                        <span style={{ fontSize: '14px', color: AppTheme.grayText }}>総所要時間</span>
+                        <p style={{ fontSize: '24px', fontWeight: '700', margin: '4px 0 0', color: AppTheme.accentColor }}>
                           {formatDuration(aiRouteResult.routeOptimization.totalDurationSeconds!)}
                         </p>
                       </div>
@@ -765,15 +810,11 @@ export default function Home() {
               disabled={routeLoading}
               style={{
                 width: '100%',
-                padding: '12px 24px',
+                padding: '14px 24px',
                 fontSize: '16px',
-                fontWeight: '600',
-                backgroundColor: routeLoading ? '#ccc' : '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
+                ...AppStyles.primaryButton,
+                backgroundColor: routeLoading ? '#ccc' : AppTheme.primaryColor,
                 cursor: routeLoading ? 'not-allowed' : 'pointer',
-                transition: 'background-color 0.2s'
               }}
             >
               {routeLoading ? '計算中...' : '最適ルートを計算'}
@@ -820,27 +861,27 @@ export default function Home() {
           {/* 最適化されたルート */}
           {optimizedRoute && (
             <div style={{ marginTop: '24px' }}>
-              <h3 style={{ fontSize: '20px', marginBottom: '16px', fontWeight: '600' }}>
+              <h3 style={{ fontSize: '20px', marginBottom: '16px', fontWeight: '600', color: AppTheme.accentColor }}>
                 最適ルート
               </h3>
 
               <div style={{
                 padding: '16px',
-                backgroundColor: '#f0fdf4',
-                border: '2px solid #22c55e',
-                borderRadius: '8px',
+                backgroundColor: AppTheme.secondaryColor,
+                border: `2px solid ${AppTheme.primaryColor}`,
+                borderRadius: '16px',
                 marginBottom: '16px'
               }}>
                 <div style={{ display: 'flex', gap: '24px', justifyContent: 'center' }}>
                   <div>
-                    <span style={{ fontSize: '14px', color: '#6b7280' }}>総距離</span>
-                    <p style={{ fontSize: '24px', fontWeight: '700', margin: '4px 0 0', color: '#166534' }}>
+                    <span style={{ fontSize: '14px', color: AppTheme.grayText }}>総距離</span>
+                    <p style={{ fontSize: '24px', fontWeight: '700', margin: '4px 0 0', color: AppTheme.accentColor }}>
                       {formatDistance(optimizedRoute.totalDistanceMeters)}
                     </p>
                   </div>
                   <div>
-                    <span style={{ fontSize: '14px', color: '#6b7280' }}>総所要時間</span>
-                    <p style={{ fontSize: '24px', fontWeight: '700', margin: '4px 0 0', color: '#166534' }}>
+                    <span style={{ fontSize: '14px', color: AppTheme.grayText }}>総所要時間</span>
+                    <p style={{ fontSize: '24px', fontWeight: '700', margin: '4px 0 0', color: AppTheme.accentColor }}>
                       {formatDuration(optimizedRoute.totalDurationSeconds)}
                     </p>
                   </div>
@@ -960,15 +1001,11 @@ export default function Home() {
               disabled={aiLoading}
               style={{
                 width: '100%',
-                padding: '12px 24px',
+                padding: '14px 24px',
                 fontSize: '16px',
-                fontWeight: '600',
-                backgroundColor: aiLoading ? '#ccc' : '#0070f3',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
+                ...AppStyles.primaryButton,
+                backgroundColor: aiLoading ? '#ccc' : AppTheme.primaryColor,
                 cursor: aiLoading ? 'not-allowed' : 'pointer',
-                transition: 'background-color 0.2s'
               }}
             >
               {aiLoading ? '生成中...' : '送信'}
@@ -988,24 +1025,22 @@ export default function Home() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {responses.qwen && (
                   <div style={{
-                    padding: '20px',
-                    backgroundColor: '#f0f9ff',
-                    borderRadius: '8px',
-                    border: '2px solid #0ea5e9'
+                    ...AppStyles.card,
+                    border: `2px solid ${AppTheme.primaryColor}`,
                   }}>
                     <h3 style={{
                       fontSize: '18px',
                       marginBottom: '12px',
                       fontWeight: '600',
-                      color: '#0369a1'
+                      color: AppTheme.accentColor
                     }}>
-                      Qwen
+                      🤖 Qwen
                     </h3>
                     <p style={{
                       whiteSpace: 'pre-wrap',
                       lineHeight: '1.6',
                       margin: 0,
-                      color: '#0c4a6e'
+                      color: AppTheme.accentColor
                     }}>
                       {responses.qwen}
                     </p>
@@ -1014,24 +1049,23 @@ export default function Home() {
 
                 {responses.gemini && (
                   <div style={{
-                    padding: '20px',
-                    backgroundColor: '#fef3c7',
-                    borderRadius: '8px',
-                    border: '2px solid #f59e0b'
+                    ...AppStyles.card,
+                    backgroundColor: AppTheme.secondaryColor,
+                    border: `2px solid ${AppTheme.primaryColor}`,
                   }}>
                     <h3 style={{
                       fontSize: '18px',
                       marginBottom: '12px',
                       fontWeight: '600',
-                      color: '#b45309'
+                      color: AppTheme.accentColor
                     }}>
-                      Gemini
+                      ✨ Gemini
                     </h3>
                     <p style={{
                       whiteSpace: 'pre-wrap',
                       lineHeight: '1.6',
                       margin: 0,
-                      color: '#78350f'
+                      color: AppTheme.accentColor
                     }}>
                       {responses.gemini}
                     </p>
@@ -1042,6 +1076,7 @@ export default function Home() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

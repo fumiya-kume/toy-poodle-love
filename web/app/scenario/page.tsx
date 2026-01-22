@@ -4,6 +4,49 @@ import { useState, useRef, useEffect } from 'react';
 import { RouteInput, RouteSpot, ScenarioOutput, SpotType, ScenarioIntegrationOutput } from '../../src/types/scenario';
 import { predefinedRoutes, getRouteById } from '../../src/data/routes';
 
+// AppTheme - handheldと統一したトイプードル風カラーパレット
+const AppTheme = {
+  primaryColor: '#cc856b',      // アプリコット (RGB: 0.8, 0.52, 0.42)
+  secondaryColor: '#f5ded1',    // クリーム (RGB: 0.96, 0.87, 0.82)
+  accentColor: '#8c5c52',       // ブラウン (RGB: 0.55, 0.36, 0.32)
+  textOnPrimary: '#ffffff',
+  textOnSecondary: '#8c5c52',
+  successColor: '#22c55e',
+  errorColor: '#ef4444',
+  warningColor: '#f59e0b',
+  grayText: '#6b7280',
+  borderColor: '#e5e7eb',
+  cardShadow: 'rgba(0, 0, 0, 0.08)',
+};
+
+// 共通スタイル - handheldのAppStylesに対応
+const AppStyles = {
+  card: {
+    padding: '16px',
+    backgroundColor: '#ffffff',
+    borderRadius: '16px',
+    boxShadow: `0 4px 8px ${AppTheme.cardShadow}`,
+  },
+  primaryButton: {
+    fontWeight: '600' as const,
+    color: AppTheme.textOnPrimary,
+    backgroundColor: AppTheme.primaryColor,
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    transition: 'transform 0.2s, background-color 0.2s',
+  },
+  secondaryButton: {
+    fontWeight: '600' as const,
+    color: AppTheme.primaryColor,
+    backgroundColor: AppTheme.secondaryColor,
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    transition: 'transform 0.2s, background-color 0.2s',
+  },
+};
+
 interface SpotFormData extends RouteSpot {
   id: string;
 }
@@ -321,14 +364,9 @@ export default function ScenarioPage() {
             onClick={() => setShowJsonInput(!showJsonInput)}
             style={{
               padding: '10px 20px',
-              backgroundColor: '#8b5cf6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
+              ...AppStyles.secondaryButton,
               marginBottom: showJsonInput ? '12px' : '0',
+              fontSize: '14px',
             }}
           >
             {showJsonInput ? 'JSON入力を閉じる' : 'JSONから地点をインポート'}
@@ -373,13 +411,8 @@ export default function ScenarioPage() {
                 onClick={importFromJson}
                 style={{
                   padding: '8px 16px',
-                  backgroundColor: '#059669',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
+                  ...AppStyles.primaryButton,
                   fontSize: '14px',
-                  fontWeight: '600',
                 }}
               >
                 インポート
@@ -397,13 +430,8 @@ export default function ScenarioPage() {
               onClick={addSpot}
               style={{
                 padding: '8px 16px',
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
+                ...AppStyles.primaryButton,
                 fontSize: '14px',
-                fontWeight: '600',
               }}
             >
               + 地点を追加
@@ -528,11 +556,8 @@ export default function ScenarioPage() {
             width: '100%',
             padding: '14px 24px',
             fontSize: '18px',
-            fontWeight: '600',
-            backgroundColor: loading ? '#9ca3af' : '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
+            ...AppStyles.primaryButton,
+            backgroundColor: loading ? '#9ca3af' : AppTheme.primaryColor,
             cursor: loading ? 'not-allowed' : 'pointer',
           }}
         >
@@ -557,34 +582,33 @@ export default function ScenarioPage() {
       {/* 結果表示 */}
       {result && (
         <div style={{ marginTop: '32px' }}>
-          <h2 style={{ fontSize: '24px', marginBottom: '16px', fontWeight: '600' }}>
-            生成結果
+          <h2 style={{ fontSize: '24px', marginBottom: '16px', fontWeight: '600', color: AppTheme.accentColor }}>
+            🐩 生成結果
           </h2>
 
           {/* 統計情報 */}
           <div style={{
-            padding: '16px',
+            ...AppStyles.card,
             marginBottom: '24px',
-            backgroundColor: '#f0f9ff',
-            borderRadius: '8px',
-            border: '1px solid #bae6fd',
+            backgroundColor: AppTheme.secondaryColor,
+            border: `1px solid ${AppTheme.primaryColor}`,
           }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', fontSize: '14px' }}>
               <div>
-                <div style={{ color: '#0369a1', fontWeight: '600', marginBottom: '4px' }}>処理時間</div>
-                <div style={{ fontSize: '18px', fontWeight: '700', color: '#0c4a6e' }}>
+                <div style={{ color: AppTheme.primaryColor, fontWeight: '600', marginBottom: '4px' }}>処理時間</div>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: AppTheme.accentColor }}>
                   {result.stats.processingTimeMs}ms
                 </div>
               </div>
               <div>
-                <div style={{ color: '#0369a1', fontWeight: '600', marginBottom: '4px' }}>Qwen成功</div>
-                <div style={{ fontSize: '18px', fontWeight: '700', color: '#0c4a6e' }}>
+                <div style={{ color: AppTheme.primaryColor, fontWeight: '600', marginBottom: '4px' }}>Qwen成功</div>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: AppTheme.accentColor }}>
                   {result.stats.successCount.qwen}/{result.stats.totalSpots}
                 </div>
               </div>
               <div>
-                <div style={{ color: '#0369a1', fontWeight: '600', marginBottom: '4px' }}>Gemini成功</div>
-                <div style={{ fontSize: '18px', fontWeight: '700', color: '#0c4a6e' }}>
+                <div style={{ color: AppTheme.primaryColor, fontWeight: '600', marginBottom: '4px' }}>Gemini成功</div>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: AppTheme.accentColor }}>
                   {result.stats.successCount.gemini}/{result.stats.totalSpots}
                 </div>
               </div>
@@ -614,24 +638,22 @@ export default function ScenarioPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   {/* Qwen結果 */}
                   <div style={{
-                    padding: '16px',
-                    backgroundColor: '#f0f9ff',
-                    borderRadius: '6px',
-                    border: '1px solid #0ea5e9',
+                    ...AppStyles.card,
+                    border: `1px solid ${AppTheme.primaryColor}`,
                   }}>
                     <h4 style={{
                       fontSize: '16px',
                       marginBottom: '8px',
                       fontWeight: '600',
-                      color: '#0369a1',
+                      color: AppTheme.accentColor,
                     }}>
-                      Qwen
+                      🤖 Qwen
                     </h4>
                     <p style={{
                       whiteSpace: 'pre-wrap',
                       lineHeight: '1.6',
                       margin: 0,
-                      color: spot.qwen ? '#0c4a6e' : '#ef4444',
+                      color: spot.qwen ? AppTheme.accentColor : AppTheme.errorColor,
                       fontSize: '14px',
                     }}>
                       {spot.qwen || (spot.error?.qwen ? `エラー: ${spot.error.qwen}` : '結果なし')}
@@ -640,24 +662,23 @@ export default function ScenarioPage() {
 
                   {/* Gemini結果 */}
                   <div style={{
-                    padding: '16px',
-                    backgroundColor: '#fef3c7',
-                    borderRadius: '6px',
-                    border: '1px solid #f59e0b',
+                    ...AppStyles.card,
+                    backgroundColor: AppTheme.secondaryColor,
+                    border: `1px solid ${AppTheme.primaryColor}`,
                   }}>
                     <h4 style={{
                       fontSize: '16px',
                       marginBottom: '8px',
                       fontWeight: '600',
-                      color: '#b45309',
+                      color: AppTheme.accentColor,
                     }}>
-                      Gemini
+                      ✨ Gemini
                     </h4>
                     <p style={{
                       whiteSpace: 'pre-wrap',
                       lineHeight: '1.6',
                       margin: 0,
-                      color: spot.gemini ? '#78350f' : '#ef4444',
+                      color: spot.gemini ? AppTheme.accentColor : AppTheme.errorColor,
                       fontSize: '14px',
                     }}>
                       {spot.gemini || (spot.error?.gemini ? `エラー: ${spot.error.gemini}` : '結果なし')}
@@ -672,12 +693,12 @@ export default function ScenarioPage() {
           <div style={{
             marginTop: '32px',
             padding: '24px',
-            backgroundColor: '#faf5ff',
-            borderRadius: '8px',
-            border: '2px solid #a855f7',
+            backgroundColor: AppTheme.secondaryColor,
+            borderRadius: '16px',
+            border: `2px solid ${AppTheme.primaryColor}`,
           }}>
-            <h2 style={{ fontSize: '24px', marginBottom: '16px', fontWeight: '600', color: '#7e22ce' }}>
-              シナリオ統合
+            <h2 style={{ fontSize: '24px', marginBottom: '16px', fontWeight: '600', color: AppTheme.accentColor }}>
+              🐩 シナリオ統合
             </h2>
             <p style={{ fontSize: '14px', color: '#6b21a8', marginBottom: '16px' }}>
               生成されたシナリオを1つの自然な流れのテキストに統合します
@@ -750,13 +771,10 @@ export default function ScenarioPage() {
               disabled={integrating}
               style={{
                 width: '100%',
-                padding: '12px 24px',
+                padding: '14px 24px',
                 fontSize: '16px',
-                fontWeight: '600',
-                backgroundColor: integrating ? '#9ca3af' : '#a855f7',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
+                ...AppStyles.primaryButton,
+                backgroundColor: integrating ? '#9ca3af' : AppTheme.primaryColor,
                 cursor: integrating ? 'not-allowed' : 'pointer',
                 marginBottom: '16px',
               }}
@@ -781,22 +799,20 @@ export default function ScenarioPage() {
             {/* 統合結果表示 */}
             {integrationResult && (
               <div style={{
-                padding: '20px',
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                border: '2px solid #d8b4fe',
+                ...AppStyles.card,
+                border: `2px solid ${AppTheme.primaryColor}`,
               }}>
                 <h3 style={{
                   fontSize: '18px',
                   marginBottom: '12px',
                   fontWeight: '600',
-                  color: '#7e22ce',
+                  color: AppTheme.accentColor,
                 }}>
-                  統合されたシナリオ
+                  🐩 統合されたシナリオ
                 </h3>
                 <div style={{
                   fontSize: '12px',
-                  color: '#9333ea',
+                  color: AppTheme.primaryColor,
                   marginBottom: '12px',
                   display: 'flex',
                   gap: '16px',
