@@ -30,7 +30,7 @@ export class QwenClient {
   }
 
   async chat(message: string): Promise<string> {
-    const modelName = 'qwen-turbo';
+    const modelName = 'qwen-flash';
 
     // Langfuseトレースを開始
     const trace = createQwenTrace('qwen-chat', message, {

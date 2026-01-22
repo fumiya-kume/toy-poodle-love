@@ -14,11 +14,6 @@ import type { ExtractedLocation } from '../src/types/voice-route';
 
 type TabType = 'ai' | 'route' | 'ai-route';
 
-interface ModelResponse {
-  qwen?: string;
-  gemini?: string;
-}
-
 interface OptimizedRouteResult {
   orderedWaypoints: OptimizedWaypoint[];
   legs: RouteLeg[];
@@ -31,11 +26,8 @@ export default function Home() {
 
   // AI テキスト生成用のstate
   const [message, setMessage] = useState('');
-  const [enabledModels, setEnabledModels] = useState({
-    qwen: true,
-    gemini: true,
-  });
-  const [responses, setResponses] = useState<ModelResponse>({});
+  const [selectedAiModel, setSelectedAiModel] = useState<'qwen' | 'gemini'>('gemini');
+  const [aiResponse, setAiResponse] = useState<string>('');
   const [aiLoading, setAiLoading] = useState(false);
 
   // ルート最適化用のstate
@@ -237,13 +229,6 @@ export default function Home() {
     }
   };
 
-  const handleModelToggle = (model: 'qwen' | 'gemini') => {
-    setEnabledModels(prev => ({
-      ...prev,
-      [model]: !prev[model],
-    }));
-  };
-
   const handleAiSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -252,59 +237,28 @@ export default function Home() {
       return;
     }
 
-    if (!enabledModels.qwen && !enabledModels.gemini) {
-      alert('少なくとも1つのモデルを選択してください');
-      return;
-    }
-
     setAiLoading(true);
-    setResponses({});
-
-    const apiCalls = [];
-
-    if (enabledModels.qwen) {
-      apiCalls.push(
-        fetch('/api/qwen', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message }),
-        })
-          .then(res => res.json())
-          .then(data => ({ model: 'qwen' as const, data }))
-          .catch(error => ({ model: 'qwen' as const, error: String(error) }))
-      );
-    }
-
-    if (enabledModels.gemini) {
-      apiCalls.push(
-        fetch('/api/gemini', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message }),
-        })
-          .then(res => res.json())
-          .then(data => ({ model: 'gemini' as const, data }))
-          .catch(error => ({ model: 'gemini' as const, error: String(error) }))
-      );
-    }
+    setAiResponse('');
 
     try {
-      const results = await Promise.all(apiCalls);
-      const newResponses: ModelResponse = {};
+      const apiEndpoint = selectedAiModel === 'qwen' ? '/api/qwen' : '/api/gemini';
 
-      results.forEach(result => {
-        if ('error' in result) {
-          newResponses[result.model] = `エラー: ${result.error}`;
-        } else if (result.data.error) {
-          newResponses[result.model] = `エラー: ${result.data.error}`;
-        } else {
-          newResponses[result.model] = result.data.response;
-        }
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
       });
 
-      setResponses(newResponses);
+      const data = await response.json();
+
+      if (data.error) {
+        setAiResponse(`エラー: ${data.error}`);
+      } else {
+        setAiResponse(data.response);
+      }
     } catch (error) {
       console.error('API呼び出しエラー:', error);
+      setAiResponse(`エラー: ${error instanceof Error ? error.message : 'APIの呼び出しに失敗しました'}`);
     } finally {
       setAiLoading(false);
     }
@@ -436,7 +390,7 @@ export default function Home() {
                 routeName: data.routeGeneration.routeName,
                 spots,
               },
-              models: 'both',
+              models: aiRouteModel,
               includeImagePrompt: false,
             }),
           });
@@ -521,7 +475,7 @@ export default function Home() {
             routeName: aiRouteResult.routeGeneration.routeName,
             spots,
           },
-          models: 'both',
+          models: aiRouteModel,
           includeImagePrompt: false,
         }),
       });
@@ -1493,18 +1447,20 @@ export default function Home() {
               <div style={{ display: 'flex', gap: '16px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                   <input
-                    type="checkbox"
-                    checked={enabledModels.qwen}
-                    onChange={() => handleModelToggle('qwen')}
+                    type="radio"
+                    name="aiModel"
+                    checked={selectedAiModel === 'qwen'}
+                    onChange={() => setSelectedAiModel('qwen')}
                     style={{ marginRight: '8px' }}
                   />
                   Qwen
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                   <input
-                    type="checkbox"
-                    checked={enabledModels.gemini}
-                    onChange={() => handleModelToggle('gemini')}
+                    type="radio"
+                    name="aiModel"
+                    checked={selectedAiModel === 'gemini'}
+                    onChange={() => setSelectedAiModel('gemini')}
                     style={{ marginRight: '8px' }}
                   />
                   Gemini
@@ -1557,7 +1513,7 @@ export default function Home() {
             </button>
           </form>
 
-          {(responses.qwen || responses.gemini) && (
+          {aiResponse && (
             <div style={{ marginTop: '32px' }}>
               <h2 style={{
                 fontSize: '24px',
@@ -1567,58 +1523,28 @@ export default function Home() {
                 応答:
               </h2>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {responses.qwen && (
-                  <div style={{
-                    padding: '20px',
-                    backgroundColor: '#f0f9ff',
-                    borderRadius: '8px',
-                    border: '2px solid #0ea5e9'
-                  }}>
-                    <h3 style={{
-                      fontSize: '18px',
-                      marginBottom: '12px',
-                      fontWeight: '600',
-                      color: '#0369a1'
-                    }}>
-                      Qwen
-                    </h3>
-                    <p style={{
-                      whiteSpace: 'pre-wrap',
-                      lineHeight: '1.6',
-                      margin: 0,
-                      color: '#0c4a6e'
-                    }}>
-                      {responses.qwen}
-                    </p>
-                  </div>
-                )}
-
-                {responses.gemini && (
-                  <div style={{
-                    padding: '20px',
-                    backgroundColor: '#fef3c7',
-                    borderRadius: '8px',
-                    border: '2px solid #f59e0b'
-                  }}>
-                    <h3 style={{
-                      fontSize: '18px',
-                      marginBottom: '12px',
-                      fontWeight: '600',
-                      color: '#b45309'
-                    }}>
-                      Gemini
-                    </h3>
-                    <p style={{
-                      whiteSpace: 'pre-wrap',
-                      lineHeight: '1.6',
-                      margin: 0,
-                      color: '#78350f'
-                    }}>
-                      {responses.gemini}
-                    </p>
-                  </div>
-                )}
+              <div style={{
+                padding: '20px',
+                backgroundColor: selectedAiModel === 'qwen' ? '#f0f9ff' : '#fef3c7',
+                borderRadius: '8px',
+                border: selectedAiModel === 'qwen' ? '2px solid #0ea5e9' : '2px solid #f59e0b'
+              }}>
+                <h3 style={{
+                  fontSize: '18px',
+                  marginBottom: '12px',
+                  fontWeight: '600',
+                  color: selectedAiModel === 'qwen' ? '#0369a1' : '#b45309'
+                }}>
+                  {selectedAiModel === 'qwen' ? 'Qwen' : 'Gemini'}
+                </h3>
+                <p style={{
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: '1.6',
+                  margin: 0,
+                  color: selectedAiModel === 'qwen' ? '#0c4a6e' : '#78350f'
+                }}>
+                  {aiResponse}
+                </p>
               </div>
             </div>
           )}
@@ -1706,15 +1632,17 @@ export default function Home() {
                   );
                 }
 
+                const scenarioText = aiRouteModel === 'qwen' ? scenario.qwen : scenario.gemini;
+                const scenarioError = aiRouteModel === 'qwen' ? scenario.error?.qwen : scenario.error?.gemini;
+
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {/* Qwen の結果 */}
-                    {scenario.qwen && (
+                    {scenarioText && (
                       <div style={{
                         padding: '16px',
-                        backgroundColor: '#f0f9ff',
+                        backgroundColor: aiRouteModel === 'qwen' ? '#f0f9ff' : '#fef3c7',
                         borderRadius: '12px',
-                        border: '2px solid #0ea5e9',
+                        border: aiRouteModel === 'qwen' ? '2px solid #0ea5e9' : '2px solid #f59e0b',
                       }}>
                         <div style={{
                           display: 'flex',
@@ -1726,7 +1654,7 @@ export default function Home() {
                             margin: 0,
                             fontSize: '16px',
                             fontWeight: '600',
-                            color: '#0369a1',
+                            color: aiRouteModel === 'qwen' ? '#0369a1' : '#b45309',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px',
@@ -1736,17 +1664,19 @@ export default function Home() {
                               width: '24px',
                               height: '24px',
                               borderRadius: '6px',
-                              backgroundColor: '#0ea5e9',
+                              backgroundColor: aiRouteModel === 'qwen' ? '#0ea5e9' : '#f59e0b',
                               color: 'white',
                               fontSize: '12px',
                               textAlign: 'center',
                               lineHeight: '24px',
-                            }}>Q</span>
-                            Qwen 生成ガイド
+                            }}>
+                              {aiRouteModel === 'qwen' ? 'Q' : 'G'}
+                            </span>
+                            {aiRouteModel === 'qwen' ? 'Qwen' : 'Gemini'} 生成ガイド
                           </h3>
                           <button
-                            onClick={() => handlePlayTTS(scenario.qwen!, 'qwen')}
-                            disabled={ttsLoading === 'qwen'}
+                            onClick={() => handlePlayTTS(scenarioText, aiRouteModel)}
+                            disabled={ttsLoading === aiRouteModel}
                             style={{
                               display: 'flex',
                               alignItems: 'center',
@@ -1754,17 +1684,17 @@ export default function Home() {
                               padding: '8px 16px',
                               fontSize: '14px',
                               fontWeight: '600',
-                              backgroundColor: ttsPlaying === 'qwen' ? '#dc2626' : ttsLoading === 'qwen' ? '#ccc' : '#0ea5e9',
+                              backgroundColor: ttsPlaying === aiRouteModel ? '#dc2626' : ttsLoading === aiRouteModel ? '#ccc' : (aiRouteModel === 'qwen' ? '#0ea5e9' : '#f59e0b'),
                               color: 'white',
                               border: 'none',
                               borderRadius: '20px',
-                              cursor: ttsLoading === 'qwen' ? 'not-allowed' : 'pointer',
+                              cursor: ttsLoading === aiRouteModel ? 'not-allowed' : 'pointer',
                               transition: 'background-color 0.2s',
                             }}
                           >
-                            {ttsLoading === 'qwen' ? (
+                            {ttsLoading === aiRouteModel ? (
                               '読込中...'
-                            ) : ttsPlaying === 'qwen' ? (
+                            ) : ttsPlaying === aiRouteModel ? (
                               <>⏹ 停止</>
                             ) : (
                               <>▶ 再生</>
@@ -1775,91 +1705,16 @@ export default function Home() {
                           margin: 0,
                           whiteSpace: 'pre-wrap',
                           lineHeight: '1.8',
-                          color: '#0c4a6e',
+                          color: aiRouteModel === 'qwen' ? '#0c4a6e' : '#78350f',
                           fontSize: '15px',
                         }}>
-                          {scenario.qwen}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Gemini の結果 */}
-                    {scenario.gemini && (
-                      <div style={{
-                        padding: '16px',
-                        backgroundColor: '#fef3c7',
-                        borderRadius: '12px',
-                        border: '2px solid #f59e0b',
-                      }}>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginBottom: '12px',
-                        }}>
-                          <h3 style={{
-                            margin: 0,
-                            fontSize: '16px',
-                            fontWeight: '600',
-                            color: '#b45309',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                          }}>
-                            <span style={{
-                              display: 'inline-block',
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '6px',
-                              backgroundColor: '#f59e0b',
-                              color: 'white',
-                              fontSize: '12px',
-                              textAlign: 'center',
-                              lineHeight: '24px',
-                            }}>G</span>
-                            Gemini 生成ガイド
-                          </h3>
-                          <button
-                            onClick={() => handlePlayTTS(scenario.gemini!, 'gemini')}
-                            disabled={ttsLoading === 'gemini'}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              padding: '8px 16px',
-                              fontSize: '14px',
-                              fontWeight: '600',
-                              backgroundColor: ttsPlaying === 'gemini' ? '#dc2626' : ttsLoading === 'gemini' ? '#ccc' : '#f59e0b',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '20px',
-                              cursor: ttsLoading === 'gemini' ? 'not-allowed' : 'pointer',
-                              transition: 'background-color 0.2s',
-                            }}
-                          >
-                            {ttsLoading === 'gemini' ? (
-                              '読込中...'
-                            ) : ttsPlaying === 'gemini' ? (
-                              <>⏹ 停止</>
-                            ) : (
-                              <>▶ 再生</>
-                            )}
-                          </button>
-                        </div>
-                        <p style={{
-                          margin: 0,
-                          whiteSpace: 'pre-wrap',
-                          lineHeight: '1.8',
-                          color: '#78350f',
-                          fontSize: '15px',
-                        }}>
-                          {scenario.gemini}
+                          {scenarioText}
                         </p>
                       </div>
                     )}
 
                     {/* エラーがある場合 */}
-                    {scenario.error && (scenario.error.qwen || scenario.error.gemini) && (
+                    {scenarioError && (
                       <div style={{
                         padding: '16px',
                         backgroundColor: '#fef2f2',
@@ -1874,21 +1729,14 @@ export default function Home() {
                         }}>
                           ⚠️ エラー
                         </h3>
-                        {scenario.error.qwen && (
-                          <p style={{ margin: '0 0 8px 0', color: '#991b1b' }}>
-                            Qwen: {scenario.error.qwen}
-                          </p>
-                        )}
-                        {scenario.error.gemini && (
-                          <p style={{ margin: 0, color: '#991b1b' }}>
-                            Gemini: {scenario.error.gemini}
-                          </p>
-                        )}
+                        <p style={{ margin: 0, color: '#991b1b' }}>
+                          {scenarioError}
+                        </p>
                       </div>
                     )}
 
                     {/* シナリオがない場合 */}
-                    {!scenario.qwen && !scenario.gemini && (
+                    {!scenarioText && !scenarioError && (
                       <p style={{ color: '#6b7280', textAlign: 'center' }}>
                         このスポットのガイドはまだ生成されていません
                       </p>
