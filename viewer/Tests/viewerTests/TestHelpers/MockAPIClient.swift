@@ -41,24 +41,43 @@ actor MockAPIClient {
 
 /// URLProtocol を使ったネットワークモック
 class MockURLProtocol: URLProtocol {
-    private final class ResponseStorage: @unchecked Sendable {
+    private final class Storage<T>: @unchecked Sendable {
         private let lock = NSLock()
-        private var value: (Data?, URLResponse?, Error?)?
+        private var _value: T?
 
-        func get() -> (Data?, URLResponse?, Error?)? {
-            lock.lock()
-            defer { lock.unlock() }
-            return value
-        }
-
-        func set(_ newValue: (Data?, URLResponse?, Error?)?) {
-            lock.lock()
-            defer { lock.unlock() }
-            value = newValue
+        var value: T? {
+            get {
+                lock.lock()
+                defer { lock.unlock() }
+                return _value
+            }
+            set {
+                lock.lock()
+                defer { lock.unlock() }
+                _value = newValue
+            }
         }
     }
 
-    private static let responseStorage = ResponseStorage()
+    // Static properties for backward compatibility
+    private static let dataStorage = Storage<Data>()
+    private static let responseStorage = Storage<HTTPURLResponse>()
+    private static let errorStorage = Storage<Error>()
+
+    static var mockResponseData: Data? {
+        get { dataStorage.value }
+        set { dataStorage.value = newValue }
+    }
+
+    static var mockResponse: HTTPURLResponse? {
+        get { responseStorage.value }
+        set { responseStorage.value = newValue }
+    }
+
+    static var mockError: Error? {
+        get { errorStorage.value }
+        set { errorStorage.value = newValue }
+    }
 
     override class func canInit(with request: URLRequest) -> Bool {
         true
@@ -69,34 +88,35 @@ class MockURLProtocol: URLProtocol {
     }
 
     override func startLoading() {
-        if let (data, response, error) = Self.responseStorage.get() {
-            if let error = error {
-                client?.urlProtocol(self, didFailWithError: error)
-            } else {
-                if let response = response {
-                    client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-                }
-                if let data = data {
-                    client?.urlProtocol(self, didLoad: data)
-                }
-                client?.urlProtocolDidFinishLoading(self)
+        if let error = Self.mockError {
+            client?.urlProtocol(self, didFailWithError: error)
+        } else {
+            if let response = Self.mockResponse {
+                client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             }
+            if let data = Self.mockResponseData {
+                client?.urlProtocol(self, didLoad: data)
+            }
+            client?.urlProtocolDidFinishLoading(self)
         }
     }
 
     override func stopLoading() {}
 
     static func setMockResponse(data: Data?, statusCode: Int, error: Error? = nil) {
-        let response = HTTPURLResponse(
+        mockResponseData = data
+        mockResponse = HTTPURLResponse(
             url: URL(string: "https://example.com")!,
             statusCode: statusCode,
             httpVersion: nil,
             headerFields: nil
         )
-        responseStorage.set((data, response, error))
+        mockError = error
     }
 
     static func reset() {
-        responseStorage.set(nil)
+        mockResponseData = nil
+        mockResponse = nil
+        mockError = nil
     }
 }

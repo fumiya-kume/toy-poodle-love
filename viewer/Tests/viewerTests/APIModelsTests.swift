@@ -1,58 +1,8 @@
 import XCTest
 @testable import VideoOverlayViewer
 
-// MARK: - LatLng Tests
-
-final class LatLngTests: XCTestCase {
-
-    func testInit_setsPropertiesCorrectly() {
-        let latLng = LatLng(latitude: 35.6812, longitude: 139.7671)
-
-        XCTAssertEqual(latLng.latitude, 35.6812)
-        XCTAssertEqual(latLng.longitude, 139.7671)
-    }
-
-    func testCodable_encodeAndDecode_preservesData() throws {
-        let original = LatLng(latitude: 35.6812, longitude: 139.7671)
-
-        let encoder = JSONEncoder()
-        let decoder = JSONDecoder()
-
-        let data = try encoder.encode(original)
-        let decoded = try decoder.decode(LatLng.self, from: data)
-
-        XCTAssertEqual(decoded.latitude, original.latitude)
-        XCTAssertEqual(decoded.longitude, original.longitude)
-    }
-
-    func testEquatable_sameValues_returnsTrue() {
-        let latLng1 = LatLng(latitude: 35.6812, longitude: 139.7671)
-        let latLng2 = LatLng(latitude: 35.6812, longitude: 139.7671)
-
-        XCTAssertEqual(latLng1, latLng2)
-    }
-
-    func testEquatable_differentValues_returnsFalse() {
-        let latLng1 = LatLng(latitude: 35.6812, longitude: 139.7671)
-        let latLng2 = LatLng(latitude: 34.6937, longitude: 135.5022)
-
-        XCTAssertNotEqual(latLng1, latLng2)
-    }
-
-    func testCodable_fromJSON_decodesCorrectly() throws {
-        let json = """
-        {
-            "latitude": 35.6812,
-            "longitude": 139.7671
-        }
-        """.data(using: .utf8)!
-
-        let decoded = try JSONDecoder().decode(LatLng.self, from: json)
-
-        XCTAssertEqual(decoded.latitude, 35.6812, accuracy: 0.0001)
-        XCTAssertEqual(decoded.longitude, 139.7671, accuracy: 0.0001)
-    }
-}
+// Note: LatLngTests have been migrated to Swift Testing framework
+// See: Tests/viewerTests/Models/API/LatLngTests.swift
 
 // MARK: - TextGenerationRequest Tests
 
@@ -311,111 +261,11 @@ final class RouteWaypointTests: XCTestCase {
     }
 }
 
-// MARK: - TravelMode Tests
+// Note: TravelModeTests have been migrated to Swift Testing framework
+// See: Tests/viewerTests/Models/API/TravelModeTests.swift
 
-final class TravelModeTests: XCTestCase {
-
-    func testRawValue_driving() {
-        XCTAssertEqual(TravelMode.driving.rawValue, "DRIVE")
-    }
-
-    func testRawValue_walking() {
-        XCTAssertEqual(TravelMode.walking.rawValue, "WALK")
-    }
-
-    func testRawValue_bicycling() {
-        XCTAssertEqual(TravelMode.bicycling.rawValue, "BICYCLE")
-    }
-
-    func testRawValue_transit() {
-        XCTAssertEqual(TravelMode.transit.rawValue, "TRANSIT")
-    }
-
-    func testDisplayName_driving() {
-        XCTAssertEqual(TravelMode.driving.displayName, "車")
-    }
-
-    func testDisplayName_walking() {
-        XCTAssertEqual(TravelMode.walking.displayName, "徒歩")
-    }
-
-    func testDisplayName_bicycling() {
-        XCTAssertEqual(TravelMode.bicycling.displayName, "自転車")
-    }
-
-    func testDisplayName_transit() {
-        XCTAssertEqual(TravelMode.transit.displayName, "公共交通機関")
-    }
-
-    func testIdentifiable_id_returnsRawValue() {
-        XCTAssertEqual(TravelMode.driving.id, "DRIVE")
-    }
-
-    func testCaseIterable_allCases() {
-        XCTAssertEqual(TravelMode.allCases.count, 4)
-        XCTAssertTrue(TravelMode.allCases.contains(.driving))
-        XCTAssertTrue(TravelMode.allCases.contains(.walking))
-        XCTAssertTrue(TravelMode.allCases.contains(.bicycling))
-        XCTAssertTrue(TravelMode.allCases.contains(.transit))
-    }
-
-    func testCodable_encodeAndDecode() throws {
-        let original = TravelMode.driving
-
-        let data = try JSONEncoder().encode(original)
-        let decoded = try JSONDecoder().decode(TravelMode.self, from: data)
-
-        XCTAssertEqual(decoded, original)
-    }
-}
-
-// MARK: - AIModel Tests
-
-final class AIModelTests: XCTestCase {
-
-    func testRawValue_gemini() {
-        XCTAssertEqual(AIModel.gemini.rawValue, "gemini")
-    }
-
-    func testRawValue_qwen() {
-        XCTAssertEqual(AIModel.qwen.rawValue, "qwen")
-    }
-
-    func testDisplayName_gemini() {
-        XCTAssertEqual(AIModel.gemini.displayName, "Gemini")
-    }
-
-    func testDisplayName_qwen() {
-        XCTAssertEqual(AIModel.qwen.displayName, "Qwen")
-    }
-
-    func testIdentifiable_id_returnsRawValue() {
-        XCTAssertEqual(AIModel.gemini.id, "gemini")
-        XCTAssertEqual(AIModel.qwen.id, "qwen")
-    }
-
-    func testCaseIterable_allCases() {
-        XCTAssertEqual(AIModel.allCases.count, 2)
-        XCTAssertTrue(AIModel.allCases.contains(.gemini))
-        XCTAssertTrue(AIModel.allCases.contains(.qwen))
-    }
-
-    func testCodable_encodeAndDecode() throws {
-        for model in AIModel.allCases {
-            let data = try JSONEncoder().encode(model)
-            let decoded = try JSONDecoder().decode(AIModel.self, from: data)
-            XCTAssertEqual(decoded, model)
-        }
-    }
-
-    func testToScenarioModels_gemini() {
-        XCTAssertEqual(AIModel.gemini.toScenarioModels(), .gemini)
-    }
-
-    func testToScenarioModels_qwen() {
-        XCTAssertEqual(AIModel.qwen.toScenarioModels(), .qwen)
-    }
-}
+// Note: AIModelTests have been migrated to Swift Testing framework
+// See: Tests/viewerTests/Models/API/AIModelTests.swift
 
 // MARK: - RouteOptimizeRequest Tests
 
