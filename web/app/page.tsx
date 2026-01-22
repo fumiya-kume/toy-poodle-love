@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   GeocodedPlace,
   RouteOptimizationResponse,
@@ -58,6 +58,11 @@ export default function Home() {
   const [scenarioLoading, setScenarioLoading] = useState(false);
   const [selectedSpotIndex, setSelectedSpotIndex] = useState<number | null>(null);
   const [spotModalOpen, setSpotModalOpen] = useState(false);
+
+  // TTS再生用のstate
+  const [ttsPlaying, setTtsPlaying] = useState<'qwen' | 'gemini' | null>(null);
+  const [ttsLoading, setTtsLoading] = useState<'qwen' | 'gemini' | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleModelToggle = (model: 'qwen' | 'gemini') => {
     setEnabledModels(prev => ({
@@ -385,6 +390,82 @@ export default function Home() {
 
     const waypointName = orderedWaypoints[selectedSpotIndex].waypoint.name;
     return scenarioData.spots.find(s => s.name === waypointName) || null;
+  };
+
+  // TTS音声を再生する関数
+  const handlePlayTTS = async (text: string, model: 'qwen' | 'gemini') => {
+    // 同じモデルの再生中ならば停止
+    if (ttsPlaying === model) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      setTtsPlaying(null);
+      return;
+    }
+
+    // 別の音声が再生中なら停止
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      setTtsPlaying(null);
+    }
+
+    setTtsLoading(model);
+
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          voice: 'Cherry',
+          format: 'pcm',
+          sampleRate: 24000,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'TTS生成に失敗しました');
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+
+      audio.onended = () => {
+        setTtsPlaying(null);
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        setTtsPlaying(null);
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+        alert('音声の再生に失敗しました');
+      };
+
+      audioRef.current = audio;
+      await audio.play();
+      setTtsPlaying(model);
+    } catch (error) {
+      console.error('TTS再生エラー:', error);
+      alert(error instanceof Error ? error.message : 'TTS再生に失敗しました');
+    } finally {
+      setTtsLoading(null);
+    }
+  };
+
+  // モーダルを閉じる際に音声を停止
+  const handleCloseSpotModal = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      setTtsPlaying(null);
+    }
+    closeSpotModal();
   };
 
   return (
@@ -1231,7 +1312,7 @@ export default function Home() {
       {/* 地点ガイド詳細モーダル */}
       {spotModalOpen && selectedSpotIndex !== null && (
         <div
-          onClick={closeSpotModal}
+          onClick={handleCloseSpotModal}
           style={{
             position: 'fixed',
             top: 0,
@@ -1279,7 +1360,7 @@ export default function Home() {
                 </p>
               </div>
               <button
-                onClick={closeSpotModal}
+                onClick={handleCloseSpotModal}
                 style={{
                   width: '36px',
                   height: '36px',
@@ -1319,28 +1400,61 @@ export default function Home() {
                         borderRadius: '12px',
                         border: '2px solid #0ea5e9',
                       }}>
-                        <h3 style={{
-                          margin: '0 0 12px 0',
-                          fontSize: '16px',
-                          fontWeight: '600',
-                          color: '#0369a1',
+                        <div style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '8px',
+                          justifyContent: 'space-between',
+                          marginBottom: '12px',
                         }}>
-                          <span style={{
-                            display: 'inline-block',
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '6px',
-                            backgroundColor: '#0ea5e9',
-                            color: 'white',
-                            fontSize: '12px',
-                            textAlign: 'center',
-                            lineHeight: '24px',
-                          }}>Q</span>
-                          Qwen 生成ガイド
-                        </h3>
+                          <h3 style={{
+                            margin: 0,
+                            fontSize: '16px',
+                            fontWeight: '600',
+                            color: '#0369a1',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                          }}>
+                            <span style={{
+                              display: 'inline-block',
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '6px',
+                              backgroundColor: '#0ea5e9',
+                              color: 'white',
+                              fontSize: '12px',
+                              textAlign: 'center',
+                              lineHeight: '24px',
+                            }}>Q</span>
+                            Qwen 生成ガイド
+                          </h3>
+                          <button
+                            onClick={() => handlePlayTTS(scenario.qwen!, 'qwen')}
+                            disabled={ttsLoading === 'qwen'}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '8px 16px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              backgroundColor: ttsPlaying === 'qwen' ? '#dc2626' : ttsLoading === 'qwen' ? '#ccc' : '#0ea5e9',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '20px',
+                              cursor: ttsLoading === 'qwen' ? 'not-allowed' : 'pointer',
+                              transition: 'background-color 0.2s',
+                            }}
+                          >
+                            {ttsLoading === 'qwen' ? (
+                              '読込中...'
+                            ) : ttsPlaying === 'qwen' ? (
+                              <>⏹ 停止</>
+                            ) : (
+                              <>▶ 再生</>
+                            )}
+                          </button>
+                        </div>
                         <p style={{
                           margin: 0,
                           whiteSpace: 'pre-wrap',
@@ -1361,28 +1475,61 @@ export default function Home() {
                         borderRadius: '12px',
                         border: '2px solid #f59e0b',
                       }}>
-                        <h3 style={{
-                          margin: '0 0 12px 0',
-                          fontSize: '16px',
-                          fontWeight: '600',
-                          color: '#b45309',
+                        <div style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '8px',
+                          justifyContent: 'space-between',
+                          marginBottom: '12px',
                         }}>
-                          <span style={{
-                            display: 'inline-block',
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '6px',
-                            backgroundColor: '#f59e0b',
-                            color: 'white',
-                            fontSize: '12px',
-                            textAlign: 'center',
-                            lineHeight: '24px',
-                          }}>G</span>
-                          Gemini 生成ガイド
-                        </h3>
+                          <h3 style={{
+                            margin: 0,
+                            fontSize: '16px',
+                            fontWeight: '600',
+                            color: '#b45309',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                          }}>
+                            <span style={{
+                              display: 'inline-block',
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '6px',
+                              backgroundColor: '#f59e0b',
+                              color: 'white',
+                              fontSize: '12px',
+                              textAlign: 'center',
+                              lineHeight: '24px',
+                            }}>G</span>
+                            Gemini 生成ガイド
+                          </h3>
+                          <button
+                            onClick={() => handlePlayTTS(scenario.gemini!, 'gemini')}
+                            disabled={ttsLoading === 'gemini'}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '8px 16px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              backgroundColor: ttsPlaying === 'gemini' ? '#dc2626' : ttsLoading === 'gemini' ? '#ccc' : '#f59e0b',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '20px',
+                              cursor: ttsLoading === 'gemini' ? 'not-allowed' : 'pointer',
+                              transition: 'background-color 0.2s',
+                            }}
+                          >
+                            {ttsLoading === 'gemini' ? (
+                              '読込中...'
+                            ) : ttsPlaying === 'gemini' ? (
+                              <>⏹ 停止</>
+                            ) : (
+                              <>▶ 再生</>
+                            )}
+                          </button>
+                        </div>
                         <p style={{
                           margin: 0,
                           whiteSpace: 'pre-wrap',
