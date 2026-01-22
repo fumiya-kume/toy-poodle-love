@@ -43,7 +43,10 @@
       "Bash(codex review:*)",
       "WebFetch(domain:www.figma.com)",
       "Bash(head:*)",
-      "WebFetch(domain:namigoeku.com)"
+      "WebFetch(domain:namigoeku.com)",
+      "Bash(git -C /Users/kuu/ghq/github.com/fumiya-kume/toy-poodle-love log --oneline --all)",
+      "Bash(git rebase:*)",
+      "Bash(GIT_EDITOR=true git rebase:*)"
     ]
   },
   "outputStyle": "Explanatory"
