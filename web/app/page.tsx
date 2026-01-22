@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   GeocodedPlace,
   RouteOptimizationResponse,
@@ -8,6 +8,7 @@ import {
   RouteLeg,
 } from '../src/types/place-route';
 import { PipelineResponse } from '../src/types/pipeline';
+import type { ExtractedLocation } from '../src/types/voice-route';
 
 type TabType = 'ai' | 'route' | 'ai-route';
 
@@ -50,6 +51,178 @@ export default function Home() {
   const [aiRouteLoading, setAiRouteLoading] = useState(false);
   const [aiRouteResult, setAiRouteResult] = useState<PipelineResponse | null>(null);
   const [aiRouteError, setAiRouteError] = useState<string | null>(null);
+
+  // 音声入力用のstate
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const [voiceProcessing, setVoiceProcessing] = useState(false);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [extractedLocation, setExtractedLocation] = useState<ExtractedLocation | null>(null);
+
+  // 音声録音用のref
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  // オーディオレベル更新
+  const updateAudioLevel = useCallback(() => {
+    if (analyserRef.current) {
+      const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+      analyserRef.current.getByteFrequencyData(dataArray);
+      const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+      setAudioLevel(average / 255);
+    }
+    animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
+  }, []);
+
+  // 音声録音開始
+  const startVoiceRecording = async () => {
+    try {
+      setVoiceError(null);
+      setExtractedLocation(null);
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          sampleRate: 16000,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      });
+
+      const audioContext = new AudioContext({ sampleRate: 16000 });
+      audioContextRef.current = audioContext;
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+      updateAudioLevel();
+
+      const scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+      const pcmChunks: Int16Array[] = [];
+
+      scriptProcessor.onaudioprocess = (event) => {
+        const inputData = event.inputBuffer.getChannelData(0);
+        const pcmData = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          const s = Math.max(-1, Math.min(1, inputData[i]));
+          pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        }
+        pcmChunks.push(pcmData);
+      };
+
+      source.connect(scriptProcessor);
+      scriptProcessor.connect(audioContext.destination);
+
+      mediaRecorderRef.current = {
+        stop: async () => {
+          if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+          }
+          setAudioLevel(0);
+
+          scriptProcessor.disconnect();
+          source.disconnect();
+          stream.getTracks().forEach((track) => track.stop());
+
+          const totalLength = pcmChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+          const combinedPcm = new Int16Array(totalLength);
+          let offset = 0;
+          for (const chunk of pcmChunks) {
+            combinedPcm.set(chunk, offset);
+            offset += chunk.length;
+          }
+
+          const audioBuffer = new Uint8Array(combinedPcm.buffer);
+          await processVoiceAndExtract(audioBuffer);
+          await audioContext.close();
+        },
+      } as unknown as MediaRecorder;
+
+      setIsVoiceRecording(true);
+    } catch (err) {
+      console.error('Recording error:', err);
+      setVoiceError(
+        err instanceof Error ? err.message : 'マイクへのアクセスに失敗しました'
+      );
+    }
+  };
+
+  // 音声録音停止
+  const stopVoiceRecording = () => {
+    if (mediaRecorderRef.current && isVoiceRecording) {
+      mediaRecorderRef.current.stop();
+      setIsVoiceRecording(false);
+    }
+  };
+
+  // 音声処理と地点抽出
+  const processVoiceAndExtract = async (audioData: Uint8Array) => {
+    setVoiceProcessing(true);
+    try {
+      // Step 1: 音声認識
+      const formData = new FormData();
+      const audioBlob = new Blob([audioData.buffer as ArrayBuffer], { type: 'audio/pcm' });
+      formData.append('audio', audioBlob, 'recording.pcm');
+      formData.append(
+        'config',
+        JSON.stringify({
+          model: 'qwen3-asr-flash-realtime',
+          sampleRate: 16000,
+        })
+      );
+
+      const recognizeResponse = await fetch('/api/speech/recognize', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const recognizeData = await recognizeResponse.json();
+
+      if (!recognizeResponse.ok) {
+        throw new Error(recognizeData.error || '音声認識に失敗しました');
+      }
+
+      const text = recognizeData.text;
+
+      if (!text || text.trim().length === 0) {
+        throw new Error('音声を認識できませんでした。もう一度話してください。');
+      }
+
+      // Step 2: LLMで地点抽出
+      const extractResponse = await fetch('/api/voice-route/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, model: aiRouteModel }),
+      });
+
+      const extractData = await extractResponse.json();
+
+      if (!extractData.success) {
+        throw new Error(extractData.error || '地点の抽出に失敗しました');
+      }
+
+      const location: ExtractedLocation = extractData.location;
+      setExtractedLocation(location);
+
+      // 抽出結果をフォームに反映
+      if (location.origin) {
+        setAiRouteStartPoint(location.origin);
+      }
+      if (location.destination) {
+        // 目的地があれば、purposeに反映（「〜まで行きたい」形式で）
+        setAiRoutePurpose(`${location.destination}まで行きたい`);
+      }
+
+    } catch (err) {
+      console.error('Voice processing error:', err);
+      setVoiceError(err instanceof Error ? err.message : '処理に失敗しました');
+    } finally {
+      setVoiceProcessing(false);
+    }
+  };
 
   const handleModelToggle = (model: 'qwen' | 'gemini') => {
     setEnabledModels(prev => ({
@@ -342,6 +515,145 @@ export default function Home() {
       {/* AI ルート最適化タブ */}
       {activeTab === 'ai-route' && (
         <div>
+          {/* 音声入力セクション */}
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px',
+            backgroundColor: '#faf5ff',
+            border: '2px solid #e9d5ff',
+            borderRadius: '12px',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '12px'
+            }}>
+              <span style={{ fontWeight: '600', color: '#7c3aed' }}>
+                🎤 音声で入力
+              </span>
+              <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                「〜から〜まで」と話してください
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={isVoiceRecording ? stopVoiceRecording : startVoiceRecording}
+                disabled={voiceProcessing || aiRouteLoading}
+                style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  fontSize: '24px',
+                  backgroundColor: isVoiceRecording
+                    ? '#ef4444'
+                    : voiceProcessing
+                      ? '#9ca3af'
+                      : '#8b5cf6',
+                  color: 'white',
+                  border: 'none',
+                  cursor: voiceProcessing || aiRouteLoading ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: isVoiceRecording
+                    ? '0 0 0 4px rgba(239, 68, 68, 0.3)'
+                    : '0 2px 8px rgba(0, 0, 0, 0.15)',
+                }}
+              >
+                {voiceProcessing ? '⏳' : isVoiceRecording ? '⏹️' : '🎤'}
+              </button>
+
+              <div style={{ flex: 1 }}>
+                {isVoiceRecording && (
+                  <div style={{ marginBottom: '8px' }}>
+                    <div style={{
+                      height: '8px',
+                      backgroundColor: '#e5e7eb',
+                      borderRadius: '4px',
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${audioLevel * 100}%`,
+                        backgroundColor: audioLevel > 0.5 ? '#22c55e' : '#f59e0b',
+                        transition: 'width 0.1s',
+                      }} />
+                    </div>
+                  </div>
+                )}
+                <p style={{
+                  margin: 0,
+                  fontSize: '14px',
+                  color: '#6b7280'
+                }}>
+                  {voiceProcessing ? '音声を処理中...' :
+                   isVoiceRecording ? '話し終わったらボタンを押してください' :
+                   'ボタンを押して話しかけてください'}
+                </p>
+              </div>
+            </div>
+
+            {/* 音声エラー */}
+            {voiceError && (
+              <div style={{
+                marginTop: '12px',
+                padding: '8px 12px',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '6px',
+                color: '#dc2626',
+                fontSize: '14px'
+              }}>
+                {voiceError}
+              </div>
+            )}
+
+            {/* 抽出結果表示 */}
+            {extractedLocation && (
+              <div style={{
+                marginTop: '12px',
+                padding: '12px',
+                backgroundColor: 'white',
+                borderRadius: '8px',
+                border: '1px solid #e9d5ff'
+              }}>
+                <p style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '600', color: '#7c3aed' }}>
+                  📍 認識結果:
+                </p>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                  {extractedLocation.origin && (
+                    <span style={{
+                      padding: '4px 8px',
+                      backgroundColor: '#dcfce7',
+                      color: '#166534',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}>
+                      出発: {extractedLocation.origin}
+                    </span>
+                  )}
+                  {extractedLocation.destination && (
+                    <span style={{
+                      padding: '4px 8px',
+                      backgroundColor: '#fee2e2',
+                      color: '#991b1b',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}>
+                      目的地: {extractedLocation.destination}
+                    </span>
+                  )}
+                </div>
+                {extractedLocation.interpretation && (
+                  <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>
+                    💭 {extractedLocation.interpretation}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           <form onSubmit={handleAiRouteOptimize}>
             <div style={{ marginBottom: '24px' }}>
               <label style={{
@@ -356,13 +668,15 @@ export default function Home() {
                 value={aiRouteStartPoint}
                 onChange={(e) => setAiRouteStartPoint(e.target.value)}
                 placeholder="例: 東京駅"
+                disabled={isVoiceRecording || voiceProcessing}
                 style={{
                   width: '100%',
                   padding: '12px',
                   fontSize: '16px',
                   border: '1px solid #ccc',
                   borderRadius: '8px',
-                  fontFamily: 'inherit'
+                  fontFamily: 'inherit',
+                  backgroundColor: isVoiceRecording || voiceProcessing ? '#f3f4f6' : 'white'
                 }}
               />
             </div>
@@ -380,13 +694,15 @@ export default function Home() {
                 value={aiRoutePurpose}
                 onChange={(e) => setAiRoutePurpose(e.target.value)}
                 placeholder="例: 皇居周辺の観光スポットを巡りたい"
+                disabled={isVoiceRecording || voiceProcessing}
                 style={{
                   width: '100%',
                   padding: '12px',
                   fontSize: '16px',
                   border: '1px solid #ccc',
                   borderRadius: '8px',
-                  fontFamily: 'inherit'
+                  fontFamily: 'inherit',
+                  backgroundColor: isVoiceRecording || voiceProcessing ? '#f3f4f6' : 'white'
                 }}
               />
             </div>
