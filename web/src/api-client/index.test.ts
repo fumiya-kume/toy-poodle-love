@@ -280,7 +280,8 @@ describe('TaxiScenarioApiClient', () => {
       const request = {
         startPoint: '東京駅',
         purpose: '観光',
-        llmModel: 'qwen' as const,
+        spotCount: 5,
+        model: 'qwen' as const,
       }
 
       await client.pipelineRouteOptimize(request)
@@ -303,9 +304,12 @@ describe('TaxiScenarioApiClient', () => {
       })
 
       const request = {
-        startPoint: '東京駅',
-        purpose: '観光',
-        llmModel: 'qwen' as const,
+        input: {
+          startPoint: '東京駅',
+          purpose: '観光',
+          spotCount: 5,
+          model: 'qwen' as const,
+        },
       }
 
       await client.generateRoute(request)
@@ -329,11 +333,14 @@ describe('TaxiScenarioApiClient', () => {
 
       const request = {
         route: {
-          origin: '東京駅',
-          destination: '渋谷駅',
-          waypoints: ['新宿駅'],
+          routeName: 'テストルート',
+          spots: [
+            { name: '東京駅', type: 'start' as const },
+            { name: '新宿駅', type: 'waypoint' as const },
+            { name: '渋谷駅', type: 'destination' as const },
+          ],
         },
-        llmModel: 'qwen' as const,
+        models: 'qwen' as const,
       }
 
       await client.generateScenario(request)
@@ -356,9 +363,10 @@ describe('TaxiScenarioApiClient', () => {
       })
 
       const request = {
+        routeName: 'テストルート',
         spotName: '東京スカイツリー',
-        context: '観光案内',
-        llmModel: 'qwen' as const,
+        description: '観光案内',
+        models: 'qwen' as const,
       }
 
       await client.generateSpotScenario(request)
@@ -381,8 +389,13 @@ describe('TaxiScenarioApiClient', () => {
       })
 
       const request = {
-        scenarios: [{ spotName: 'スポット1', scenario: 'シナリオ1' }],
-        routeName: 'テストルート',
+        integration: {
+          routeName: 'テストルート',
+          spots: [
+            { name: 'スポット1', type: 'waypoint' as const, qwen: 'シナリオ1' },
+          ],
+          sourceModel: 'qwen' as const,
+        },
       }
 
       await client.integrateScenario(request)

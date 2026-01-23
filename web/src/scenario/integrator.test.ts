@@ -79,9 +79,10 @@ describe('ScenarioIntegrator', () => {
           routeName: 'テストルート',
           spots: [
             {
-              spotName: 'スポット1',
-              qwenScenario: 'qwenシナリオ',
-              geminiScenario: null,
+              name: 'スポット1',
+              type: 'waypoint',
+              qwen: 'qwenシナリオ',
+              gemini: undefined,
             },
           ],
           sourceModel: 'qwen',
@@ -102,9 +103,10 @@ describe('ScenarioIntegrator', () => {
           routeName: 'テストルート',
           spots: [
             {
-              spotName: 'スポット1',
-              qwenScenario: null,
-              geminiScenario: 'geminiシナリオ',
+              name: 'スポット1',
+              type: 'waypoint',
+              qwen: undefined,
+              gemini: 'geminiシナリオ',
             },
           ],
           sourceModel: 'gemini',
@@ -173,9 +175,10 @@ describe('ScenarioIntegrator', () => {
           routeName: '東京観光ルート',
           spots: [
             {
-              spotName: '東京タワー',
-              qwenScenario: 'タワーのシナリオ',
-              geminiScenario: null,
+              name: '東京タワー',
+              type: 'waypoint',
+              qwen: 'タワーのシナリオ',
+              gemini: undefined,
             },
           ],
           sourceModel: 'qwen',
@@ -231,8 +234,8 @@ describe('ScenarioIntegrator', () => {
 
         const integrator = new ScenarioIntegrator('qwen-key', 'gemini-key')
         const spots = [
-          { spotName: 'スポット1', qwenScenario: 'シナリオ1', geminiScenario: null },
-          { spotName: 'スポット2', qwenScenario: 'シナリオ2', geminiScenario: null },
+          { name: 'スポット1', type: 'waypoint' as const, qwen: 'シナリオ1', gemini: undefined },
+          { name: 'スポット2', type: 'waypoint' as const, qwen: 'シナリオ2', gemini: undefined },
         ]
         const input: ScenarioIntegrationInput = {
           routeName: 'マイルート',

@@ -329,7 +329,7 @@ describe('GoogleRoutesClient', () => {
 
         const request = {
           ...createMockRequest(),
-          travelMode: 'WALK'
+          travelMode: 'WALK' as const
         }
         await client.optimizeRoute(request)
 
