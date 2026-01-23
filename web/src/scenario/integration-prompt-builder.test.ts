@@ -14,11 +14,13 @@ describe('integration-prompt-builder', () => {
     const defaults: SpotScenario[] = [
       {
         name: 'スポット1',
+        type: 'waypoint',
         qwen: '東京タワーは日本を代表するランドマークです。',
         gemini: 'Tokyo Tower is a landmark of Japan.',
       },
       {
         name: 'スポット2',
+        type: 'waypoint',
         qwen: '浅草寺は東京最古の寺院です。',
         gemini: 'Senso-ji is the oldest temple in Tokyo.',
       },
@@ -46,6 +48,7 @@ describe('integration-prompt-builder', () => {
       const spots: SpotScenario[] = [
         {
           name: 'Spot1',
+          type: 'waypoint',
           qwen: 'English text',
           gemini: '日本語のテキスト',
         },
@@ -60,6 +63,7 @@ describe('integration-prompt-builder', () => {
       const spots: SpotScenario[] = [
         {
           name: 'Spot1',
+          type: 'waypoint',
           qwen: 'This is English text only.',
           gemini: 'Also English.',
         },
@@ -74,6 +78,7 @@ describe('integration-prompt-builder', () => {
       const spots: SpotScenario[] = [
         {
           name: 'Spot1',
+          type: 'waypoint',
           qwen: 'Japanese text: 日本語',
           gemini: 'Only English here.',
         },
@@ -86,7 +91,7 @@ describe('integration-prompt-builder', () => {
 
     it('空のシナリオではenを返す', () => {
       const spots: SpotScenario[] = [
-        { name: 'Spot1', qwen: undefined, gemini: undefined },
+        { name: 'Spot1', type: 'waypoint', qwen: undefined, gemini: undefined },
       ]
 
       expect(detectLanguageFromScenarios(spots, 'qwen')).toBe('en')
@@ -95,7 +100,7 @@ describe('integration-prompt-builder', () => {
 
     it('ひらがなを検出する', () => {
       const spots: SpotScenario[] = [
-        { name: 'Spot', qwen: 'これはひらがな', gemini: 'English' },
+        { name: 'Spot', type: 'waypoint', qwen: 'これはひらがな', gemini: 'English' },
       ]
 
       expect(detectLanguageFromScenarios(spots, 'qwen')).toBe('ja')
@@ -103,7 +108,7 @@ describe('integration-prompt-builder', () => {
 
     it('カタカナを検出する', () => {
       const spots: SpotScenario[] = [
-        { name: 'Spot', qwen: 'コレハカタカナ', gemini: 'English' },
+        { name: 'Spot', type: 'waypoint', qwen: 'コレハカタカナ', gemini: 'English' },
       ]
 
       expect(detectLanguageFromScenarios(spots, 'qwen')).toBe('ja')
@@ -111,7 +116,7 @@ describe('integration-prompt-builder', () => {
 
     it('漢字を検出する', () => {
       const spots: SpotScenario[] = [
-        { name: 'Spot', qwen: '東京', gemini: 'English' },
+        { name: 'Spot', type: 'waypoint', qwen: '東京', gemini: 'English' },
       ]
 
       expect(detectLanguageFromScenarios(spots, 'qwen')).toBe('ja')
@@ -153,6 +158,7 @@ describe('integration-prompt-builder', () => {
       const spots: SpotScenario[] = [
         {
           name: 'Spot',
+          type: 'waypoint',
           qwen: 'Only English content here.',
           gemini: 'Also English.',
         },
@@ -165,9 +171,9 @@ describe('integration-prompt-builder', () => {
 
     it('シナリオセクションを正しく結合する', () => {
       const spots: SpotScenario[] = [
-        { name: 'A', qwen: 'シナリオA', gemini: 'Scenario A' },
-        { name: 'B', qwen: 'シナリオB', gemini: 'Scenario B' },
-        { name: 'C', qwen: 'シナリオC', gemini: 'Scenario C' },
+        { name: 'A', type: 'waypoint', qwen: 'シナリオA', gemini: 'Scenario A' },
+        { name: 'B', type: 'waypoint', qwen: 'シナリオB', gemini: 'Scenario B' },
+        { name: 'C', type: 'waypoint', qwen: 'シナリオC', gemini: 'Scenario C' },
       ]
 
       const result = buildIntegrationPrompt('ルート', spots, 'qwen', 'ja')
@@ -179,9 +185,9 @@ describe('integration-prompt-builder', () => {
 
     it('nullのシナリオはフィルタリングされる', () => {
       const spots: SpotScenario[] = [
-        { name: 'A', qwen: 'シナリオA', gemini: undefined },
-        { name: 'B', qwen: undefined, gemini: undefined },
-        { name: 'C', qwen: 'シナリオC', gemini: undefined },
+        { name: 'A', type: 'waypoint', qwen: 'シナリオA', gemini: undefined },
+        { name: 'B', type: 'waypoint', qwen: undefined, gemini: undefined },
+        { name: 'C', type: 'waypoint', qwen: 'シナリオC', gemini: undefined },
       ]
 
       const result = buildIntegrationPrompt('ルート', spots, 'qwen', 'ja')
@@ -193,7 +199,7 @@ describe('integration-prompt-builder', () => {
 
     it('sourceModelに応じたシナリオを使用する（qwen）', () => {
       const spots: SpotScenario[] = [
-        { name: 'Spot', qwen: 'Qwen版', gemini: 'Gemini版' },
+        { name: 'Spot', type: 'waypoint', qwen: 'Qwen版', gemini: 'Gemini版' },
       ]
 
       const result = buildIntegrationPrompt('ルート', spots, 'qwen', 'ja')
@@ -204,7 +210,7 @@ describe('integration-prompt-builder', () => {
 
     it('sourceModelに応じたシナリオを使用する（gemini）', () => {
       const spots: SpotScenario[] = [
-        { name: 'Spot', qwen: 'Qwen版', gemini: 'Gemini版' },
+        { name: 'Spot', type: 'waypoint', qwen: 'Qwen版', gemini: 'Gemini版' },
       ]
 
       const result = buildIntegrationPrompt('Route', spots, 'gemini', 'en')

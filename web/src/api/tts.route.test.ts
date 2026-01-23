@@ -149,7 +149,7 @@ describe('POST /api/tts', () => {
 
       const request = createRequest({ text: 'テスト' })
 
-      const response = await POST(request as any)
+      const response = await POST(request as any) as unknown as { init: { headers: Record<string, string> } }
 
       // WAVヘッダー（44バイト）+ データ（4バイト）= 48バイト
       expect(response.init.headers['Content-Type']).toBe('audio/wav')
@@ -161,7 +161,7 @@ describe('POST /api/tts', () => {
 
       const request = createRequest({ text: 'テスト', format: 'wav' })
 
-      const response = await POST(request as any)
+      const response = await POST(request as any) as unknown as { init: { headers: Record<string, string> } }
 
       expect(response.init.headers['Content-Type']).toBe('audio/wav')
     })
@@ -172,7 +172,7 @@ describe('POST /api/tts', () => {
 
       const request = createRequest({ text: 'テスト', format: 'mp3' })
 
-      const response = await POST(request as any)
+      const response = await POST(request as any) as unknown as { init: { headers: Record<string, string> } }
 
       expect(response.init.headers['Content-Type']).toBe('audio/mpeg')
     })
@@ -183,7 +183,7 @@ describe('POST /api/tts', () => {
 
       const request = createRequest({ text: 'テスト', format: 'opus' })
 
-      const response = await POST(request as any)
+      const response = await POST(request as any) as unknown as { init: { headers: Record<string, string> } }
 
       expect(response.init.headers['Content-Type']).toBe('audio/opus')
     })

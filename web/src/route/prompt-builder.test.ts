@@ -7,7 +7,8 @@ describe('detectLanguageFromInput', () => {
     const input: RouteGenerationInput = {
       startPoint: '東京駅',
       purpose: 'sightseeing',
-      spotCount: 5
+      spotCount: 5,
+      model: 'qwen'
     }
     expect(detectLanguageFromInput(input)).toBe('ja')
   })
@@ -16,7 +17,8 @@ describe('detectLanguageFromInput', () => {
     const input: RouteGenerationInput = {
       startPoint: 'Tokyo Station',
       purpose: '観光',
-      spotCount: 5
+      spotCount: 5,
+      model: 'qwen'
     }
     expect(detectLanguageFromInput(input)).toBe('ja')
   })
@@ -25,7 +27,8 @@ describe('detectLanguageFromInput', () => {
     const input: RouteGenerationInput = {
       startPoint: '東京駅',
       purpose: '観光ツアー',
-      spotCount: 5
+      spotCount: 5,
+      model: 'qwen'
     }
     expect(detectLanguageFromInput(input)).toBe('ja')
   })
@@ -34,7 +37,8 @@ describe('detectLanguageFromInput', () => {
     const input: RouteGenerationInput = {
       startPoint: 'Tokyo Station',
       purpose: 'sightseeing',
-      spotCount: 5
+      spotCount: 5,
+      model: 'qwen'
     }
     expect(detectLanguageFromInput(input)).toBe('en')
   })
@@ -43,7 +47,8 @@ describe('detectLanguageFromInput', () => {
     const input: RouteGenerationInput = {
       startPoint: 'とうきょう',
       purpose: 'tour',
-      spotCount: 3
+      spotCount: 3,
+      model: 'qwen'
     }
     expect(detectLanguageFromInput(input)).toBe('ja')
   })
@@ -52,7 +57,8 @@ describe('detectLanguageFromInput', () => {
     const input: RouteGenerationInput = {
       startPoint: 'トーキョー',
       purpose: 'tour',
-      spotCount: 3
+      spotCount: 3,
+      model: 'qwen'
     }
     expect(detectLanguageFromInput(input)).toBe('ja')
   })
@@ -61,7 +67,8 @@ describe('detectLanguageFromInput', () => {
     const input: RouteGenerationInput = {
       startPoint: '京都',
       purpose: 'tour',
-      spotCount: 3
+      spotCount: 3,
+      model: 'qwen'
     }
     expect(detectLanguageFromInput(input)).toBe('ja')
   })
@@ -71,7 +78,8 @@ describe('resolveLanguage', () => {
   const baseInput: RouteGenerationInput = {
     startPoint: 'Tokyo Station',
     purpose: 'sightseeing',
-    spotCount: 5
+    spotCount: 5,
+    model: 'qwen'
   }
 
   it('言語が明示的に"ja"の場合はそのまま返す', () => {
@@ -88,7 +96,8 @@ describe('resolveLanguage', () => {
     const jaInput: RouteGenerationInput = {
       startPoint: '東京駅',
       purpose: 'sightseeing',
-      spotCount: 5
+      spotCount: 5,
+      model: 'qwen'
     }
     expect(resolveLanguage('auto', jaInput)).toBe('ja')
   })
@@ -102,7 +111,8 @@ describe('buildRouteGenerationPrompt', () => {
   const input: RouteGenerationInput = {
     startPoint: 'Tokyo Station',
     purpose: 'sightseeing tour',
-    spotCount: 5
+    spotCount: 5,
+    model: 'qwen'
   }
 
   describe('日本語プロンプト', () => {

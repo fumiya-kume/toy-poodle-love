@@ -133,7 +133,7 @@ describe('buildPrompt', () => {
     })
 
     it('不明なタイプはデフォルトコンテキストを含む', () => {
-      const unknownSpot: RouteSpot = { ...baseSpot, type: 'unknown' }
+      const unknownSpot = { ...baseSpot, type: 'unknown' } as unknown as RouteSpot
       const prompt = buildPrompt(routeName, unknownSpot, 'en')
       expect(prompt).toContain('Sightseeing Point')
     })
