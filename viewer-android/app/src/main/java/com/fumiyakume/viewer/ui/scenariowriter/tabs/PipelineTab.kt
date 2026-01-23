@@ -12,11 +12,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fumiyakume.viewer.ui.components.molecules.ModelPickerView
@@ -50,7 +51,8 @@ fun PipelineTab(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(24.dp)
+            .testTag("pipeline_list"),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         // 入力セクション
@@ -160,7 +162,7 @@ fun PipelineTab(
                             }
                         }
 
-                        Divider(color = TeslaColors.GlassBorder)
+                        HorizontalDivider(color = TeslaColors.GlassBorder)
 
                         // 統計情報
                         Row(

@@ -8,15 +8,19 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsDataStoreTest {
@@ -79,5 +83,38 @@ class SettingsDataStoreTest {
         advanceUntilIdle()
         assertEquals("qwen", settingsDataStore.defaultAIModel.first())
     }
-}
 
+    @Test
+    fun flows_emitDefaults_whenDataStoreThrowsIOException() = runTest(mainDispatcherRule.dispatcher) {
+        val failingDataStore = ThrowingDataStore(IOException("read error"))
+        val failingSettings = SettingsDataStore(failingDataStore)
+
+        assertEquals(SettingsDataStore.DEFAULT_CONTROL_HIDE_DELAY_MS, failingSettings.controlHideDelayMs.first())
+        assertEquals(SettingsDataStore.DEFAULT_OVERLAY_OPACITY_VALUE, failingSettings.defaultOverlayOpacity.first())
+        assertEquals(SettingsDataStore.DEFAULT_AI_MODEL_VALUE, failingSettings.defaultAIModel.first())
+    }
+
+    @Test
+    fun flows_rethrow_whenDataStoreThrowsNonIoException() = runTest(mainDispatcherRule.dispatcher) {
+        val failingDataStore = ThrowingDataStore(IllegalStateException("boom"))
+        val failingSettings = SettingsDataStore(failingDataStore)
+
+        try {
+            failingSettings.controlHideDelayMs.first()
+            fail("Expected IllegalStateException to be thrown")
+        } catch (ignored: IllegalStateException) {
+        }
+    }
+
+    private class ThrowingDataStore(
+        private val throwable: Throwable
+    ) : DataStore<Preferences> {
+        override val data: Flow<Preferences> = flow {
+            throw throwable
+        }
+
+        override suspend fun updateData(transform: suspend (Preferences) -> Preferences): Preferences {
+            throw throwable
+        }
+    }
+}

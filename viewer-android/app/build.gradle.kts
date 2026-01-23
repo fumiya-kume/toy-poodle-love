@@ -112,3 +112,26 @@ dependencies {
     androidTestImplementation(platform(libs.compose.bom))
     debugImplementation(libs.compose.ui.test.manifest)
 }
+
+kover {
+    reports {
+        filters {
+            excludes {
+                classes(
+                    "com.fumiyakume.viewer.BuildConfig",
+                    "com.fumiyakume.viewer.R",
+                    "com.fumiyakume.viewer.R\$*",
+                    "com.fumiyakume.viewer.MainActivity*",
+                    "com.fumiyakume.viewer.ComposableSingletons*",
+                    "com.fumiyakume.viewer.core.di.*",
+                    "com.fumiyakume.viewer.*_Factory*",
+                    "com.fumiyakume.viewer.*_Hilt*",
+                    "com.fumiyakume.viewer.Hilt_*",
+                    "com.fumiyakume.viewer.*_MembersInjector*",
+                    "dagger.hilt.internal.aggregatedroot.codegen.*",
+                    "hilt_aggregated_deps.*"
+                )
+            }
+        }
+    }
+}

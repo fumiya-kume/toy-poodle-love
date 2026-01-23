@@ -90,7 +90,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsContent(
+internal fun SettingsContent(
     settings: AppSettings,
     onControlHideDelayChange: (Long) -> Unit,
     onOverlayOpacityChange: (Float) -> Unit,

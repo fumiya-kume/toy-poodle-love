@@ -12,7 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -106,7 +106,7 @@ fun GeocodeTab(
 
                     result.forEach { place ->
                         GeocodeResultItem(place = place)
-                        Divider(color = TeslaColors.GlassBorder)
+                        HorizontalDivider(color = TeslaColors.GlassBorder)
                     }
                 }
             }

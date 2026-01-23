@@ -21,7 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -207,7 +207,7 @@ fun RouteOptimizeTab(
                         }
                     }
 
-                    Divider(color = TeslaColors.GlassBorder)
+                    HorizontalDivider(color = TeslaColors.GlassBorder)
 
                     // 統計情報
                     Row(

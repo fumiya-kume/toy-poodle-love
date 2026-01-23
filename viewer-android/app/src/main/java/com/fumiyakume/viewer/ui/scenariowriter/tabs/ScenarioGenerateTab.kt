@@ -23,9 +23,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -37,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fumiyakume.viewer.data.network.RouteSpot
@@ -77,7 +79,8 @@ fun ScenarioGenerateTab(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(24.dp)
+            .testTag("scenario_generate_list"),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         // 入力セクション
@@ -144,7 +147,7 @@ fun ScenarioGenerateTab(
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
 
                         ExposedDropdownMenu(
@@ -310,7 +313,7 @@ fun ScenarioGenerateTab(
                             )
                         }
 
-                        Divider(color = TeslaColors.GlassBorder)
+                        HorizontalDivider(color = TeslaColors.GlassBorder)
 
                         // シナリオリスト
                         result.spotScenarios?.forEach { spotScenario ->

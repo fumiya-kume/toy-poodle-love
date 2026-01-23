@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fumiyakume.viewer.ui.components.molecules.ModelPickerView
@@ -44,7 +45,8 @@ fun RouteGenerateTab(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(24.dp)
+            .testTag("route_generate_list"),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         // 入力セクション
