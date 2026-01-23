@@ -55,26 +55,26 @@ fun PipelineTab(
     ) {
         // 入力セクション
         item {
-            TeslaGroupBox(title = "入力") {
+            TeslaGroupBox(title = pipelineInputTitle()) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     TeslaTextField(
-                        label = "出発地",
+                        label = pipelineStartPointLabel(),
                         value = uiState.pipelineStartPoint,
                         onValueChange = onStartPointChange,
-                        placeholder = "例: 東京駅"
+                        placeholder = pipelineStartPointPlaceholder()
                     )
 
                     TeslaTextField(
-                        label = "目的・テーマ",
+                        label = pipelinePurposeLabel(),
                         value = uiState.pipelinePurpose,
                         onValueChange = onPurposeChange,
-                        placeholder = "例: 皇居周辺の観光スポット"
+                        placeholder = pipelinePurposePlaceholder()
                     )
 
                     TeslaStepper(
-                        label = "生成地点数",
+                        label = pipelineSpotCountLabel(),
                         value = uiState.pipelineSpotCount,
                         onValueChange = onSpotCountChange,
                         range = 3..8
@@ -97,7 +97,7 @@ fun PipelineTab(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = if (uiState.isLoadingPipeline) "実行中..." else "パイプライン実行",
+                            text = pipelineButtonLabel(uiState.isLoadingPipeline),
                             color = TeslaColors.TextPrimary
                         )
                     }
@@ -107,12 +107,12 @@ fun PipelineTab(
 
         // 結果セクション
         item {
-            TeslaGroupBox(title = "結果") {
+            TeslaGroupBox(title = pipelineResultTitle()) {
                 val result = uiState.pipelineResult
 
                 if (result == null) {
                     Text(
-                        text = "結果がありません",
+                        text = pipelineResultEmptyLabel(),
                         style = TeslaTheme.typography.bodyMedium,
                         color = TeslaColors.TextSecondary
                     )
@@ -123,7 +123,7 @@ fun PipelineTab(
                         // ルート名
                         result.routeName?.let { routeName ->
                             Text(
-                                text = routeName,
+                                text = pipelineRouteNameLabel(routeName),
                                 style = TeslaTheme.typography.headlineMedium,
                                 color = TeslaColors.TextPrimary
                             )
@@ -132,7 +132,7 @@ fun PipelineTab(
                         // スポットリスト
                         result.spots?.let { spots ->
                             Text(
-                                text = "生成されたスポット",
+                                text = pipelineSpotHeaderLabel(),
                                 style = TeslaTheme.typography.titleMedium,
                                 color = TeslaColors.TextPrimary
                             )
@@ -140,18 +140,18 @@ fun PipelineTab(
                             spots.forEachIndexed { index, spot ->
                                 Column {
                                     Text(
-                                        text = "${index + 1}. ${spot.name}",
+                                        text = pipelineSpotLabel(index, spot.name),
                                         style = TeslaTheme.typography.bodyLarge,
                                         color = TeslaColors.TextPrimary
                                     )
                                     Text(
-                                        text = spot.description,
+                                        text = pipelineSpotDescriptionLabel(spot.description),
                                         style = TeslaTheme.typography.bodyMedium,
                                         color = TeslaColors.TextSecondary
                                     )
                                     spot.note?.let { note ->
                                         Text(
-                                            text = note,
+                                            text = pipelineSpotNoteLabel(note),
                                             style = TeslaTheme.typography.labelSmall,
                                             color = TeslaColors.TextTertiary
                                         )
@@ -169,21 +169,21 @@ fun PipelineTab(
                         ) {
                             result.totalDistanceKm?.let { distance ->
                                 Text(
-                                    text = "総距離: ${String.format(Locale.US, "%.1f", distance)} km",
+                                    text = pipelineDistanceLabel(distance),
                                     style = TeslaTheme.typography.labelMedium,
                                     color = TeslaColors.TextSecondary
                                 )
                             }
                             result.totalDurationMinutes?.let { duration ->
                                 Text(
-                                    text = "所要時間: ${duration} 分",
+                                    text = pipelineDurationLabel(duration),
                                     style = TeslaTheme.typography.labelMedium,
                                     color = TeslaColors.TextSecondary
                                 )
                             }
                             result.processingTimeMs?.let { time ->
                                 Text(
-                                    text = "処理時間: ${time} ms",
+                                    text = pipelineProcessingTimeLabel(time),
                                     style = TeslaTheme.typography.labelMedium,
                                     color = TeslaColors.TextTertiary
                                 )
@@ -200,7 +200,7 @@ fun PipelineTab(
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text(
-                                    text = "マップで表示",
+                                    text = pipelineShowOnMapLabel(),
                                     color = TeslaColors.Accent
                                 )
                             }
@@ -210,7 +210,7 @@ fun PipelineTab(
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text(
-                                    text = "シナリオを生成",
+                                    text = pipelineGenerateScenarioLabel(),
                                     color = TeslaColors.Accent
                                 )
                             }
@@ -221,6 +221,58 @@ fun PipelineTab(
         }
     }
 }
+
+internal fun pipelineButtonLabel(isLoading: Boolean): String =
+    if (isLoading) "実行中..." else "パイプライン実行"
+
+internal fun formatPipelineDistanceKm(distanceKm: Double): String =
+    String.format(Locale.US, "%.1f km", distanceKm)
+
+internal fun formatPipelineDurationMinutes(minutes: Int): String =
+    "$minutes 分"
+
+internal fun formatPipelineProcessingTimeMs(timeMs: Long): String =
+    "$timeMs ms"
+
+internal fun pipelineResultEmptyLabel(): String = "結果がありません"
+
+internal fun pipelineRouteNameLabel(routeName: String): String = routeName
+
+internal fun pipelineSpotHeaderLabel(): String = "生成されたスポット"
+
+internal fun pipelineSpotLabel(index: Int, name: String): String =
+    "${index + 1}. $name"
+
+internal fun pipelineSpotDescriptionLabel(description: String): String = description
+
+internal fun pipelineSpotNoteLabel(note: String): String = note
+
+internal fun pipelineDistanceLabel(distanceKm: Double): String =
+    "総距離: ${formatPipelineDistanceKm(distanceKm)}"
+
+internal fun pipelineDurationLabel(minutes: Int): String =
+    "所要時間: ${formatPipelineDurationMinutes(minutes)}"
+
+internal fun pipelineProcessingTimeLabel(timeMs: Long): String =
+    "処理時間: ${formatPipelineProcessingTimeMs(timeMs)}"
+
+internal fun pipelineShowOnMapLabel(): String = "マップで表示"
+
+internal fun pipelineGenerateScenarioLabel(): String = "シナリオを生成"
+
+internal fun pipelineInputTitle(): String = "入力"
+
+internal fun pipelineResultTitle(): String = "結果"
+
+internal fun pipelineStartPointLabel(): String = "出発地"
+
+internal fun pipelinePurposeLabel(): String = "目的・テーマ"
+
+internal fun pipelineSpotCountLabel(): String = "生成地点数"
+
+internal fun pipelineStartPointPlaceholder(): String = "例: 東京駅"
+
+internal fun pipelinePurposePlaceholder(): String = "例: 皇居周辺の観光スポット"
 
 @Preview(showBackground = true, backgroundColor = 0xFF141416, widthDp = 800, heightDp = 600)
 @Composable

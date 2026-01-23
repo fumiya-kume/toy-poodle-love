@@ -20,6 +20,13 @@ sealed class Screen(val route: String) {
     data object Settings : Screen("settings")
 }
 
+internal fun viewerScreenRoutes(): List<String> = listOf(
+    Screen.Home.route,
+    Screen.VideoPlayer.route,
+    Screen.ScenarioWriter.route,
+    Screen.Settings.route
+)
+
 /**
  * メインナビゲーションコンポーザブル
  *

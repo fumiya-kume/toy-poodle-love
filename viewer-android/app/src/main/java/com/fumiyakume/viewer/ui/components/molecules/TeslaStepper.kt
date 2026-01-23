@@ -36,6 +36,11 @@ fun TeslaStepper(
     range: IntRange = 1..10,
     enabled: Boolean = true
 ) {
+    val buttonState = calculateStepperButtonState(
+        value = value,
+        range = range,
+        enabled = enabled
+    )
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -54,16 +59,16 @@ fun TeslaStepper(
             // マイナスボタン
             IconButton(
                 onClick = {
-                    if (value > range.first) {
+                    if (buttonState.canDecrement) {
                         onValueChange(value - 1)
                     }
                 },
-                enabled = enabled && value > range.first,
+                enabled = buttonState.canDecrement,
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
                     .background(
-                        if (enabled && value > range.first)
+                        if (buttonState.canDecrement)
                             TeslaColors.GlassBackground
                         else
                             TeslaColors.GlassBackground.copy(alpha = 0.5f)
@@ -72,7 +77,7 @@ fun TeslaStepper(
                 Icon(
                     imageVector = Icons.Default.Remove,
                     contentDescription = "減らす",
-                    tint = if (enabled && value > range.first)
+                    tint = if (buttonState.canDecrement)
                         TeslaColors.TextPrimary
                     else
                         TeslaColors.TextTertiary
@@ -90,16 +95,16 @@ fun TeslaStepper(
             // プラスボタン
             IconButton(
                 onClick = {
-                    if (value < range.last) {
+                    if (buttonState.canIncrement) {
                         onValueChange(value + 1)
                     }
                 },
-                enabled = enabled && value < range.last,
+                enabled = buttonState.canIncrement,
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
                     .background(
-                        if (enabled && value < range.last)
+                        if (buttonState.canIncrement)
                             TeslaColors.GlassBackground
                         else
                             TeslaColors.GlassBackground.copy(alpha = 0.5f)
@@ -108,7 +113,7 @@ fun TeslaStepper(
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "増やす",
-                    tint = if (enabled && value < range.last)
+                    tint = if (buttonState.canIncrement)
                         TeslaColors.TextPrimary
                     else
                         TeslaColors.TextTertiary
@@ -116,6 +121,24 @@ fun TeslaStepper(
             }
         }
     }
+}
+
+internal data class StepperButtonState(
+    val canDecrement: Boolean,
+    val canIncrement: Boolean
+)
+
+internal fun calculateStepperButtonState(
+    value: Int,
+    range: IntRange,
+    enabled: Boolean
+): StepperButtonState {
+    val canDecrement = enabled && value > range.first
+    val canIncrement = enabled && value < range.last
+    return StepperButtonState(
+        canDecrement = canDecrement,
+        canIncrement = canIncrement
+    )
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF141416)

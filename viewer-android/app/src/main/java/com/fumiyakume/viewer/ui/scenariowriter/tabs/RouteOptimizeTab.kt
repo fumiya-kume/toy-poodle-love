@@ -66,7 +66,7 @@ fun RouteOptimizeTab(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         // 設定セクション
-        TeslaGroupBox(title = "設定") {
+        TeslaGroupBox(title = routeOptimizeSettingsTitle()) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -86,7 +86,7 @@ fun RouteOptimizeTab(
         }
 
         // ウェイポイント追加セクション
-        TeslaGroupBox(title = "ウェイポイント追加") {
+        TeslaGroupBox(title = routeOptimizeWaypointAddTitle()) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -127,10 +127,10 @@ fun RouteOptimizeTab(
         }
 
         // ウェイポイントリストセクション
-        TeslaGroupBox(title = "ウェイポイントリスト (${uiState.routeWaypoints.size}件)") {
+        TeslaGroupBox(title = routeOptimizeWaypointListTitle(uiState.routeWaypoints.size)) {
             if (uiState.routeWaypoints.isEmpty()) {
                 Text(
-                    text = "ウェイポイントがありません",
+                    text = routeOptimizeEmptyWaypointsLabel(),
                     style = TeslaTheme.typography.bodyMedium,
                     color = TeslaColors.TextSecondary
                 )
@@ -161,14 +161,14 @@ fun RouteOptimizeTab(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = if (uiState.isLoadingRouteOptimize) "最適化中..." else "ルート最適化",
+                    text = routeOptimizeButtonLabel(uiState.isLoadingRouteOptimize),
                     color = TeslaColors.TextPrimary
                 )
             }
 
             if (uiState.routeWaypoints.size < 2) {
                 Text(
-                    text = "少なくとも2つのウェイポイントが必要です",
+                    text = routeOptimizeMinWaypointsLabel(),
                     style = TeslaTheme.typography.labelSmall,
                     color = TeslaColors.TextTertiary,
                     modifier = Modifier.padding(top = 8.dp)
@@ -177,12 +177,12 @@ fun RouteOptimizeTab(
         }
 
         // 結果セクション
-        TeslaGroupBox(title = "結果") {
+        TeslaGroupBox(title = routeOptimizeResultTitle()) {
             val result = uiState.routeOptimizeResult
 
             if (result == null) {
                 Text(
-                    text = "結果がありません",
+                    text = routeOptimizeResultEmptyLabel(),
                     style = TeslaTheme.typography.bodyMedium,
                     color = TeslaColors.TextSecondary
                 )
@@ -191,16 +191,16 @@ fun RouteOptimizeTab(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     // 最適化されたルート順序
-                    result.optimizedOrder?.let { order ->
-                        Text(
-                            text = "最適化されたルート順序",
-                            style = TeslaTheme.typography.titleMedium,
-                            color = TeslaColors.TextPrimary
-                        )
+                        result.optimizedOrder?.let { order ->
+                            Text(
+                                text = routeOptimizeOrderHeaderLabel(),
+                                style = TeslaTheme.typography.titleMedium,
+                                color = TeslaColors.TextPrimary
+                            )
 
                         order.forEachIndexed { index, location ->
                             Text(
-                                text = "${index + 1}. $location",
+                                text = routeOptimizeOrderItemLabel(index, location),
                                 style = TeslaTheme.typography.bodyMedium,
                                 color = TeslaColors.TextSecondary
                             )
@@ -217,12 +217,12 @@ fun RouteOptimizeTab(
                         result.totalDistanceKm?.let { distance ->
                             Column {
                                 Text(
-                                    text = "総距離",
+                                    text = routeOptimizeDistanceTitleLabel(),
                                     style = TeslaTheme.typography.labelSmall,
                                     color = TeslaColors.TextTertiary
                                 )
                                 Text(
-                                    text = "${String.format(Locale.US, "%.1f", distance)} km",
+                                    text = routeOptimizeDistanceValueLabel(distance),
                                     style = TeslaTheme.typography.bodyLarge,
                                     color = TeslaColors.TextPrimary
                                 )
@@ -232,12 +232,12 @@ fun RouteOptimizeTab(
                         result.totalDurationMinutes?.let { duration ->
                             Column {
                                 Text(
-                                    text = "所要時間",
+                                    text = routeOptimizeDurationTitleLabel(),
                                     style = TeslaTheme.typography.labelSmall,
                                     color = TeslaColors.TextTertiary
                                 )
                                 Text(
-                                    text = "$duration 分",
+                                    text = routeOptimizeDurationValueLabel(duration),
                                     style = TeslaTheme.typography.bodyLarge,
                                     color = TeslaColors.TextPrimary
                                 )
@@ -249,6 +249,60 @@ fun RouteOptimizeTab(
         }
     }
 }
+
+internal fun routeOptimizeButtonLabel(isLoading: Boolean): String =
+    if (isLoading) "最適化中..." else "ルート最適化"
+
+internal fun formatRouteDistanceKm(distanceKm: Double): String =
+    String.format(Locale.US, "%.1f km", distanceKm)
+
+internal fun formatRouteDurationMinutes(minutes: Int): String =
+    "$minutes 分"
+
+internal fun routeOptimizeEmptyWaypointsLabel(): String = "ウェイポイントがありません"
+
+internal fun routeOptimizeMinWaypointsLabel(): String = "少なくとも2つのウェイポイントが必要です"
+
+internal fun routeOptimizeResultEmptyLabel(): String = "結果がありません"
+
+internal fun routeOptimizeOrderHeaderLabel(): String = "最適化されたルート順序"
+
+internal fun routeOptimizeOrderItemLabel(index: Int, location: String): String =
+    "${index + 1}. $location"
+
+internal fun routeOptimizeDistanceTitleLabel(): String = "総距離"
+
+internal fun routeOptimizeDurationTitleLabel(): String = "所要時間"
+
+internal fun routeOptimizeDistanceValueLabel(distanceKm: Double): String =
+    formatRouteDistanceKm(distanceKm)
+
+internal fun routeOptimizeDurationValueLabel(minutes: Int): String =
+    formatRouteDurationMinutes(minutes)
+
+internal fun routeOptimizeSettingsTitle(): String = "設定"
+
+internal fun routeOptimizeWaypointAddTitle(): String = "ウェイポイント追加"
+
+internal fun routeOptimizeWaypointListTitle(count: Int): String =
+    "ウェイポイントリスト (${count}件)"
+
+internal fun routeOptimizeResultTitle(): String = "結果"
+
+internal data class TravelModeOption(
+    val value: TravelMode,
+    val displayName: String,
+    val isSelected: Boolean
+)
+
+internal fun buildTravelModeOptions(selectedMode: TravelMode): List<TravelModeOption> =
+    TravelMode.entries.map { mode ->
+        TravelModeOption(
+            value = mode,
+            displayName = mode.displayName,
+            isSelected = mode == selectedMode
+        )
+    }
 
 @Composable
 private fun TravelModeSelector(
@@ -270,19 +324,18 @@ private fun TravelModeSelector(
                 .background(TeslaColors.GlassBackground),
             horizontalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            TravelMode.entries.forEach { mode ->
-                val isSelected = mode == selectedMode
+            buildTravelModeOptions(selectedMode).forEach { option ->
                 Text(
-                    text = mode.displayName,
+                    text = option.displayName,
                     style = TeslaTheme.typography.labelMedium,
-                    color = if (isSelected) TeslaColors.TextPrimary else TeslaColors.TextSecondary,
+                    color = if (option.isSelected) TeslaColors.TextPrimary else TeslaColors.TextSecondary,
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
                         .background(
-                            if (isSelected) TeslaColors.Accent.copy(alpha = 0.2f)
+                            if (option.isSelected) TeslaColors.Accent.copy(alpha = 0.2f)
                             else TeslaColors.Background.copy(alpha = 0f)
                         )
-                        .clickable { onModeSelected(mode) }
+                        .clickable { onModeSelected(option.value) }
                         .padding(horizontal = 16.dp, vertical = 10.dp)
                 )
             }

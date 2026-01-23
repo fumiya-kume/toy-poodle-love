@@ -175,11 +175,10 @@ private fun VideoProgressBar(
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val progress = if (durationMs > 0) {
-        (currentPositionMs.toFloat() / durationMs).coerceIn(0f, 1f)
-    } else {
-        0f
-    }
+    val progress = calculateProgress(
+        currentPositionMs = currentPositionMs,
+        durationMs = durationMs
+    )
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -241,7 +240,14 @@ fun rememberPlayerPosition(player: ExoPlayer?): Pair<Long, Long> {
     return currentPosition to duration
 }
 
-private fun formatDuration(ms: Long): String {
+internal fun calculateProgress(currentPositionMs: Long, durationMs: Long): Float =
+    if (durationMs > 0) {
+        (currentPositionMs.toFloat() / durationMs).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+
+internal fun formatDuration(ms: Long): String {
     if (ms < 0) return "0:00"
     val hours = TimeUnit.MILLISECONDS.toHours(ms)
     val minutes = TimeUnit.MILLISECONDS.toMinutes(ms) % 60

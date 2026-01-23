@@ -104,7 +104,7 @@ fun ScenarioMapTab(
                     ) {
                         uiState.mapSpots.forEach { spot ->
                             val isSelected = spot.id == uiState.selectedMapSpotId
-                            val markerColor = getMarkerColor(spot.type, isSelected)
+                            val markerColor = markerHue(spot.type, isSelected)
 
                             Marker(
                                 state = MarkerState(
@@ -126,7 +126,7 @@ fun ScenarioMapTab(
                 }
 
                 // スポットリスト
-                TeslaGroupBox(title = "スポット一覧") {
+                TeslaGroupBox(title = mapSpotListTitleLabel()) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -169,20 +169,20 @@ private fun EmptyMapState(
         )
 
         Text(
-            text = "マップに表示するデータがありません",
+            text = mapEmptyTitleLabel(),
             style = TeslaTheme.typography.titleMedium,
             color = TeslaColors.TextSecondary
         )
 
         Text(
-            text = "Pipelineを実行して「マップで表示」をクリックしてください",
+            text = mapEmptySubtitleLabel(),
             style = TeslaTheme.typography.bodyMedium,
             color = TeslaColors.TextTertiary
         )
 
         TextButton(onClick = onGoToPipeline) {
             Text(
-                text = "Pipelineタブへ",
+                text = mapEmptyActionLabel(),
                 color = TeslaColors.Accent
             )
         }
@@ -197,32 +197,24 @@ private fun SpotListItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val markerColor = when (spot.type) {
-        "start" -> TeslaColors.StatusGreen
-        "waypoint" -> TeslaColors.Accent
-        "destination" -> TeslaColors.StatusRed
-        else -> TeslaColors.TextSecondary
-    }
+    val markerColor = mapSpotListMarkerColor(spot.type)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .clickable { onClick() }
-            .background(
-                if (isSelected) TeslaColors.Accent.copy(alpha = 0.1f)
-                else TeslaColors.GlassBackground
-            )
+            .background(mapSpotListBackgroundColor(isSelected))
             .padding(12.dp)
     ) {
         Column {
             Text(
-                text = "${index + 1}. ${spot.name}",
+                text = mapSpotLabel(index, spot.name),
                 style = TeslaTheme.typography.bodyMedium,
                 color = if (isSelected) TeslaColors.Accent else TeslaColors.TextPrimary
             )
             Text(
-                text = spot.type,
+                text = mapSpotTypeLabel(spot.type),
                 style = TeslaTheme.typography.labelSmall,
                 color = markerColor
             )
@@ -236,21 +228,21 @@ private fun SpotInfoPanel(
     modifier: Modifier = Modifier
 ) {
     TeslaGroupBox(
-        title = spot.name,
+        title = mapSpotInfoTitleLabel(spot.name),
         modifier = modifier
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "タイプ: ${spot.type}",
+                text = mapSpotInfoTypeLabel(spot.type),
                 style = TeslaTheme.typography.labelMedium,
                 color = TeslaColors.TextSecondary
             )
 
             spot.address?.let { address ->
                 Text(
-                    text = "住所: $address",
+                    text = mapSpotAddressLabel(address),
                     style = TeslaTheme.typography.bodyMedium,
                     color = TeslaColors.TextSecondary
                 )
@@ -258,14 +250,14 @@ private fun SpotInfoPanel(
 
             spot.description?.let { description ->
                 Text(
-                    text = description,
+                    text = mapSpotDescriptionLabel(description),
                     style = TeslaTheme.typography.bodyMedium,
                     color = TeslaColors.TextPrimary
                 )
             }
 
             Text(
-                text = "座標: ${spot.coordinate.latitude}, ${spot.coordinate.longitude}",
+                text = mapSpotCoordinateLabel(spot.coordinate.latitude, spot.coordinate.longitude),
                 style = TeslaTheme.typography.labelSmall,
                 color = TeslaColors.TextTertiary
             )
@@ -280,14 +272,49 @@ private fun SpotInfoPanel(
  * @param isSelected 選択されているかどうか
  * @return BitmapDescriptorFactory用のHue値
  */
-private fun getMarkerColor(type: String, isSelected: Boolean): Float {
-    return when {
-        isSelected -> BitmapDescriptorFactory.HUE_ORANGE
-        type == "start" -> BitmapDescriptorFactory.HUE_GREEN
-        type == "destination" -> BitmapDescriptorFactory.HUE_RED
-        else -> BitmapDescriptorFactory.HUE_AZURE // waypoint
-    }
+internal fun markerHue(type: String, isSelected: Boolean): Float = when {
+    isSelected -> BitmapDescriptorFactory.HUE_ORANGE
+    type == "start" -> BitmapDescriptorFactory.HUE_GREEN
+    type == "destination" -> BitmapDescriptorFactory.HUE_RED
+    else -> BitmapDescriptorFactory.HUE_AZURE // waypoint
 }
+
+internal fun mapSpotLabel(index: Int, name: String): String =
+    "${index + 1}. $name"
+
+internal fun mapSpotTypeLabel(type: String): String = type
+
+internal fun mapSpotInfoTypeLabel(type: String): String =
+    "タイプ: $type"
+
+internal fun mapSpotCoordinateLabel(latitude: Double, longitude: Double): String =
+    "座標: $latitude, $longitude"
+
+internal fun mapSpotListTitleLabel(): String = "スポット一覧"
+
+internal fun mapEmptyTitleLabel(): String = "マップに表示するデータがありません"
+
+internal fun mapEmptySubtitleLabel(): String =
+    "Pipelineを実行して「マップで表示」をクリックしてください"
+
+internal fun mapEmptyActionLabel(): String = "Pipelineタブへ"
+
+internal fun mapSpotAddressLabel(address: String): String = "住所: $address"
+
+internal fun mapSpotDescriptionLabel(description: String): String = description
+
+internal fun mapSpotInfoTitleLabel(name: String): String = name
+
+internal fun mapSpotListMarkerColor(type: String) = when (type) {
+    "start" -> TeslaColors.StatusGreen
+    "waypoint" -> TeslaColors.Accent
+    "destination" -> TeslaColors.StatusRed
+    else -> TeslaColors.TextSecondary
+}
+
+internal fun mapSpotListBackgroundColor(isSelected: Boolean) =
+    if (isSelected) TeslaColors.Accent.copy(alpha = 0.1f)
+    else TeslaColors.GlassBackground
 
 @Preview(showBackground = true, backgroundColor = 0xFF141416, widthDp = 800, heightDp = 600)
 @Composable

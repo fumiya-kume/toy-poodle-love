@@ -46,7 +46,7 @@ fun TextGenerationTab(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         // 入力セクション
-        TeslaGroupBox(title = "入力") {
+        TeslaGroupBox(title = textGenerationInputTitle()) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -56,10 +56,10 @@ fun TextGenerationTab(
                 )
 
                 TeslaTextArea(
-                    label = "プロンプト",
+                    label = textGenerationPromptLabel(),
                     value = uiState.textGenerationPrompt,
                     onValueChange = onPromptChange,
-                    placeholder = "AIに質問したい内容を入力してください",
+                    placeholder = textGenerationPromptPlaceholder(),
                     minHeight = 120.dp
                 )
 
@@ -75,7 +75,7 @@ fun TextGenerationTab(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = if (uiState.isLoadingTextGeneration) "生成中..." else "生成",
+                        text = textGenerationButtonLabel(uiState.isLoadingTextGeneration),
                         color = TeslaColors.TextPrimary
                     )
                 }
@@ -83,12 +83,12 @@ fun TextGenerationTab(
         }
 
         // 結果セクション
-        TeslaGroupBox(title = "結果") {
+        TeslaGroupBox(title = textGenerationResultTitle()) {
             val result = uiState.textGenerationResult
 
             if (result == null) {
                 Text(
-                    text = "結果がありません",
+                    text = textGenerationResultEmptyLabel(),
                     style = TeslaTheme.typography.bodyMedium,
                     color = TeslaColors.TextSecondary
                 )
@@ -96,9 +96,9 @@ fun TextGenerationTab(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    uiState.textGenerationResultModel?.let { model ->
+                    textGenerationModelLabel(uiState.textGenerationResultModel)?.let { label ->
                         Text(
-                            text = "使用モデル: ${model.displayName}",
+                            text = label,
                             style = TeslaTheme.typography.labelMedium,
                             color = TeslaColors.TextSecondary
                         )
@@ -116,6 +116,23 @@ fun TextGenerationTab(
         }
     }
 }
+
+internal fun textGenerationButtonLabel(isLoading: Boolean): String =
+    if (isLoading) "生成中..." else "生成"
+
+internal fun textGenerationModelLabel(model: AIModel?): String? =
+    model?.let { "使用モデル: ${it.displayName}" }
+
+internal fun textGenerationResultEmptyLabel(): String = "結果がありません"
+
+internal fun textGenerationInputTitle(): String = "入力"
+
+internal fun textGenerationResultTitle(): String = "結果"
+
+internal fun textGenerationPromptLabel(): String = "プロンプト"
+
+internal fun textGenerationPromptPlaceholder(): String =
+    "AIに質問したい内容を入力してください"
 
 @Preview(showBackground = true, backgroundColor = 0xFF141416, widthDp = 800, heightDp = 600)
 @Composable

@@ -82,22 +82,22 @@ fun ScenarioGenerateTab(
     ) {
         // 入力セクション
         item {
-            TeslaGroupBox(title = "入力") {
+            TeslaGroupBox(title = scenarioGenerateInputTitle()) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     TeslaTextField(
-                        label = "ルート名",
+                        label = scenarioRouteNameLabel(),
                         value = uiState.scenarioRouteName,
                         onValueChange = onRouteNameChange,
-                        placeholder = "例: 皇居周辺観光ルート"
+                        placeholder = scenarioRouteNamePlaceholder()
                     )
 
                     TeslaTextField(
-                        label = "言語（オプション）",
+                        label = scenarioLanguageLabel(),
                         value = uiState.scenarioLanguage,
                         onValueChange = onLanguageChange,
-                        placeholder = "例: ja"
+                        placeholder = scenarioLanguagePlaceholder()
                     )
 
                     ScenarioModelPickerView(
@@ -110,15 +110,15 @@ fun ScenarioGenerateTab(
 
         // スポット追加セクション
         item {
-            TeslaGroupBox(title = "スポット追加") {
+            TeslaGroupBox(title = scenarioGenerateSpotAddTitle()) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     TeslaTextField(
-                        label = "スポット名",
+                        label = scenarioSpotNameLabel(),
                         value = newSpotName,
                         onValueChange = { newSpotName = it },
-                        placeholder = "例: 皇居"
+                        placeholder = scenarioSpotNamePlaceholder()
                     )
 
                     // スポットタイプ選択
@@ -130,7 +130,7 @@ fun ScenarioGenerateTab(
                             value = newSpotType.displayName,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("スポットタイプ") },
+                            label = { Text(scenarioSpotTypeLabel()) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = TeslaColors.Accent,
@@ -164,30 +164,28 @@ fun ScenarioGenerateTab(
                     }
 
                     TeslaTextField(
-                        label = "説明（オプション）",
+                        label = scenarioSpotDescriptionLabel(),
                         value = newSpotDescription,
                         onValueChange = { newSpotDescription = it },
-                        placeholder = "例: 江戸城の跡地"
+                        placeholder = scenarioSpotDescriptionPlaceholder()
                     )
 
                     TeslaTextField(
-                        label = "ポイント（オプション）",
+                        label = scenarioSpotPointLabel(),
                         value = newSpotPoint,
                         onValueChange = { newSpotPoint = it },
-                        placeholder = "例: 歴史的建造物"
+                        placeholder = scenarioSpotPointPlaceholder()
                     )
 
                     Button(
                         onClick = {
-                            if (newSpotName.isNotBlank()) {
-                                onAddSpot(
-                                    RouteSpot(
-                                        name = newSpotName,
-                                        type = newSpotType.value,
-                                        description = newSpotDescription.takeIf { it.isNotBlank() },
-                                        point = newSpotPoint.takeIf { it.isNotBlank() }
-                                    )
-                                )
+                            createRouteSpot(
+                                name = newSpotName,
+                                type = newSpotType,
+                                description = newSpotDescription,
+                                point = newSpotPoint
+                            )?.let { spot ->
+                                onAddSpot(spot)
                                 newSpotName = ""
                                 newSpotDescription = ""
                                 newSpotPoint = ""
@@ -205,7 +203,7 @@ fun ScenarioGenerateTab(
                             tint = TeslaColors.TextPrimary
                         )
                         Text(
-                            text = "追加",
+                            text = scenarioSpotAddButtonLabel(),
                             color = TeslaColors.TextPrimary,
                             modifier = Modifier.padding(start = 8.dp)
                         )
@@ -216,10 +214,10 @@ fun ScenarioGenerateTab(
 
         // スポットリストセクション
         item {
-            TeslaGroupBox(title = "スポットリスト (${uiState.scenarioSpots.size}件)") {
+            TeslaGroupBox(title = formatSpotListTitle(uiState.scenarioSpots.size)) {
                 if (uiState.scenarioSpots.isEmpty()) {
                     Text(
-                        text = "スポットがありません",
+                        text = scenarioSpotListEmptyLabel(),
                         style = TeslaTheme.typography.bodyMedium,
                         color = TeslaColors.TextSecondary
                     )
@@ -241,7 +239,7 @@ fun ScenarioGenerateTab(
                                         color = TeslaColors.TextPrimary
                                     )
                                     Text(
-                                        text = SpotType.entries.firstOrNull { it.value == spot.type }?.displayName ?: spot.type,
+                                        text = spotTypeLabel(spot.type),
                                         style = TeslaTheme.typography.labelSmall,
                                         color = TeslaColors.Accent
                                     )
@@ -271,7 +269,7 @@ fun ScenarioGenerateTab(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = if (uiState.isLoadingScenario) "生成中..." else "シナリオ生成",
+                        text = scenarioGenerateButtonLabel(uiState.isLoadingScenario),
                         color = TeslaColors.TextPrimary
                     )
                 }
@@ -280,12 +278,12 @@ fun ScenarioGenerateTab(
 
         // 結果セクション
         item {
-            TeslaGroupBox(title = "結果") {
+            TeslaGroupBox(title = scenarioGenerateResultTitle()) {
                 val result = uiState.scenarioResult
 
                 if (result == null) {
                     Text(
-                        text = "結果がありません",
+                        text = scenarioGenerateResultEmptyLabel(),
                         style = TeslaTheme.typography.bodyMedium,
                         color = TeslaColors.TextSecondary
                     )
@@ -300,13 +298,13 @@ fun ScenarioGenerateTab(
                         ) {
                             result.routeName?.let {
                                 Text(
-                                    text = "ルート: $it",
+                                    text = scenarioRouteLabel(it),
                                     style = TeslaTheme.typography.labelMedium,
                                     color = TeslaColors.TextSecondary
                                 )
                             }
                             Text(
-                                text = "成功: ${result.successCount ?: 0}/${result.totalCount ?: 0}",
+                                text = scenarioSuccessLabel(result.successCount, result.totalCount),
                                 style = TeslaTheme.typography.labelMedium,
                                 color = TeslaColors.StatusGreen
                             )
@@ -331,7 +329,7 @@ fun ScenarioGenerateTab(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "シナリオ統合へ",
+                                    text = scenarioIntegrateActionLabel(),
                                     color = TeslaColors.Accent
                                 )
                             }
@@ -365,22 +363,22 @@ private fun SpotScenarioRow(
                     color = TeslaColors.TextPrimary
                 )
                 Text(
-                    text = SpotType.entries.firstOrNull { it.value == spotType }?.displayName ?: spotType,
+                    text = spotTypeLabel(spotType),
                     style = TeslaTheme.typography.labelSmall,
                     color = TeslaColors.Accent
                 )
             }
 
             if (scenario != null) {
-                IconButton(onClick = { expanded = !expanded }) {
-                    Icon(
-                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (expanded) "折りたたむ" else "展開する",
-                        tint = TeslaColors.TextSecondary
-                    )
+                    IconButton(onClick = { expanded = !expanded }) {
+                        Icon(
+                            imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = spotScenarioToggleLabel(expanded),
+                            tint = TeslaColors.TextSecondary
+                        )
+                    }
                 }
             }
-        }
 
         AnimatedVisibility(visible = expanded && scenario != null) {
             Text(
@@ -393,13 +391,83 @@ private fun SpotScenarioRow(
 
         error?.let {
             Text(
-                text = "エラー: $it",
+                text = spotScenarioErrorLabel(it),
                 style = TeslaTheme.typography.labelSmall,
                 color = TeslaColors.StatusRed
             )
         }
     }
 }
+
+internal fun spotTypeLabel(spotType: String): String =
+    SpotType.entries.firstOrNull { it.value == spotType }?.displayName ?: spotType
+
+internal fun createRouteSpot(
+    name: String,
+    type: SpotType,
+    description: String,
+    point: String
+): RouteSpot? {
+    if (name.isBlank()) return null
+    return RouteSpot(
+        name = name,
+        type = type.value,
+        description = description.takeIf { it.isNotBlank() },
+        point = point.takeIf { it.isNotBlank() }
+    )
+}
+
+internal fun scenarioSuccessLabel(successCount: Int?, totalCount: Int?): String =
+    "成功: ${successCount ?: 0}/${totalCount ?: 0}"
+
+internal fun formatSpotListTitle(count: Int): String =
+    "スポットリスト (${count}件)"
+
+internal fun scenarioSpotListEmptyLabel(): String = "スポットがありません"
+
+internal fun scenarioGenerateResultEmptyLabel(): String = "結果がありません"
+
+internal fun scenarioIntegrateActionLabel(): String = "シナリオ統合へ"
+
+internal fun scenarioRouteLabel(routeName: String): String = "ルート: $routeName"
+
+internal fun spotScenarioToggleLabel(expanded: Boolean): String =
+    if (expanded) "折りたたむ" else "展開する"
+
+internal fun spotScenarioErrorLabel(error: String): String = "エラー: $error"
+
+internal fun scenarioGenerateInputTitle(): String = "入力"
+
+internal fun scenarioGenerateSpotAddTitle(): String = "スポット追加"
+
+internal fun scenarioGenerateResultTitle(): String = "結果"
+
+internal fun scenarioLanguageLabel(): String = "言語（オプション）"
+
+internal fun scenarioLanguagePlaceholder(): String = "例: ja"
+
+internal fun scenarioRouteNameLabel(): String = "ルート名"
+
+internal fun scenarioRouteNamePlaceholder(): String = "例: 皇居周辺観光ルート"
+
+internal fun scenarioSpotNameLabel(): String = "スポット名"
+
+internal fun scenarioSpotNamePlaceholder(): String = "例: 皇居"
+
+internal fun scenarioSpotTypeLabel(): String = "スポットタイプ"
+
+internal fun scenarioSpotDescriptionLabel(): String = "説明（オプション）"
+
+internal fun scenarioSpotDescriptionPlaceholder(): String = "例: 江戸城の跡地"
+
+internal fun scenarioSpotPointLabel(): String = "ポイント（オプション）"
+
+internal fun scenarioSpotPointPlaceholder(): String = "例: 歴史的建造物"
+
+internal fun scenarioSpotAddButtonLabel(): String = "追加"
+
+internal fun scenarioGenerateButtonLabel(isLoading: Boolean): String =
+    if (isLoading) "生成中..." else "シナリオ生成"
 
 @Preview(showBackground = true, backgroundColor = 0xFF141416, widthDp = 800, heightDp = 600)
 @Composable

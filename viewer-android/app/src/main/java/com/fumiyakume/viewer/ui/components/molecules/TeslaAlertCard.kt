@@ -37,44 +37,17 @@ fun TeslaAlertCard(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null
 ) {
-    val (backgroundColor, borderColor, iconTint) = when (variant) {
-        TeslaAlertVariant.Info -> Triple(
-            TeslaColors.Accent.copy(alpha = 0.1f),
-            TeslaColors.Accent.copy(alpha = 0.3f),
-            TeslaColors.Accent
-        )
-        TeslaAlertVariant.Success -> Triple(
-            TeslaColors.StatusGreen.copy(alpha = 0.1f),
-            TeslaColors.StatusGreen.copy(alpha = 0.3f),
-            TeslaColors.StatusGreen
-        )
-        TeslaAlertVariant.Warning -> Triple(
-            TeslaColors.StatusOrange.copy(alpha = 0.1f),
-            TeslaColors.StatusOrange.copy(alpha = 0.3f),
-            TeslaColors.StatusOrange
-        )
-        TeslaAlertVariant.Error -> Triple(
-            TeslaColors.StatusRed.copy(alpha = 0.1f),
-            TeslaColors.StatusRed.copy(alpha = 0.3f),
-            TeslaColors.StatusRed
-        )
-    }
-
-    val defaultIcon = when (variant) {
-        TeslaAlertVariant.Info -> Icons.Default.Info
-        TeslaAlertVariant.Success -> Icons.Default.CheckCircle
-        TeslaAlertVariant.Warning -> Icons.Default.Warning
-        TeslaAlertVariant.Error -> Icons.Default.Warning
-    }
+    val colors = alertColors(variant)
+    val defaultIcon = alertDefaultIcon(variant)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(backgroundColor)
+            .background(colors.backgroundColor)
             .border(
                 width = 1.dp,
-                color = borderColor,
+                color = colors.borderColor,
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(16.dp),
@@ -84,7 +57,7 @@ fun TeslaAlertCard(
         Icon(
             imageVector = icon ?: defaultIcon,
             contentDescription = null,
-            tint = iconTint,
+            tint = colors.iconTint,
             modifier = Modifier.size(24.dp)
         )
 
@@ -95,6 +68,42 @@ fun TeslaAlertCard(
             modifier = Modifier.weight(1f)
         )
     }
+}
+
+internal data class AlertColors(
+    val backgroundColor: Color,
+    val borderColor: Color,
+    val iconTint: Color
+)
+
+internal fun alertColors(variant: TeslaAlertVariant): AlertColors = when (variant) {
+    TeslaAlertVariant.Info -> AlertColors(
+        backgroundColor = TeslaColors.Accent.copy(alpha = 0.1f),
+        borderColor = TeslaColors.Accent.copy(alpha = 0.3f),
+        iconTint = TeslaColors.Accent
+    )
+    TeslaAlertVariant.Success -> AlertColors(
+        backgroundColor = TeslaColors.StatusGreen.copy(alpha = 0.1f),
+        borderColor = TeslaColors.StatusGreen.copy(alpha = 0.3f),
+        iconTint = TeslaColors.StatusGreen
+    )
+    TeslaAlertVariant.Warning -> AlertColors(
+        backgroundColor = TeslaColors.StatusOrange.copy(alpha = 0.1f),
+        borderColor = TeslaColors.StatusOrange.copy(alpha = 0.3f),
+        iconTint = TeslaColors.StatusOrange
+    )
+    TeslaAlertVariant.Error -> AlertColors(
+        backgroundColor = TeslaColors.StatusRed.copy(alpha = 0.1f),
+        borderColor = TeslaColors.StatusRed.copy(alpha = 0.3f),
+        iconTint = TeslaColors.StatusRed
+    )
+}
+
+internal fun alertDefaultIcon(variant: TeslaAlertVariant): ImageVector = when (variant) {
+    TeslaAlertVariant.Info -> Icons.Default.Info
+    TeslaAlertVariant.Success -> Icons.Default.CheckCircle
+    TeslaAlertVariant.Warning -> Icons.Default.Warning
+    TeslaAlertVariant.Error -> Icons.Default.Warning
 }
 
 /**

@@ -49,26 +49,26 @@ fun RouteGenerateTab(
     ) {
         // 入力セクション
         item {
-            TeslaGroupBox(title = "入力") {
+            TeslaGroupBox(title = routeGenerateInputTitle()) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     TeslaTextField(
-                        label = "出発地",
+                        label = routeGenerateStartPointLabel(),
                         value = uiState.routeGenerateStartPoint,
                         onValueChange = onStartPointChange,
-                        placeholder = "例: 東京駅"
+                        placeholder = routeGenerateStartPointPlaceholder()
                     )
 
                     TeslaTextField(
-                        label = "目的・テーマ",
+                        label = routeGeneratePurposeLabel(),
                         value = uiState.routeGeneratePurpose,
                         onValueChange = onPurposeChange,
-                        placeholder = "例: 皇居周辺の観光スポット"
+                        placeholder = routeGeneratePurposePlaceholder()
                     )
 
                     TeslaStepper(
-                        label = "生成地点数",
+                        label = routeGenerateSpotCountLabel(),
                         value = uiState.routeGenerateSpotCount,
                         onValueChange = onSpotCountChange,
                         range = 3..8
@@ -91,7 +91,7 @@ fun RouteGenerateTab(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = if (uiState.isLoadingRouteGenerate) "生成中..." else "AIでルート生成",
+                            text = routeGenerateButtonLabel(uiState.isLoadingRouteGenerate),
                             color = TeslaColors.TextPrimary
                         )
                     }
@@ -101,12 +101,12 @@ fun RouteGenerateTab(
 
         // 結果セクション
         item {
-            TeslaGroupBox(title = "結果") {
+            TeslaGroupBox(title = routeGenerateResultTitle()) {
                 val result = uiState.routeGenerateResult
 
                 if (result == null) {
                     Text(
-                        text = "結果がありません",
+                        text = routeGenerateResultEmptyLabel(),
                         style = TeslaTheme.typography.bodyMedium,
                         color = TeslaColors.TextSecondary
                     )
@@ -117,7 +117,7 @@ fun RouteGenerateTab(
                         // 生成モデル
                         result.model?.let { model ->
                             Text(
-                                text = "生成モデル: $model",
+                                text = routeGenerateModelLabel(model),
                                 style = TeslaTheme.typography.labelMedium,
                                 color = TeslaColors.TextSecondary
                             )
@@ -126,7 +126,7 @@ fun RouteGenerateTab(
                         // スポットリスト
                         result.spots?.let { spots ->
                             Text(
-                                text = "生成されたスポット",
+                                text = routeGenerateSpotHeaderLabel(),
                                 style = TeslaTheme.typography.titleMedium,
                                 color = TeslaColors.TextPrimary
                             )
@@ -136,12 +136,12 @@ fun RouteGenerateTab(
                                     modifier = Modifier.padding(vertical = 4.dp)
                                 ) {
                                     Text(
-                                        text = "${index + 1}. ${spot.name}",
+                                        text = routeGenerateSpotLabel(index, spot.name),
                                         style = TeslaTheme.typography.bodyLarge,
                                         color = TeslaColors.TextPrimary
                                     )
                                     Text(
-                                        text = "タイプ: ${spot.type}",
+                                        text = routeGenerateSpotTypeLabel(spot.type),
                                         style = TeslaTheme.typography.labelSmall,
                                         color = TeslaColors.Accent
                                     )
@@ -167,7 +167,7 @@ fun RouteGenerateTab(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "シナリオ生成へ",
+                                    text = routeGenerateGoToScenarioLabel(),
                                     color = TeslaColors.Accent
                                 )
                             }
@@ -178,6 +178,38 @@ fun RouteGenerateTab(
         }
     }
 }
+
+internal fun routeGenerateButtonLabel(isLoading: Boolean): String =
+    if (isLoading) "生成中..." else "AIでルート生成"
+
+internal fun routeGenerateModelLabel(model: String): String =
+    "生成モデル: $model"
+
+internal fun routeGenerateSpotLabel(index: Int, name: String): String =
+    "${index + 1}. $name"
+
+internal fun routeGenerateSpotTypeLabel(type: String): String =
+    "タイプ: $type"
+
+internal fun routeGenerateResultEmptyLabel(): String = "結果がありません"
+
+internal fun routeGenerateSpotHeaderLabel(): String = "生成されたスポット"
+
+internal fun routeGenerateGoToScenarioLabel(): String = "シナリオ生成へ"
+
+internal fun routeGenerateInputTitle(): String = "入力"
+
+internal fun routeGenerateResultTitle(): String = "結果"
+
+internal fun routeGenerateStartPointLabel(): String = "出発地"
+
+internal fun routeGeneratePurposeLabel(): String = "目的・テーマ"
+
+internal fun routeGenerateSpotCountLabel(): String = "生成地点数"
+
+internal fun routeGenerateStartPointPlaceholder(): String = "例: 東京駅"
+
+internal fun routeGeneratePurposePlaceholder(): String = "例: 皇居周辺の観光スポット"
 
 @Preview(showBackground = true, backgroundColor = 0xFF141416, widthDp = 800, heightDp = 600)
 @Composable

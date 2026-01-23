@@ -33,6 +33,7 @@ fun ModelPickerView(
     label: String = "AIモデル",
     enabled: Boolean = true
 ) {
+    val options = buildModelPickerOptions(selectedModel)
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -50,16 +51,15 @@ fun ModelPickerView(
                 .background(TeslaColors.GlassBackground)
                 .border(1.dp, TeslaColors.GlassBorder, RoundedCornerShape(12.dp))
         ) {
-            AIModel.entries.forEach { model ->
-                val isSelected = model == selectedModel
+            options.forEach { option ->
                 Text(
-                    text = model.displayName,
+                    text = option.displayName,
                     style = TeslaTheme.typography.labelMedium,
-                    color = if (isSelected) TeslaColors.TextPrimary else TeslaColors.TextSecondary,
+                    color = if (option.isSelected) TeslaColors.TextPrimary else TeslaColors.TextSecondary,
                     modifier = Modifier
-                        .clickable(enabled = enabled) { onModelSelected(model) }
+                        .clickable(enabled = enabled) { onModelSelected(option.value) }
                         .background(
-                            if (isSelected) TeslaColors.Accent.copy(alpha = 0.2f)
+                            if (option.isSelected) TeslaColors.Accent.copy(alpha = 0.2f)
                             else TeslaColors.Background.copy(alpha = 0f)
                         )
                         .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -82,6 +82,7 @@ fun ScenarioModelPickerView(
     label: String = "生成モデル",
     enabled: Boolean = true
 ) {
+    val options = buildScenarioModelPickerOptions(selectedModels)
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -99,16 +100,15 @@ fun ScenarioModelPickerView(
                 .background(TeslaColors.GlassBackground)
                 .border(1.dp, TeslaColors.GlassBorder, RoundedCornerShape(12.dp))
         ) {
-            ScenarioModels.entries.forEach { models ->
-                val isSelected = models == selectedModels
+            options.forEach { option ->
                 Text(
-                    text = models.displayName,
+                    text = option.displayName,
                     style = TeslaTheme.typography.labelMedium,
-                    color = if (isSelected) TeslaColors.TextPrimary else TeslaColors.TextSecondary,
+                    color = if (option.isSelected) TeslaColors.TextPrimary else TeslaColors.TextSecondary,
                     modifier = Modifier
-                        .clickable(enabled = enabled) { onModelsSelected(models) }
+                        .clickable(enabled = enabled) { onModelsSelected(option.value) }
                         .background(
-                            if (isSelected) TeslaColors.Accent.copy(alpha = 0.2f)
+                            if (option.isSelected) TeslaColors.Accent.copy(alpha = 0.2f)
                             else TeslaColors.Background.copy(alpha = 0f)
                         )
                         .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -117,6 +117,32 @@ fun ScenarioModelPickerView(
         }
     }
 }
+
+internal data class PickerOption<T>(
+    val value: T,
+    val displayName: String,
+    val isSelected: Boolean
+)
+
+internal fun buildModelPickerOptions(selectedModel: AIModel): List<PickerOption<AIModel>> =
+    AIModel.entries.map { model ->
+        PickerOption(
+            value = model,
+            displayName = model.displayName,
+            isSelected = model == selectedModel
+        )
+    }
+
+internal fun buildScenarioModelPickerOptions(
+    selectedModels: ScenarioModels
+): List<PickerOption<ScenarioModels>> =
+    ScenarioModels.entries.map { models ->
+        PickerOption(
+            value = models,
+            displayName = models.displayName,
+            isSelected = models == selectedModels
+        )
+    }
 
 @Preview(showBackground = true, backgroundColor = 0xFF141416)
 @Composable

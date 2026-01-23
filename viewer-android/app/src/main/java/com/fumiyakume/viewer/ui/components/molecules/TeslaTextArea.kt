@@ -36,7 +36,7 @@ fun TeslaTextArea(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
-        placeholder = if (placeholder.isNotBlank()) {
+        placeholder = if (shouldShowPlaceholder(placeholder)) {
             { Text(placeholder, color = TeslaColors.TextTertiary) }
         } else null,
         enabled = enabled,

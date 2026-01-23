@@ -36,7 +36,7 @@ fun TeslaTextField(
             value = value,
             onValueChange = onValueChange,
             label = { Text(label) },
-            placeholder = if (placeholder.isNotBlank()) {
+            placeholder = if (shouldShowPlaceholder(placeholder)) {
                 { Text(placeholder, color = TeslaColors.TextTertiary) }
             } else null,
             enabled = enabled,
@@ -62,9 +62,10 @@ fun TeslaTextField(
             modifier = Modifier.fillMaxWidth()
         )
 
-        if (isError && errorMessage != null) {
+        val resolvedErrorMessage = resolveErrorMessage(isError, errorMessage)
+        if (resolvedErrorMessage != null) {
             Text(
-                text = errorMessage,
+                text = resolvedErrorMessage,
                 style = TeslaTheme.typography.labelSmall,
                 color = TeslaColors.StatusRed,
                 modifier = Modifier.padding(start = 16.dp, top = 4.dp)
@@ -72,6 +73,12 @@ fun TeslaTextField(
         }
     }
 }
+
+internal fun shouldShowPlaceholder(placeholder: String): Boolean =
+    placeholder.isNotBlank()
+
+internal fun resolveErrorMessage(isError: Boolean, errorMessage: String?): String? =
+    if (isError && !errorMessage.isNullOrBlank()) errorMessage else null
 
 @Preview(showBackground = true, backgroundColor = 0xFF141416)
 @Composable

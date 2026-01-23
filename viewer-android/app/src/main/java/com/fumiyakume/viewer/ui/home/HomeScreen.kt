@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
@@ -30,12 +31,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.fumiyakume.viewer.R
+import com.fumiyakume.viewer.ui.theme.TeslaColorScheme
 import com.fumiyakume.viewer.ui.theme.TeslaTheme
 
 /**
@@ -49,6 +52,12 @@ fun HomeScreen(
     onNavigateToScenarioWriter: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {}
 ) {
+    val cards = buildHomeCardSpecs(
+        colors = TeslaTheme.colors,
+        onNavigateToVideoPlayer = onNavigateToVideoPlayer,
+        onNavigateToScenarioWriter = onNavigateToScenarioWriter
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -90,29 +99,57 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                item {
+                items(cards.size) { index ->
+                    val card = cards[index]
                     HomeCard(
-                        icon = Icons.Default.PlayArrow,
-                        title = stringResource(R.string.home_video_player_title),
-                        description = stringResource(R.string.home_video_player_description),
-                        accentColor = TeslaTheme.colors.accent,
-                        onClick = onNavigateToVideoPlayer
-                    )
-                }
-
-                item {
-                    HomeCard(
-                        icon = Icons.Default.Edit,
-                        title = stringResource(R.string.home_scenario_writer_title),
-                        description = stringResource(R.string.home_scenario_writer_description),
-                        accentColor = TeslaTheme.colors.statusOrange,
-                        onClick = onNavigateToScenarioWriter
+                        icon = card.icon,
+                        title = stringResource(card.titleRes),
+                        description = stringResource(card.descriptionRes),
+                        accentColor = card.accentColor,
+                        onClick = card.onClick
                     )
                 }
             }
         }
     }
 }
+
+internal enum class HomeCardId {
+    VIDEO_PLAYER,
+    SCENARIO_WRITER
+}
+
+internal data class HomeCardSpec(
+    val id: HomeCardId,
+    val icon: ImageVector,
+    val titleRes: Int,
+    val descriptionRes: Int,
+    val accentColor: Color,
+    val onClick: () -> Unit
+)
+
+internal fun buildHomeCardSpecs(
+    colors: TeslaColorScheme,
+    onNavigateToVideoPlayer: () -> Unit,
+    onNavigateToScenarioWriter: () -> Unit
+): List<HomeCardSpec> = listOf(
+    HomeCardSpec(
+        id = HomeCardId.VIDEO_PLAYER,
+        icon = Icons.Default.PlayArrow,
+        titleRes = R.string.home_video_player_title,
+        descriptionRes = R.string.home_video_player_description,
+        accentColor = colors.accent,
+        onClick = onNavigateToVideoPlayer
+    ),
+    HomeCardSpec(
+        id = HomeCardId.SCENARIO_WRITER,
+        icon = Icons.Default.Edit,
+        titleRes = R.string.home_scenario_writer_title,
+        descriptionRes = R.string.home_scenario_writer_description,
+        accentColor = colors.statusOrange,
+        onClick = onNavigateToScenarioWriter
+    )
+)
 
 @Composable
 private fun HomeCard(

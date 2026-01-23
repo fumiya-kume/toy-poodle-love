@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.secrets)
+    alias(libs.plugins.kover)
 }
 
 android {
@@ -43,6 +44,11 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"
@@ -98,7 +104,10 @@ dependencies {
     implementation(libs.coil.compose)
 
     // Testing
+    testImplementation(platform(libs.compose.bom))
     testImplementation(libs.bundles.testing)
+    testImplementation(libs.compose.ui.test)
+    testImplementation(libs.robolectric)
     androidTestImplementation(libs.bundles.androidTesting)
     androidTestImplementation(platform(libs.compose.bom))
     debugImplementation(libs.compose.ui.test.manifest)

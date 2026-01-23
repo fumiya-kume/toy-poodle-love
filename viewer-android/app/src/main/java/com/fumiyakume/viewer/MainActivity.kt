@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.fumiyakume.viewer.core.navigation.ViewerNavigation
+import com.fumiyakume.viewer.ui.theme.TeslaColors
 import com.fumiyakume.viewer.ui.theme.TeslaTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -21,12 +22,14 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        if (shouldEnableEdgeToEdge()) {
+            enableEdgeToEdge()
+        }
         setContent {
             TeslaTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = TeslaTheme.colors.background
+                    color = appBackgroundColor()
                 ) {
                     ViewerNavigation()
                 }
@@ -34,3 +37,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+internal fun shouldEnableEdgeToEdge(): Boolean = true
+
+internal fun appBackgroundColor() = TeslaColors.Background

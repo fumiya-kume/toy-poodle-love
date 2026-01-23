@@ -44,13 +44,13 @@ fun TeslaToggle(
     enabled: Boolean = true
 ) {
     val trackColor by animateColorAsState(
-        targetValue = if (checked) TeslaColors.Accent else TeslaColors.GlassBackground,
+        targetValue = toggleTrackColor(checked),
         animationSpec = TeslaTheme.animation.quickSpec(),
         label = "trackColor"
     )
 
     val thumbOffset by animateDpAsState(
-        targetValue = if (checked) 20.dp else 0.dp,
+        targetValue = toggleThumbOffset(checked),
         animationSpec = TeslaTheme.animation.quickSpec(),
         label = "thumbOffset"
     )
@@ -88,13 +88,21 @@ fun TeslaToggle(
                     .offset(x = thumbOffset)
                     .clip(CircleShape)
                     .background(
-                        if (enabled) TeslaColors.TextPrimary
-                        else TeslaColors.TextTertiary
+                        toggleThumbColor(enabled)
                     )
             )
         }
     }
 }
+
+internal fun toggleTrackColor(checked: Boolean) =
+    if (checked) TeslaColors.Accent else TeslaColors.GlassBackground
+
+internal fun toggleThumbOffset(checked: Boolean) =
+    if (checked) 20.dp else 0.dp
+
+internal fun toggleThumbColor(enabled: Boolean) =
+    if (enabled) TeslaColors.TextPrimary else TeslaColors.TextTertiary
 
 @Preview(showBackground = true, backgroundColor = 0xFF141416)
 @Composable

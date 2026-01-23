@@ -47,20 +47,20 @@ fun GeocodeTab(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         // 入力セクション
-        TeslaGroupBox(title = "入力") {
+        TeslaGroupBox(title = geocodeInputTitle()) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 TeslaTextArea(
-                    label = "住所リスト",
+                    label = geocodeAddressListLabel(),
                     value = uiState.geocodeAddresses,
                     onValueChange = onAddressesChange,
-                    placeholder = "1行に1住所を入力\n例:\n東京都千代田区丸の内1丁目\n東京都渋谷区神南1丁目",
+                    placeholder = geocodeAddressesPlaceholder(),
                     minHeight = 120.dp
                 )
 
                 Text(
-                    text = "複数の住所を改行で区切って入力してください",
+                    text = geocodeInstructionLabel(),
                     style = TeslaTheme.typography.labelSmall,
                     color = TeslaColors.TextTertiary
                 )
@@ -77,7 +77,7 @@ fun GeocodeTab(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = if (uiState.isLoadingGeocode) "ジオコーディング中..." else "ジオコーディング",
+                        text = geocodeButtonLabel(uiState.isLoadingGeocode),
                         color = TeslaColors.TextPrimary
                     )
                 }
@@ -85,12 +85,12 @@ fun GeocodeTab(
         }
 
         // 結果セクション
-        TeslaGroupBox(title = "結果") {
+        TeslaGroupBox(title = geocodeResultTitle()) {
             val result = uiState.geocodeResult
 
             if (result == null) {
                 Text(
-                    text = "結果がありません",
+                    text = geocodeResultEmptyLabel(),
                     style = TeslaTheme.typography.bodyMedium,
                     color = TeslaColors.TextSecondary
                 )
@@ -99,7 +99,7 @@ fun GeocodeTab(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "${result.size} 件の住所を変換しました",
+                        text = formatGeocodeResultCount(result.size),
                         style = TeslaTheme.typography.labelMedium,
                         color = TeslaColors.TextSecondary
                     )
@@ -137,12 +137,12 @@ private fun GeocodeResultItem(
         ) {
             Column {
                 Text(
-                    text = "緯度",
+                    text = geocodeLatitudeLabel(),
                     style = TeslaTheme.typography.labelSmall,
                     color = TeslaColors.TextTertiary
                 )
                 Text(
-                    text = String.format(Locale.US, "%.6f", place.location.latitude),
+                    text = formatCoordinate(place.location.latitude),
                     style = TeslaTheme.typography.bodyMedium,
                     color = TeslaColors.TextPrimary
                 )
@@ -150,12 +150,12 @@ private fun GeocodeResultItem(
 
             Column {
                 Text(
-                    text = "経度",
+                    text = geocodeLongitudeLabel(),
                     style = TeslaTheme.typography.labelSmall,
                     color = TeslaColors.TextTertiary
                 )
                 Text(
-                    text = String.format(Locale.US, "%.6f", place.location.longitude),
+                    text = formatCoordinate(place.location.longitude),
                     style = TeslaTheme.typography.bodyMedium,
                     color = TeslaColors.TextPrimary
                 )
@@ -170,6 +170,33 @@ private fun GeocodeResultItem(
         )
     }
 }
+
+internal fun geocodeButtonLabel(isLoading: Boolean): String =
+    if (isLoading) "ジオコーディング中..." else "ジオコーディング"
+
+internal fun formatCoordinate(value: Double): String =
+    String.format(Locale.US, "%.6f", value)
+
+internal fun formatGeocodeResultCount(count: Int): String =
+    "$count 件の住所を変換しました"
+
+internal fun geocodeInstructionLabel(): String =
+    "複数の住所を改行で区切って入力してください"
+
+internal fun geocodeResultEmptyLabel(): String = "結果がありません"
+
+internal fun geocodeInputTitle(): String = "入力"
+
+internal fun geocodeResultTitle(): String = "結果"
+
+internal fun geocodeLatitudeLabel(): String = "緯度"
+
+internal fun geocodeLongitudeLabel(): String = "経度"
+
+internal fun geocodeAddressListLabel(): String = "住所リスト"
+
+internal fun geocodeAddressesPlaceholder(): String =
+    "1行に1住所を入力\n例:\n東京都千代田区丸の内1丁目\n東京都渋谷区神南1丁目"
 
 @Preview(showBackground = true, backgroundColor = 0xFF141416, widthDp = 800, heightDp = 600)
 @Composable

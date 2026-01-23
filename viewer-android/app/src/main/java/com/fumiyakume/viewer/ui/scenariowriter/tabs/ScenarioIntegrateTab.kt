@@ -51,11 +51,10 @@ fun ScenarioIntegrateTab(
         val scenarioResult = uiState.scenarioResult
         val integrationResult = uiState.scenarioIntegrationResult
 
-        when {
-            // シナリオ結果がない場合
-            scenarioResult == null -> {
+        when (resolveScenarioIntegrateState(scenarioResult, integrationResult)) {
+            ScenarioIntegrateState.NoScenarioResult -> {
                 TeslaAlertCard(
-                    message = "統合するシナリオがありません。まずシナリオ生成タブでシナリオを生成してください。",
+                    message = scenarioIntegrateNoScenarioMessage(),
                     variant = TeslaAlertVariant.Info,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -65,27 +64,29 @@ fun ScenarioIntegrateTab(
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
                     Text(
-                        text = "シナリオ生成タブへ",
+                        text = scenarioIntegrateGoToScenarioLabel(),
                         color = TeslaColors.Accent
                     )
                 }
             }
 
-            // シナリオはあるが統合結果がない場合
-            integrationResult == null -> {
-                TeslaGroupBox(title = "シナリオ統合") {
+            ScenarioIntegrateState.ReadyToIntegrate -> {
+                val nonNullScenarioResult = requireNotNull(scenarioResult)
+                TeslaGroupBox(title = scenarioIntegrateTitleLabel()) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            text = "以下のシナリオを統合します",
+                            text = scenarioIntegrateIntroLabel(),
                             style = TeslaTheme.typography.bodyMedium,
                             color = TeslaColors.TextPrimary
                         )
 
-                        scenarioResult.spotScenarios?.filter { it.scenario != null }?.forEach { spotScenario ->
+                        nonNullScenarioResult.spotScenarios
+                            ?.filter { it.scenario != null }
+                            ?.forEach { spotScenario ->
                             Text(
-                                text = "• ${spotScenario.spotName}",
+                                text = scenarioIntegrateSpotLabel(spotScenario.spotName),
                                 style = TeslaTheme.typography.bodyMedium,
                                 color = TeslaColors.TextSecondary
                             )
@@ -101,7 +102,7 @@ fun ScenarioIntegrateTab(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = if (uiState.isLoadingScenarioIntegrate) "統合中..." else "シナリオを統合",
+                                text = scenarioIntegrateButtonLabel(uiState.isLoadingScenarioIntegrate),
                                 color = TeslaColors.TextPrimary
                             )
                         }
@@ -109,9 +110,9 @@ fun ScenarioIntegrateTab(
                 }
             }
 
-            // 統合結果がある場合
-            else -> {
-                TeslaGroupBox(title = "統合結果") {
+            ScenarioIntegrateState.HasIntegrationResult -> {
+                val nonNullIntegrationResult = requireNotNull(integrationResult)
+                TeslaGroupBox(title = scenarioIntegrateResultTitleLabel()) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -126,7 +127,7 @@ fun ScenarioIntegrateTab(
                                 tint = TeslaColors.StatusOrange
                             )
                             Text(
-                                text = "AIによる統合シナリオ",
+                                text = scenarioIntegrateAiHeaderLabel(),
                                 style = TeslaTheme.typography.titleMedium,
                                 color = TeslaColors.TextPrimary
                             )
@@ -137,16 +138,16 @@ fun ScenarioIntegrateTab(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            integrationResult.routeName?.let {
+                            nonNullIntegrationResult.routeName?.let {
                                 Text(
-                                    text = "ルート: $it",
+                                    text = scenarioIntegrateRouteLabel(it),
                                     style = TeslaTheme.typography.labelMedium,
                                     color = TeslaColors.TextSecondary
                                 )
                             }
-                            integrationResult.usedModel?.let {
+                            nonNullIntegrationResult.usedModel?.let {
                                 Text(
-                                    text = "モデル: $it",
+                                    text = scenarioIntegrateModelLabel(it),
                                     style = TeslaTheme.typography.labelMedium,
                                     color = TeslaColors.TextSecondary
                                 )
@@ -157,16 +158,16 @@ fun ScenarioIntegrateTab(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            integrationResult.integratedAt?.let {
+                            nonNullIntegrationResult.integratedAt?.let {
                                 Text(
-                                    text = "統合日時: $it",
+                                    text = scenarioIntegrateIntegratedAtLabel(it),
                                     style = TeslaTheme.typography.labelSmall,
                                     color = TeslaColors.TextTertiary
                                 )
                             }
-                            integrationResult.processingTimeMs?.let {
+                            nonNullIntegrationResult.processingTimeMs?.let {
                                 Text(
-                                    text = "処理時間: ${it}ms",
+                                    text = scenarioIntegrateProcessingTimeLabel(it),
                                     style = TeslaTheme.typography.labelSmall,
                                     color = TeslaColors.TextTertiary
                                 )
@@ -176,7 +177,7 @@ fun ScenarioIntegrateTab(
                         Divider(color = TeslaColors.GlassBorder)
 
                         // 統合スクリプト
-                        integrationResult.integratedScript?.let { script ->
+                        nonNullIntegrationResult.integratedScript?.let { script ->
                             SelectionContainer {
                                 Text(
                                     text = script,
@@ -190,6 +191,49 @@ fun ScenarioIntegrateTab(
             }
         }
     }
+}
+
+internal fun scenarioIntegrateButtonLabel(isLoading: Boolean): String =
+    if (isLoading) "統合中..." else "シナリオを統合"
+
+internal fun scenarioIntegrateProcessingTimeLabel(timeMs: Long): String =
+    "処理時間: ${timeMs}ms"
+
+internal fun scenarioIntegrateNoScenarioMessage(): String =
+    "統合するシナリオがありません。まずシナリオ生成タブでシナリオを生成してください。"
+
+internal fun scenarioIntegrateGoToScenarioLabel(): String = "シナリオ生成タブへ"
+
+internal fun scenarioIntegrateTitleLabel(): String = "シナリオ統合"
+
+internal fun scenarioIntegrateIntroLabel(): String = "以下のシナリオを統合します"
+
+internal fun scenarioIntegrateResultTitleLabel(): String = "統合結果"
+
+internal fun scenarioIntegrateAiHeaderLabel(): String = "AIによる統合シナリオ"
+
+internal fun scenarioIntegrateRouteLabel(routeName: String): String = "ルート: $routeName"
+
+internal fun scenarioIntegrateModelLabel(model: String): String = "モデル: $model"
+
+internal fun scenarioIntegrateIntegratedAtLabel(integratedAt: String): String =
+    "統合日時: $integratedAt"
+
+internal fun scenarioIntegrateSpotLabel(spotName: String): String = "• $spotName"
+
+internal enum class ScenarioIntegrateState {
+    NoScenarioResult,
+    ReadyToIntegrate,
+    HasIntegrationResult
+}
+
+internal fun resolveScenarioIntegrateState(
+    scenarioResult: com.fumiyakume.viewer.data.network.ScenarioOutput?,
+    integrationResult: com.fumiyakume.viewer.data.network.ScenarioIntegrationOutput?
+): ScenarioIntegrateState = when {
+    scenarioResult == null -> ScenarioIntegrateState.NoScenarioResult
+    integrationResult == null -> ScenarioIntegrateState.ReadyToIntegrate
+    else -> ScenarioIntegrateState.HasIntegrationResult
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF141416, widthDp = 800, heightDp = 600)
